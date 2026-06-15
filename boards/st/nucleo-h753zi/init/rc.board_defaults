@@ -3,3 +3,8 @@
 
 # No battery monitoring hardware on Nucleo
 param set-default CBRK_SUPPLY_CHK 894281
+
+# No real sensors — run in Hardware-In-the-Loop Simulation mode.
+# A simulator (e.g. jMAVSim, Gazebo) must send HIL_SENSOR / HIL_GPS
+# MAVLink messages over the USB CDC-ACM link.
+param set-default SYS_HITL 1
