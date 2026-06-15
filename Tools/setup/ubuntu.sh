@@ -166,22 +166,22 @@ if [[ $INSTALL_NUTTX == "true" ]]; then
 		vim-common \
 		;
 
-	if [[ "${INSTALL_ARCH}" == "x86_64" ]]; then
-		sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
-			g++-multilib \
-			gcc-arm-none-eabi \
-			gcc-multilib \
-			esptool \
-			;
-
-		echo
-		echo "Fetching Xtensa compilers"
-		XTENSA_FILE_NAME=xtensa-esp-elf-13.2.0_20240530-x86_64-linux-gnu.tar.xz
-		wget -q -P $DIR https://github.com/espressif/crosstool-NG/releases/download/esp-13.2.0_20240530/$XTENSA_FILE_NAME
-		sudo tar -xf $DIR/$XTENSA_FILE_NAME -C /opt
-		rm $DIR/$XTENSA_FILE_NAME
-		echo 'export PATH=$PATH:/opt/xtensa-esp-elf/bin/' >> /home/$USER/.bashrc
-	fi
+	# if [[ "${INSTALL_ARCH}" == "x86_64" ]]; then
+	# 	# sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
+	# 		# g++-multilib \
+	# 		# gcc-arm-none-eabi \
+	# 		# gcc-multilib \
+	# 		# esptool \
+	# 		# ;
+	#
+	# 	# echo
+	# 	# echo "Fetching Xtensa compilers"
+	# 	# XTENSA_FILE_NAME=xtensa-esp-elf-13.2.0_20240530-x86_64-linux-gnu.tar.xz
+	# 	# wget -q -P $DIR https://github.com/espressif/crosstool-NG/releases/download/esp-13.2.0_20240530/$XTENSA_FILE_NAME
+	# 	# sudo tar -xf $DIR/$XTENSA_FILE_NAME -C /opt
+	# 	# rm $DIR/$XTENSA_FILE_NAME
+	# 	# echo 'export PATH=$PATH:/opt/xtensa-esp-elf/bin/' >> /home/$USER/.bashrc
+	# fi
 
 	if [[ "${INSTALL_ARCH}" == "aarch64" ]]; then
 		sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
@@ -215,8 +215,8 @@ if [[ $INSTALL_SIM == "true" ]]; then
 	# Gazebo Harmonic installation (Ubuntu 22.04+)
 	echo "[ubuntu.sh] Gazebo (Harmonic) will be installed"
 	# Add Gazebo binary repository
-	sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
-	echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+#	sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+#	echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
 	sudo apt-get update -y --quiet
 
 	# Install Gazebo
