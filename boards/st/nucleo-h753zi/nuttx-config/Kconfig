@@ -1,0 +1,2 @@
+# boards/st/nucleo-h753zi/nuttx-config/Kconfig
+# Nucleo-H753ZI board-specific Kconfig -- no board-specific options yet.
