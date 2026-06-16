@@ -41,6 +41,15 @@ extern void led_on(int led);
 extern void led_off(int led);
 __END_DECLS
 
+/* LD2 (Blue, PE1) heartbeat: 500ms toggle to indicate the application is running. */
+static struct hrt_call _led2_call;
+
+static void led2_heartbeat(void *arg)
+{
+	stm32_gpiowrite(GPIO_nLED_BLUE, stm32_gpioread(GPIO_nLED_BLUE) ^ 1);
+	hrt_call_after(&_led2_call, 500000, led2_heartbeat, NULL);
+}
+
 __EXPORT void board_peripheral_reset(int ms) {}
 
 __EXPORT void board_on_reset(int status) {}
@@ -67,6 +76,9 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	led_off(LED_RED);
 	led_off(LED_GREEN);
 	led_off(LED_BLUE);
+
+	/* Start LD2 (Blue, PE1) 500ms heartbeat — indicates application is running. */
+	hrt_call_after(&_led2_call, 500000, led2_heartbeat, NULL);
 
 	if (board_hardfault_init(2, true) != 0) {
 		led_on(LED_RED);

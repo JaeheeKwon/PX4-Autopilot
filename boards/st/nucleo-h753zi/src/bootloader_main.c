@@ -30,6 +30,10 @@ __EXPORT void board_on_reset(int status) {}
 
 __EXPORT void stm32_boardinitialize(void)
 {
+	/* LD1 (Green, PB0): sole LED visible during bootloader; toggled at 500ms by board_timerhook. */
+	stm32_configgpio(GPIO_nLED_GREEN);
+	stm32_gpiowrite(GPIO_nLED_GREEN, 0);   /* off at start */
+
 	stm32_usbinitialize();
 }
 
@@ -47,4 +51,13 @@ extern void sys_tick_handler(void);
 void board_timerhook(void)
 {
 	sys_tick_handler();
+
+	/* Toggle LD1 (Green, PB0) every 500ms to indicate the bootloader is running.
+	 * sys_tick fires every 1ms, so count 500 ticks per half-period. */
+	static unsigned ms = 0;
+
+	if (++ms >= 500) {
+		ms = 0;
+		stm32_gpiowrite(GPIO_nLED_GREEN, stm32_gpioread(GPIO_nLED_GREEN) ^ 1);
+	}
 }

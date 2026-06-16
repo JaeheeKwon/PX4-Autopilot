@@ -25,7 +25,9 @@
 #define OSC_FREQ                       8
 
 /* Nucleo LEDs are active-HIGH pushpull (unlike most PX4 boards which are active-LOW) */
-#define BOARD_PIN_LED_ACTIVITY         GPIO_nLED_GREEN
+/* LED_ACTIVITY and LED_BOOTLOADER are intentionally unmapped here so that bl.c's
+ * built-in 50ms blink and USB-activity toggling are no-ops. LD1 (Green, PB0) is
+ * driven exclusively by the 500ms heartbeat in board_timerhook(). */
 #define BOARD_LED_ON                   1
 #define BOARD_LED_OFF                  0
 
