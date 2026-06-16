@@ -54,6 +54,9 @@ __EXPORT void board_peripheral_reset(int ms) {}
 
 __EXPORT void board_on_reset(int status) {}
 
+/* Required when CONFIG_SYSTEMTICK_HOOK=y; bootloader_main.c provides the real one. */
+void __attribute__((weak)) board_timerhook(void) {}
+
 __EXPORT void stm32_boardinitialize(void)
 {
 	board_autoled_initialize();

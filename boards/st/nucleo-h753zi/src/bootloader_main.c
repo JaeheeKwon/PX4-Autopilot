@@ -55,9 +55,11 @@ void board_timerhook(void)
 	/* Toggle LD1 (Green, PB0) every 500ms to indicate the bootloader is running.
 	 * sys_tick fires every 1ms, so count 500 ticks per half-period. */
 	static unsigned ms = 0;
+	static bool led_state = false;
 
 	if (++ms >= 500) {
 		ms = 0;
-		stm32_gpiowrite(GPIO_nLED_GREEN, stm32_gpioread(GPIO_nLED_GREEN) ^ 1);
+		led_state = !led_state;
+		stm32_gpiowrite(GPIO_nLED_GREEN, led_state ? 1 : 0);
 	}
 }
