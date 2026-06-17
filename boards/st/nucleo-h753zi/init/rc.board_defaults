@@ -8,3 +8,5 @@ param set-default CBRK_SUPPLY_CHK 894281
 # A simulator (e.g. jMAVSim, Gazebo) must send HIL_SENSOR / HIL_GPS
 # MAVLink messages over the USB CDC-ACM link.
 param set-default SYS_HITL 1
+
+# mavlink start -d /dev/ttyS1 -b 921600 -x
