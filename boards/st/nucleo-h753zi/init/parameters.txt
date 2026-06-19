@@ -1,0 +1,19 @@
+# Generic Quadcopter HILS 에어프레임 지정
+SYS_AUTOSTART 1001
+SYS_AUTOCONFIG 1
+
+# 물리 센서 검사 우회 및 HIL 시뮬레이션 활성화 (가장 중요)
+SYS_HITL 1
+SYS_HAS_MAG 0
+SYS_HAS_BARO 0
+SYS_HAS_GPS 0
+SYS_HAS_SENSORS 0
+
+# 보드에 물리 센서 서브시스템이 아예 없음을 선언 (핵심)
+COM_ARM_MIS_SENS 1
+
+# EKF2 추정기 설정을 시뮬레이터 입력값 추종으로 변경
+EKF2_MAG_TYPE 5
+EKF2_HGT_REF 0
+
+

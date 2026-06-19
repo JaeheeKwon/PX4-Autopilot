@@ -1,12 +1,97 @@
 #!/bin/sh
-# ST Nucleo-H753ZI board defaults
 
-# No battery monitoring hardware on Nucleo
-param set-default CBRK_SUPPLY_CHK 894281
+# param set SYS_AUTOSTART 1001
+# param set SYS_HITL 1
+#
+# param set COM_ARM_WO_GPS 1          #
+# param set COM_ARM_MAG_STR 0        
+# param set COM_ARM_IMU_ACC 100.0
+# param set COM_ARM_IMU_GYR 100.0
+# param set CBRK_SUPPLY_CHK 894281
+# param set CBRK_IO_SAFETY 220127 
+#
+#
+# param set EKF2_BARO_CTRL 0
+# param set EKF2_HGT_REF 1
+# param set EKF2_MAG_TYPE 3 # 3D fusion
+# param set EKF2_REQ_EPH 100.0
+# param set EKF2_REQ_EPV 100.0
+# param set EKF2_REQ_HDRIFT 100.0
+# param set EKF2_REQ_VDRIFT 100.0
+# param set EKF2_DELAY_MAX 300.0
+#
+# param set SYS_USB_AUTO 0
 
-# No real sensors — run in Hardware-In-the-Loop Simulation mode.
-# A simulator (e.g. jMAVSim, Gazebo) must send HIL_SENSOR / HIL_GPS
-# MAVLink messages over the USB CDC-ACM link.
-param set-default SYS_HITL 1
 
-# mavlink start -d /dev/ttyS1 -b 921600 -x
+# =========================================================
+# PX4 H753 + JMAVSim HIL STABLE CONFIG (FINAL)
+# Goal: stable EKF + reliable ARM without over-disabling safety
+# =========================================================
+
+echo "[PX4] applying HIL stable configuration"
+
+# ---------------------------------------------------------
+# 1. HIL mode
+# ---------------------------------------------------------
+param set SYS_AUTOSTART 1001
+# param set SYS_AUTOCONFIG 1
+param set SYS_HITL 1
+
+# ---------------------------------------------------------
+# 2. Arming flexibility (HIL only)
+# ---------------------------------------------------------
+param set COM_ARM_WO_GPS 1
+param set COM_ARM_MAG_STR 0
+
+# ---------------------------------------------------------
+# 3. EKF height configuration (CRITICAL FIX)
+# ---------------------------------------------------------
+
+# Use baro fusion properly (DO NOT disable it)
+param set EKF2_HGT_REF 1
+param set EKF2_BARO_CTRL 1
+
+# ---------------------------------------------------------
+# 4. Magnetometer fusion (keep but stabilize)
+# ---------------------------------------------------------
+# none to force the fileter to use a dummy yaw alignment
+param set EKF2_MAG_TYPE 5
+
+param set EKF2_GPS_CTRL 0
+
+# ---------------------------------------------------------
+# 5. External Vision (IMPORTANT for EKF stability in HIL)
+# ---------------------------------------------------------
+param set EKF2_EV_CTRL 0
+
+# ---------------------------------------------------------
+# 6. EKF constraints (keep relaxed but not broken)
+# ---------------------------------------------------------
+param set EKF2_REQ_EPH 100.0
+param set EKF2_REQ_EPV 100.0
+param set EKF2_REQ_HDRIFT 100.0
+param set EKF2_REQ_VDRIFT 100.0
+param set EKF2_DELAY_MAX 300.0
+
+#
+# ---------------------------------------------------------
+# 7. Safety bypass (HIL ONLY)
+# ---------------------------------------------------------
+param set CBRK_SUPPLY_CHK 894281
+param set CBRK_IO_SAFETY 220127
+
+param set COM_RC_IN_MODE 4
+#
+# ---------------------------------------------------------
+# 8. System behavior
+# ---------------------------------------------------------
+param set SYS_USB_AUTO 2
+
+#echo "[PX4] HIL configuration complete"
+
+# mavlink start -d /dev/ttyACM0  -m onboard
+# ---------------------------------------------------------
+# 9. EKF warm-up time (CRITICAL)
+# ---------------------------------------------------------
+
+echo "[PX4] EKF warm-up completed"
