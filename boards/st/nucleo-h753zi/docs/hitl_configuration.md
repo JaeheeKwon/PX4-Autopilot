@@ -89,7 +89,7 @@ These defaults are applied by `boards/st/nucleo-h753zi/init/rc.board_defaults`.
 
 | Parameter | Default | Reason |
 |---|---:|---|
-| `SYS_HAS_MAG` | `0` | No physical magnetometer is installed or required for arming. |
+| `SYS_HAS_MAG` | `1` | The board has no physical magnetometer, but HIL provides a simulated magnetometer over MAVLink for heading initialization. |
 | `SYS_HAS_BARO` | `1` | HIL barometer data is expected from MAVLink. |
 | `SYS_HAS_GPS` | `1` | HIL GPS data is expected from MAVLink. |
 
@@ -100,7 +100,8 @@ These defaults are applied by `boards/st/nucleo-h753zi/init/rc.board_defaults`.
 | `EKF2_GPS_CTRL` | `7` | Fuse GPS position and velocity from HIL GPS. |
 | `EKF2_HGT_REF` | `1` | Use GPS as the height reference. |
 | `EKF2_BARO_CTRL` | `1` | Keep HIL barometer fusion enabled. |
-| `EKF2_MAG_TYPE` | `5` | Do not require magnetometer fusion. |
+| `EKF2_MAG_TYPE` | `6` | Use the HIL magnetometer only to initialize heading. |
+| `EKF2_MAG_CHECK` | `0` | Skip magnetic field strength/inclination checks for simulated magnetometer data. |
 | `EKF2_EV_CTRL` | `0` | Disable external-vision aiding by default. |
 
 ### GPS Acceptance Relaxation
@@ -128,6 +129,12 @@ These defaults are applied by `boards/st/nucleo-h753zi/init/rc.board_defaults`.
 
 | Parameter | Default | Reason |
 |---|---:|---|
+| `GPS_1_CONFIG` | `0` | Do not start the physical GPS driver on CN13 USB. HIL GPS arrives through MAVLink. |
+| `GPS_2_CONFIG` | `0` | Keep CN13 USB free for HITL MAVLink. |
+| `RC_PORT_CONFIG` | `0` | Do not start RC input on CN13 USB. Manual control is ignored by `COM_RC_IN_MODE=4`. |
+| `MAV_0_CONFIG` | `0` | Do not start generated serial MAVLink on CN13 before `cdcacm_autostart`. |
+| `MAV_1_CONFIG` | `0` | Keep CN13 USB owned by `cdcacm_autostart`. |
+| `MAV_2_CONFIG` | `0` | Keep CN13 USB owned by `cdcacm_autostart`. |
 | `SYS_USB_AUTO` | `2` | Automatically start MAVLink on USB. |
 | `USB_MAV_MODE` | `2` | Use USB MAVLink mode suitable for GCS/HITL traffic. |
 
@@ -158,9 +165,10 @@ If the board has old saved values and you want the board defaults to take effect
 
 ```sh
 param reset SYS_AUTOSTART SYS_HITL SYS_HAS_MAG SYS_HAS_BARO SYS_HAS_GPS
-param reset EKF2_GPS_CTRL EKF2_HGT_REF EKF2_BARO_CTRL EKF2_MAG_TYPE EKF2_EV_CTRL
+param reset EKF2_GPS_CTRL EKF2_HGT_REF EKF2_BARO_CTRL EKF2_MAG_TYPE EKF2_MAG_CHECK EKF2_EV_CTRL
 param reset EKF2_REQ_EPH EKF2_REQ_EPV EKF2_REQ_HDRIFT EKF2_REQ_VDRIFT EKF2_DELAY_MAX
 param reset COM_ARM_WO_GPS COM_ARM_MAG_STR CBRK_SUPPLY_CHK CBRK_IO_SAFETY COM_RC_IN_MODE COM_DISARM_PRFLT
+param reset GPS_1_CONFIG GPS_2_CONFIG RC_PORT_CONFIG MAV_0_CONFIG MAV_1_CONFIG MAV_2_CONFIG
 param reset SYS_USB_AUTO USB_MAV_MODE
 param save
 reboot

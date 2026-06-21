@@ -361,8 +361,19 @@ flowchart LR
 
 | Parameter | Value | Reason |
 |---|---|---|
-| `CBRK_SUPPLY_CHK` | 894281 | No battery monitoring hardware |
 | `SYS_HITL` | 1 | No real sensors — HILS mode always |
+| `SYS_AUTOSTART` | 1001 | Generic quadrotor HIL airframe |
+| `SYS_HAS_MAG` | 1 | HIL magnetometer is expected from MAVLink for heading initialization |
+| `SYS_HAS_BARO` | 1 | HIL barometer is expected from MAVLink |
+| `SYS_HAS_GPS` | 1 | HIL GPS is expected from MAVLink |
+| `EKF2_GPS_CTRL` | 7 | Fuse HIL GPS position and velocity |
+| `EKF2_HGT_REF` | 1 | Use GPS as the EKF height reference |
+| `EKF2_BARO_CTRL` | 1 | Keep HIL barometer fusion enabled |
+| `EKF2_MAG_TYPE` | 6 | Use the HIL magnetometer for initial heading only |
+| `EKF2_MAG_CHECK` | 0 | Skip magnetic field strength/inclination checks for simulator data |
+| `COM_RC_IN_MODE` | 4 | Ignore RC input for this bench HITL setup |
+| `CBRK_SUPPLY_CHK` | 894281 | No battery monitoring hardware |
+| `SYS_USB_AUTO` | 2 | Start MAVLink automatically on USB CDC |
 
 ---
 

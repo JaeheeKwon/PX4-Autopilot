@@ -6,16 +6,17 @@ echo "[PX4] applying Nucleo-H753ZI HITL defaults"
 param set-default SYS_AUTOSTART 1001
 param set-default SYS_HITL 1
 
-# The board has no physical mag, but HITL GPS/baro are expected from MAVLink.
-param set-default SYS_HAS_MAG 0
+# The board has no physical sensors, but HITL mag/GPS/baro are expected from MAVLink.
+param set-default SYS_HAS_MAG 1
 param set-default SYS_HAS_BARO 1
 param set-default SYS_HAS_GPS 1
 
-# Use HIL GPS for position/velocity/height, with HIL baro still fused.
+# Use HIL GPS for position/velocity/height and HIL mag to initialize heading.
 param set-default EKF2_GPS_CTRL 7
 param set-default EKF2_HGT_REF 1
 param set-default EKF2_BARO_CTRL 1
-param set-default EKF2_MAG_TYPE 5
+param set-default EKF2_MAG_TYPE 6
+param set-default EKF2_MAG_CHECK 0
 param set-default EKF2_EV_CTRL 0
 
 # Relax GPS acceptance for simulator startup transients.
@@ -34,5 +35,16 @@ param set-default COM_RC_IN_MODE 4
 param set-default COM_DISARM_PRFLT -1
 
 # USB CDC MAVLink for HITL.
+#
+# Keep the generated serial startup path away from CN13 USB. HITL traffic on
+# /dev/ttyACM0 is owned by cdcacm_autostart, which starts mavlink once VBUS is
+# present. If these are saved as TELEM2 they can consume the same USB endpoint
+# before the HITL link is ready.
+param set-default GPS_1_CONFIG 0
+param set-default GPS_2_CONFIG 0
+param set-default RC_PORT_CONFIG 0
+param set-default MAV_0_CONFIG 0
+param set-default MAV_1_CONFIG 0
+param set-default MAV_2_CONFIG 0
 param set-default SYS_USB_AUTO 2
 param set-default USB_MAV_MODE 2
