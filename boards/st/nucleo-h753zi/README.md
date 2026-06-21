@@ -57,8 +57,8 @@ In the HILS setup both are active simultaneously: `nsh>` on CN1 and `psh>` insid
 
 | Bus | Pins | Connector |
 |---|---|---|
-| SPI3 | PB3/PB4/PB5 (SCK/MISO/MOSI) | Arduino shield CN7 |
-| I2C1 | PB8/PB9 (SCL/SDA) | Arduino shield CN10 |
+| SPI3 | PB3/PB4/PB5 (SCK/MISO/MOSI) | Arduino shield CN7 (D3/D12/D11) |
+| I2C1 | PB8/PB9 (SCL/SDA) | Arduino shield CN7 (D15/D14) |
 
 No external sensors are wired by default.
 
