@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nucleo-H753ZI LittleFS Parameter Storage Migration</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --text: #1d2430;
+      --muted: #566170;
+      --border: #d8dee8;
+      --accent: #0f6b8d;
+      --accent-soft: #e6f3f7;
+      --warn: #8a4b00;
+      --warn-soft: #fff3df;
+      --code-bg: #101820;
+      --code-text: #edf4f8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    header {
+      background: #1f2a37;
+      color: #fff;
+      padding: 40px 24px 32px;
+    }
+
+    header .inner,
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      font-weight: 760;
+      max-width: 980px;
+    }
+
+    h2 {
+      font-size: 1.55rem;
+      padding-top: 6px;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      font-size: 1.08rem;
+      margin: 28px 0 10px;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    header p {
+      color: #d5dee8;
+      max-width: 900px;
+      margin-top: 14px;
+    }
+
+    main {
+      padding: 24px 0 56px;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0 24px;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.92rem;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin: 16px 0;
+    }
+
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 14px 16px;
+      border-radius: 6px;
+      margin: 14px 0 18px;
+    }
+
+    .warning {
+      border-left-color: var(--warn);
+      background: var(--warn-soft);
+      color: #3d2b13;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .tile {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fbfcfe;
+    }
+
+    .tile h3 {
+      margin-top: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 0.95rem;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #eef2f6;
+      font-weight: 700;
+    }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+      background: #eef2f6;
+      border-radius: 4px;
+      padding: 0.12rem 0.28rem;
+    }
+
+    pre {
+      margin: 12px 0 18px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      background: var(--code-bg);
+      color: var(--code-text);
+      tab-size: 4;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    ol,
+    ul {
+      padding-left: 1.45rem;
+    }
+
+    li {
+      margin: 0.32rem 0;
+    }
+
+    .steps {
+      counter-reset: migration-step;
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .steps > li {
+      counter-increment: migration-step;
+      position: relative;
+      padding-left: 52px;
+      margin: 24px 0 30px;
+    }
+
+    .steps > li::before {
+      content: counter(migration-step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .steps h3 {
+      margin-top: 0;
+    }
+
+    .checklist {
+      columns: 2 320px;
+      column-gap: 36px;
+      list-style: square;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="inner">
+      <h1>Nucleo-H753ZI LittleFS Parameter Storage Migration</h1>
+      <p>
+        Step-by-step migration from the active raw flashfs parameter backend to
+        file-backed PX4 parameters stored in a LittleFS volume under
+        <code>/fs/flash/params</code>.
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <nav aria-label="Document sections">
+      <a href="#goal">Goal</a>
+      <a href="#state">Current And Target State</a>
+      <a href="#layout">Flash Layout</a>
+      <a href="#steps">Migration Steps</a>
+      <a href="#validation">Validation</a>
+      <a href="#failure-modes">Failure Modes</a>
+      <a href="#checklist">Final Checklist</a>
+    </nav>
+
+    <section id="goal">
+      <h2>Goal</h2>
+      <p>
+        The <code>param</code> module should use a normal file on a mounted
+        LittleFS filesystem. The module does not discover LittleFS by itself;
+        it only uses the filesystem when the flash backend is disabled and
+        <code>param select</code> receives a mounted file path.
+      </p>
+      <pre><code>board_app_initialize()
+  -&gt; creates an MTD partition from internal flash
+  -&gt; mounts LittleFS at /fs/flash
+  -&gt; rcS sources generated rc.filepaths
+  -&gt; rcS runs: param select /fs/flash/params
+  -&gt; param load-or-init loads or creates /fs/flash/params
+  -&gt; later param save writes BSON parameters to LittleFS</code></pre>
+      <div class="callout">
+        Remove <code>FLASH_BASED_PARAMS</code> before relying on
+        <code>param select</code>. With that define enabled, PX4 keeps using the
+        flash backend for default parameter persistence.
+      </div>
+    </section>
+
+    <section id="state">
+      <h2>Current And Target State</h2>
+      <div class="grid">
+        <div class="tile">
+          <h3>Current Active Configuration</h3>
+          <table>
+            <tbody>
+              <tr><th>Backend selector</th><td><code>FLASH_BASED_PARAMS</code></td></tr>
+              <tr><th>Board init</th><td><code>parameter_flashfs_init()</code></td></tr>
+              <tr><th>Reserved flash</th><td>one 128 KiB sector</td></tr>
+              <tr><th>Generated param path</th><td><code>/fs/mtd_params</code></td></tr>
+              <tr><th>App flash window</th><td><code>0x08020000</code> plus 1792 KiB</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tile">
+          <h3>Target LittleFS Configuration</h3>
+          <table>
+            <tbody>
+              <tr><th>Backend selector</th><td>no <code>FLASH_BASED_PARAMS</code></td></tr>
+              <tr><th>Board init</th><td><code>progmem_initialize()</code>, <code>mtd_partition()</code>, <code>register_mtddriver()</code>, <code>nx_mount()</code></td></tr>
+              <tr><th>Mountpoint</th><td><code>/fs/flash</code></td></tr>
+              <tr><th>Parameter file</th><td><code>/fs/flash/params</code></td></tr>
+              <tr><th>Reserved flash</th><td>sectors 12-15, 512 KiB total</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="layout">
+      <h2>Flash Layout</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Region</th>
+            <th>Sectors</th>
+            <th>Address Range</th>
+            <th>Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Bootloader</td>
+            <td>0</td>
+            <td><code>0x08000000</code> - <code>0x0801ffff</code></td>
+            <td>128 KiB</td>
+          </tr>
+          <tr>
+            <td>PX4 app</td>
+            <td>1-11</td>
+            <td><code>0x08020000</code> - <code>0x0817ffff</code></td>
+            <td>1408 KiB</td>
+          </tr>
+          <tr>
+            <td>LittleFS params</td>
+            <td>12-15</td>
+            <td><code>0x08180000</code> - <code>0x081fffff</code></td>
+            <td>512 KiB</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        The linker script, bootloader flash limits, and firmware metadata must
+        agree on this layout. If only one of them is changed, firmware upload or
+        runtime writes can overwrite the LittleFS partition.
+      </p>
+    </section>
+
+    <section id="steps">
+      <h2>Migration Steps</h2>
+      <ol class="steps">
+        <li>
+          <h3>Use parameter-only storage</h3>
+          <p>
+            Keep <code>CONFIG_BOARD_ROOT_PATH</code> separate from the
+            LittleFS volume and set only
+            <code>CONFIG_BOARD_PARAM_FILE="/fs/flash/params"</code>.
+          </p>
+          <p>
+            This keeps <code>/fs/flash</code> dedicated to parameters instead
+            of making it general board root storage for config scripts,
+            backups, hardfault logs, external airframes, and update
+            directories.
+          </p>
+        </li>
+
+        <li>
+          <h3>Reserve flash for LittleFS</h3>
+          <p>Update <code>boards/st/nucleo-h753zi/nuttx-config/scripts/script.ld</code>.</p>
+          <pre><code>FLASH      (rx) : ORIGIN = 0x08020000, LENGTH = 1408K /* LittleFS params in sectors 12-15 */</code></pre>
+        </li>
+
+        <li>
+          <h3>Update bootloader flash limits</h3>
+          <p>Update <code>boards/st/nucleo-h753zi/src/hw_config.h</code>.</p>
+          <pre><code>#define BOARD_FLASH_SECTORS            (11)
+#define APP_RESERVATION_SIZE           (4 * 128 * 1024)</code></pre>
+        </li>
+
+        <li>
+          <h3>Update firmware image metadata</h3>
+          <p>Update <code>boards/st/nucleo-h753zi/firmware.prototype</code>.</p>
+          <pre><code>"image_maxsize": 1441792</code></pre>
+          <p class="muted">This is 1408 KiB and must match the linker app flash window.</p>
+        </li>
+
+        <li>
+          <h3>Remove the flashfs parameter backend</h3>
+          <p>Remove this define from <code>boards/st/nucleo-h753zi/src/board_config.h</code>:</p>
+          <pre><code>#define FLASH_BASED_PARAMS</code></pre>
+          <p>
+            With the define removed, <code>param select</code> can select the
+            file-backed parameter store.
+          </p>
+        </li>
+
+        <li>
+          <h3>Mount LittleFS during board initialization</h3>
+          <p>
+            Replace the <code>parameter_flashfs_init()</code> block in
+            <code>boards/st/nucleo-h753zi/src/init.c</code> with the LittleFS
+            mount helper from <code>littlefs_ref/src/init.c</code>.
+          </p>
+          <pre><code>#define PARAM_LITTLEFS_DEVICE       "/dev/mtd_params"
+#define PARAM_LITTLEFS_MOUNTPOINT   "/fs/flash"
+#define PARAM_LITTLEFS_ERASE_BLOCKS 4
+#define PARAM_LITTLEFS_TEST_FILE    PARAM_LITTLEFS_MOUNTPOINT "/.mount_test"</code></pre>
+          <p>The helper must initialize progmem, partition the final four erase blocks, register <code>/dev/mtd_params</code>, create mount directories, mount LittleFS with <code>autoformat</code>, and verify writability.</p>
+        </li>
+
+        <li>
+          <h3>Point generated rc.filepaths at LittleFS</h3>
+          <p>Add this to <code>boards/st/nucleo-h753zi/default.px4board</code>:</p>
+          <pre><code>CONFIG_BOARD_PARAM_FILE="/fs/flash/params"</code></pre>
+          <p>After rebuild, confirm:</p>
+          <pre><code>set PARAM_FILE /fs/flash/params
+set BOARD_ROOT_PATH /fs/microsd</code></pre>
+        </li>
+
+        <li>
+          <h3>Add rc.board_early as a storage guard</h3>
+          <p>
+            Copy <code>littlefs_ref/init/rc.board_early</code> to the active
+            board init directory. It disables generic storage features so logs,
+            backups, external airframes, and update directories do not fill the
+            parameter partition.
+          </p>
+        </li>
+
+        <li>
+          <h3>Merge LittleFS NuttX tuning</h3>
+          <p>Update <code>boards/st/nucleo-h753zi/nuttx-config/nsh/defconfig</code>.</p>
+          <pre><code>CONFIG_FS_LITTLEFS=y
+CONFIG_FS_LITTLEFS_PROGRAM_SIZE_FACTOR=1
+CONFIG_FS_LITTLEFS_READ_SIZE_FACTOR=1
+CONFIG_FS_LITTLEFS_CACHE_SIZE_FACTOR=1
+CONFIG_FS_LITTLEFS_BLOCK_CYCLE=-1</code></pre>
+        </li>
+
+        <li>
+          <h3>Rebuild</h3>
+          <pre><code>make st_nucleo-h753zi_default</code></pre>
+          <p>Check generated paths and image size:</p>
+          <pre><code>cat build/st_nucleo-h753zi_default/etc/init.d/rc.filepaths
+ls -l build/st_nucleo-h753zi_default/st_nucleo-h753zi_default.bin</code></pre>
+        </li>
+
+        <li>
+          <h3>Flash and boot</h3>
+          <p>
+            The first boot formats sectors 12-15 as LittleFS. Existing flashfs
+            parameter data in sector 15 is erased.
+          </p>
+          <pre><code>dmesg
+ls /fs
+ls /fs/flash
+param status</code></pre>
+        </li>
+
+        <li>
+          <h3>Validate parameter persistence</h3>
+          <pre><code>param set COM_DISARM_PRFLT -1
+param save
+ls /fs/flash
+reboot
+param show COM_DISARM_PRFLT
+param status</code></pre>
+        </li>
+      </ol>
+    </section>
+
+    <section id="validation">
+      <h2>Validation Expectations</h2>
+      <ul>
+        <li><code>/fs/flash/params</code> exists after first parameter initialization.</li>
+        <li><code>param status</code> reports the selected default file path.</li>
+        <li>A saved parameter value survives reboot.</li>
+        <li><code>parameters_backup.bson</code> is absent unless backups were deliberately enabled.</li>
+        <li>The app image fits inside the 1408 KiB firmware limit.</li>
+      </ul>
+      <div class="warning callout">
+        Do not use <code>/fs/flash</code> for logs, missions, or large files
+        unless more flash sectors are reserved and the app image limit is
+        revisited.
+      </div>
+    </section>
+
+    <section id="failure-modes">
+      <h2>Failure Modes</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Symptom</th>
+            <th>Likely Cause</th>
+            <th>Fix</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>param status</code> still behaves like flash backend storage</td>
+            <td><code>FLASH_BASED_PARAMS</code> is still defined</td>
+            <td>Remove the define from <code>src/board_config.h</code> and rebuild</td>
+          </tr>
+          <tr>
+            <td><code>param save</code> fails to open <code>/fs/flash/params</code></td>
+            <td>LittleFS was not mounted before <code>rcS</code> reached <code>param select</code></td>
+            <td>Check the mount helper and <code>dmesg</code></td>
+          </tr>
+          <tr>
+            <td>Generated <code>rc.filepaths</code> still contains <code>/fs/mtd_params</code></td>
+            <td><code>CONFIG_BOARD_PARAM_FILE</code> was not changed or build output is stale</td>
+            <td>Update <code>default.px4board</code>, regenerate, and rebuild</td>
+          </tr>
+          <tr>
+            <td>Firmware upload succeeds but parameters later corrupt</td>
+            <td>Bootloader, linker, and image metadata disagree about reserved sectors</td>
+            <td>Recheck <code>script.ld</code>, <code>hw_config.h</code>, and <code>firmware.prototype</code></td>
+          </tr>
+          <tr>
+            <td><code>/fs/flash</code> contains logs, backups, or config directories</td>
+            <td><code>/fs/flash</code> was made <code>BOARD_ROOT_PATH</code> without disabling storage features</td>
+            <td>Add <code>rc.board_early</code> or keep <code>BOARD_ROOT_PATH</code> separate</td>
+          </tr>
+          <tr>
+            <td>Build exceeds flash limit</td>
+            <td>The app no longer fits sectors 1-11</td>
+            <td>Remove unused modules or reassess the LittleFS reservation</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="checklist">
+      <h2>Final Checklist</h2>
+      <ul class="checklist">
+        <li><code>FLASH_BASED_PARAMS</code> removed from active <code>src/board_config.h</code>.</li>
+        <li><code>parameter_flashfs_init()</code> removed from active <code>src/init.c</code>.</li>
+        <li>LittleFS MTD partition and mount helper added to active <code>src/init.c</code>.</li>
+        <li>LittleFS mountpoint is <code>/fs/flash</code>.</li>
+        <li><code>CONFIG_BOARD_PARAM_FILE="/fs/flash/params"</code> is set.</li>
+        <li>Generated <code>rc.filepaths</code> selects <code>/fs/flash/params</code>.</li>
+        <li>Linker app flash length is 1408 KiB.</li>
+        <li>Bootloader app flash sectors end at sector 11.</li>
+        <li>Firmware <code>image_maxsize</code> is 1441792.</li>
+        <li>NuttX LittleFS tuning options are merged.</li>
+        <li>First boot formats LittleFS successfully.</li>
+        <li><code>param save</code> creates <code>/fs/flash/params</code>.</li>
+        <li>Saved parameter values survive reboot.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

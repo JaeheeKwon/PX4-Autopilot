@@ -108,6 +108,7 @@ The board appears as `/dev/ttyACM0` (Linux) or `COMx` (Windows).
 The board has no real sensors. `SYS_HITL=1` is set as the default parameter, which activates classical MAVLink HIL mode on every boot.
 
 For the complete board-specific HITL parameter set, see [Nucleo-H753ZI HITL Configuration and Parameters](docs/hitl_configuration.md).
+For the estimator-side architecture and signal flow, see [PX4 EKF2 Architecture and Data Flow for Nucleo-H753ZI HITL](docs/ekf2_architecture.html).
 
 ### What happens at boot with `SYS_HITL=1`
 
@@ -371,6 +372,8 @@ flowchart LR
 | `EKF2_BARO_CTRL` | 1 | Keep HIL barometer fusion enabled |
 | `EKF2_MAG_TYPE` | 6 | Use the HIL magnetometer for initial heading only |
 | `EKF2_MAG_CHECK` | 0 | Skip magnetic field strength/inclination checks for simulator data |
+| `SENS_IMU_MODE` | 0 | Use the EKF selector path for IMU handling |
+| `EKF2_MULTI_IMU` | 3 | Match PX4 MAVLink simulator EKF defaults |
 | `COM_RC_IN_MODE` | 4 | Ignore RC input for this bench HITL setup |
 | `CBRK_SUPPLY_CHK` | 894281 | No battery monitoring hardware |
 | `SYS_USB_AUTO` | 2 | Start MAVLink automatically on USB CDC |
@@ -408,6 +411,9 @@ No external FRAM/EEPROM. Parameters are stored in the last 128 KB sector of inte
 | Sector | Address | Size |
 |---|---|---|
 | 15 | `0x081E0000` | 128 KB |
+
+For the planned migration from raw flashfs parameters to LittleFS-backed file
+parameters, see [Nucleo-H753ZI LittleFS Parameter Storage Migration](littlefs_ref/littlefs_parameter_migration.html).
 
 ### Bootloader compatibility (`src/hw_config.h`)
 

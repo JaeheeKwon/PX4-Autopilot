@@ -8,6 +8,18 @@ The active board files are not modified by this directory. Use these files as
 copy/reference material when you are ready to replace the current
 implementation.
 
+For the step-by-step migration guide, see:
+
+- [`littlefs_parameter_migration.md`](littlefs_parameter_migration.md)
+- [`littlefs_parameter_migration.html`](littlefs_parameter_migration.html)
+
+This reference uses a parameter-only storage policy:
+
+- `CONFIG_BOARD_PARAM_FILE` points at `/fs/flash/params`.
+- `CONFIG_BOARD_ROOT_PATH` is not moved to `/fs/flash`.
+- `board_app_initialize()` mounts LittleFS directly at `/fs/flash` before
+  `rcS` runs `param select`.
+
 ## Flash Layout
 
 This reference reserves the last four STM32H753 flash sectors for LittleFS:
@@ -63,7 +75,7 @@ flowchart TD
     Progmem --> Partition[partition final 4 erase sectors]
     Partition --> MTD[register /dev/mtd_params]
     MTD --> Mount[mount LittleFS at /fs/flash]
-    Mount --> RcEarly[rc.board_early disables storage backups]
+    Mount --> RcEarly[rc.board_early keeps generic storage disabled]
     RcEarly --> Params[rcS selects /fs/flash/params]
     Params --> Load[param load-or-init]
 ```

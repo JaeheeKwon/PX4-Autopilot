@@ -103,6 +103,8 @@ These defaults are applied by `boards/st/nucleo-h753zi/init/rc.board_defaults`.
 | `EKF2_MAG_TYPE` | `6` | Use the HIL magnetometer only to initialize heading. |
 | `EKF2_MAG_CHECK` | `0` | Skip magnetic field strength/inclination checks for simulated magnetometer data. |
 | `EKF2_EV_CTRL` | `0` | Disable external-vision aiding by default. |
+| `SENS_IMU_MODE` | `0` | Use the EKF selector path for IMU handling, matching PX4's MAVLink simulator defaults. |
+| `EKF2_MULTI_IMU` | `3` | Match the MAVLink simulator default maximum number of EKF IMU instances. |
 
 ### GPS Acceptance Relaxation
 
@@ -166,6 +168,7 @@ If the board has old saved values and you want the board defaults to take effect
 ```sh
 param reset SYS_AUTOSTART SYS_HITL SYS_HAS_MAG SYS_HAS_BARO SYS_HAS_GPS
 param reset EKF2_GPS_CTRL EKF2_HGT_REF EKF2_BARO_CTRL EKF2_MAG_TYPE EKF2_MAG_CHECK EKF2_EV_CTRL
+param reset SENS_IMU_MODE EKF2_MULTI_IMU
 param reset EKF2_REQ_EPH EKF2_REQ_EPV EKF2_REQ_HDRIFT EKF2_REQ_VDRIFT EKF2_DELAY_MAX
 param reset COM_ARM_WO_GPS COM_ARM_MAG_STR CBRK_SUPPLY_CHK CBRK_IO_SAFETY COM_RC_IN_MODE COM_DISARM_PRFLT
 param reset GPS_1_CONFIG GPS_2_CONFIG RC_PORT_CONFIG MAV_0_CONFIG MAV_1_CONFIG MAV_2_CONFIG

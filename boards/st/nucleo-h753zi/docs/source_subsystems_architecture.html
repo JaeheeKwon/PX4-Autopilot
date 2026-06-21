@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Source Subsystems Architecture for Nucleo-H753ZI</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+.header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.header-inner {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1.5rem;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+h1 { max-width: 980px; margin: 0; font-size: clamp(2rem, 4vw, 3.3rem); line-height: 1.08; letter-spacing: 0; }
+.lede { max-width: 940px; margin: 1rem 0 0; color: var(--muted); font-size: 1.04rem; }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] { border-color: var(--accent); background: #dbece7; color: var(--accent-dark); }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 { margin: 0 0 0.75rem; font-size: 0.88rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+.toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+h2 { margin-top: 2rem; padding-top: 0.3rem; border-top: 1px solid var(--line); font-size: 1.65rem; line-height: 1.2; letter-spacing: 0; }
+h2:first-child { border-top: 0; }
+h3 { margin-top: 1.4rem; font-size: 1.15rem; line-height: 1.25; letter-spacing: 0; }
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { padding: 0.58rem 0.7rem; border: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-alt); text-align: left; }
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--ink);
+  overflow-x: auto;
+}
+.footer {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">Nucleo-H753ZI docs</div>
+      <h1>PX4 Source Subsystems Architecture for Nucleo-H753ZI</h1>
+      <p class="lede">Interfaces, architecture, and sequence diagrams for how <code>src/drivers</code>, <code>src/systemcmds</code>, and <code>src/lib</code> participate in the PX4 firmware built for the ST Nucleo-H753ZI board.</p>
+    </div>
+  </header>
+
+  <nav class="navbar" aria-label="Board documentation">
+    <a href="../README.html">Board README</a>
+    <a href="hitl_configuration.html">HITL</a>
+    <a href="rc_startup_sequence.html">Startup</a>
+    <a href="source_subsystems_architecture.html" aria-current="page">Source Architecture</a>
+  </nav>
+
+  <div class="layout">
+    <aside class="toc">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#scope">Reviewed Source Scope</a></li>
+        <li><a href="#build-selection">Board-Specific Build Selection</a></li>
+        <li><a href="#source-tree-roles">Source Tree Roles</a></li>
+        <li><a href="#runtime-architecture">Runtime Architecture</a></li>
+        <li><a href="#interface-map">Interface Map</a></li>
+        <li><a href="#build-flow">Build and Selection Flow</a></li>
+        <li><a href="#boot-sequence">Boot-Time Runtime Sequence</a></li>
+        <li><a href="#usb-hil-sequence">USB HIL Data Sequence</a></li>
+        <li><a href="#system-command-sequence">System Command Inspection Sequence</a></li>
+        <li><a href="#driver-sequence">Generic Driver Publication Sequence</a></li>
+        <li><a href="#adding">Adding a Driver or Command</a></li>
+        <li><a href="#debug">Practical Debug Commands</a></li>
+        <li><a href="#notes">Nucleo-H753ZI Design Notes</a></li>
+      </ul>
+    </aside>
+
+    <main>
+      <p>This document describes how <code>src/drivers</code>, <code>src/systemcmds</code>, and <code>src/lib</code> fit into the PX4 firmware built for <code>boards/st/nucleo-h753zi</code>.</p>
+      <p>The Nucleo-H753ZI target is a minimal STM32H753 board support package for Hardware-In-the-Loop simulation. It has USB, two serial ports, LEDs, flash-backed parameters, SPI3 exposed on the Arduino header, and I2C1 pins exposed on the Arduino header. No physical flight sensors are populated in the default configuration, so most sensor data enters through MAVLink HIL messages and is then published on uORB.</p>
+
+      <h2 id="scope">Reviewed Source Scope</h2>
+      <table>
+        <thead>
+          <tr><th>Area</th><th>Source paths</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Board build selection</td><td><code>boards/st/nucleo-h753zi/default.px4board</code></td></tr>
+          <tr><td>Board support layer</td><td><code>boards/st/nucleo-h753zi/src/*</code></td></tr>
+          <tr><td>Drivers</td><td><code>src/drivers/*</code></td></tr>
+          <tr><td>System commands</td><td><code>src/systemcmds/*</code></td></tr>
+          <tr><td>Shared libraries</td><td><code>src/lib/*</code></td></tr>
+          <tr><td>Runtime module interface</td><td><code>platforms/common/include/px4_platform_common/module.h</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="build-selection">Board-Specific Build Selection</h2>
+      <p><code>default.px4board</code> selects the runtime modules that are compiled into this target. For the requested source areas, the board enables this subset:</p>
+      <table>
+        <thead>
+          <tr><th>Source tree</th><th>Enabled entries for this board</th><th>Runtime role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>src/drivers</code></td><td><code>cdcacm_autostart</code>, <code>gps</code>, <code>rc_input</code></td><td>USB CDC-ACM MAVLink autostart, optional physical GPS, optional RC input.</td></tr>
+          <tr><td><code>src/systemcmds</code></td><td><code>dmesg</code>, <code>led_control</code>, <code>mft</code>, <code>mft_cfg</code>, <code>mklittlefs</code>, <code>mtd</code>, <code>nshterm</code>, <code>param</code>, <code>perf</code>, <code>reboot</code>, <code>top</code>, <code>topic_listener</code>, <code>uorb</code>, <code>ver</code>, <code>work_queue</code></td><td>Shell tools for boot scripts, diagnostics, parameter storage, uORB inspection, system monitoring, and reboot.</td></tr>
+          <tr><td><code>src/lib</code></td><td>Selected by dependencies and Kconfig</td><td>Common code used by drivers, modules, board support, parameters, uORB, math/control code, and diagnostics.</td></tr>
+        </tbody>
+      </table>
+
+      <table>
+        <thead>
+          <tr><th>Board property</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Architecture</td><td>Cortex-M7, STM32H753ZI</td></tr>
+          <tr><td>Primary HIL transport</td><td>USB CDC-ACM on <code>/dev/ttyACM0</code></td></tr>
+          <tr><td>Console</td><td>USART3 through ST-LINK virtual COM</td></tr>
+          <tr><td>Physical sensors</td><td>None in the default board configuration</td></tr>
+          <tr><td>Parameter backend</td><td>Internal flash, via <code>FLASH_BASED_PARAMS</code></td></tr>
+          <tr><td>I2C bus table</td><td>Empty in <code>src/i2c.cpp</code></td></tr>
+          <tr><td>SPI bus table</td><td>SPI3 present, no default devices in <code>src/spi.cpp</code></td></tr>
+          <tr><td>Direct PWM outputs</td><td><code>DIRECT_PWM_OUTPUT_CHANNELS=0</code>; HIL uses <code>pwm_out_sim</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="source-tree-roles">Source Tree Roles</h2>
+      <h3><code>src/drivers</code></h3>
+      <p><code>src/drivers</code> contains runtime modules that interface with hardware, simulated endpoints, or board-level transport devices. A typical driver has a per-driver <code>CMakeLists.txt</code>, a <code>Kconfig</code> option, a module entry point named <code>&lt;command&gt;_main</code>, a PX4 module class based on <code>ModuleBase</code>, uORB publications or subscriptions, and optional module or parameter metadata.</p>
+      <table>
+        <thead>
+          <tr><th>Driver</th><th>Primary interface</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>cdcacm_autostart</code></td><td>USB VBUS sense, <code>/dev/ttyACM0</code>, <code>exec_builtin("mavlink", ...)</code>, <code>actuator_armed</code> subscription</td><td>Starts or stops USB MAVLink when the User USB cable is connected and the vehicle is not armed.</td></tr>
+          <tr><td><code>gps</code></td><td>UART or SPI device, GPS parser helpers, uORB <code>sensor_gps</code> and <code>sensor_gnss_relative</code> publications</td><td>Built for optional real GPS, but board defaults set <code>GPS_1_CONFIG=0</code> for HIL.</td></tr>
+          <tr><td><code>rc_input</code></td><td>Serial RC protocols, optional PPM, uORB <code>input_rc</code> publication</td><td>Built for optional RC input, but board defaults set <code>COM_RC_IN_MODE=4</code> for joystick or no manual RC requirement in HITL.</td></tr>
+        </tbody>
+      </table>
+
+      <h3><code>src/systemcmds</code></h3>
+      <p><code>src/systemcmds</code> contains shell commands and diagnostics that run from NSH, PX4 shell over MAVLink, startup scripts, or developer consoles. These commands use the same PX4 module registration mechanism as drivers, but most are short-lived command handlers instead of long-running hardware loops.</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Interface</th><th>Use on this board</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>param</code></td><td>Parameter API in <code>src/lib/parameters</code></td><td>Startup defaults, flash-backed parameter load/save, inspection from NSH/QGC shell.</td></tr>
+          <tr><td><code>uorb</code></td><td>uORB core API</td><td>Starts or inspects the internal pub-sub system.</td></tr>
+          <tr><td><code>listener</code></td><td>uORB subscription and <code>poll()</code></td><td>Prints live topic samples such as <code>sensor_accel</code>, <code>vehicle_gps_position</code>, and <code>actuator_outputs</code>.</td></tr>
+          <tr><td><code>work_queue</code></td><td><code>px4::WorkQueueManager</code></td><td>Starts and reports work queues used by scheduled modules such as <code>cdcacm_autostart</code>.</td></tr>
+          <tr><td><code>perf</code>, <code>top</code>, <code>dmesg</code>, <code>ver</code>, <code>reboot</code></td><td>Diagnostics and platform services</td><td>Runtime inspection and maintenance commands for the target.</td></tr>
+        </tbody>
+      </table>
+
+      <h3><code>src/lib</code></h3>
+      <p><code>src/lib</code> is the reusable runtime layer. Libraries are added with <code>add_subdirectory(... EXCLUDE_FROM_ALL)</code> and then pulled into the firmware by module dependencies, board support, or Kconfig selections.</p>
+      <table>
+        <thead>
+          <tr><th>Library group</th><th>Examples</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Driver support</td><td><code>lib/drivers/device</code>, sensor wrappers, <code>cdev</code></td><td>Common device IDs, sensor publication wrappers, character-device support, and bus abstractions.</td></tr>
+          <tr><td>Runtime services</td><td><code>parameters</code>, <code>perf</code>, <code>systemlib</code>, <code>events</code>, <code>version</code>, <code>led</code></td><td>Parameters, counters, logging support, event publishing, version reporting, and board/service utilities.</td></tr>
+          <tr><td>Math and control</td><td><code>matrix</code>, <code>mathlib</code>, <code>controllib</code>, <code>pid</code>, <code>rate_control</code>, <code>control_allocation</code></td><td>Common algorithms shared by estimators, controllers, and actuator paths.</td></tr>
+          <tr><td>Vehicle and environment models</td><td><code>geo</code>, <code>atmosphere</code>, <code>airspeed</code>, <code>battery</code>, <code>world_magnetic_model</code></td><td>Physical conversions and models used by modules.</td></tr>
+          <tr><td>Protocols and parsers</td><td><code>rc</code>, <code>gnss</code>, <code>cdrstream</code>, <code>tinybson</code>, <code>tunes</code>, <code>crc</code></td><td>Data parsing, serialization, checksums, and signaling formats.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="runtime-architecture">Runtime Architecture</h2>
+      <pre class="mermaid">flowchart TB
+    subgraph Board["boards/st/nucleo-h753zi"]
+        BoardCfg["default.px4board&lt;br/&gt;Kconfig selections"]
+        BSP["src/ board support&lt;br/&gt;LEDs, USB, flash params,&lt;br/&gt;I2C/SPI tables, timer"]
+    end
+
+    subgraph Drivers["src/drivers"]
+        CDC["cdcacm_autostart"]
+        GPS["gps"]
+        RC["rc_input"]
+        OtherDrivers["Other drivers&lt;br/&gt;not selected by default"]
+    end
+
+    subgraph SystemCmds["src/systemcmds"]
+        ParamCmd["param"]
+        UorbCmd["uorb"]
+        Listener["listener"]
+        WQCmd["work_queue"]
+        Diagnostics["perf, top, dmesg,&lt;br/&gt;ver, reboot, led_control"]
+    end
+
+    subgraph Lib["src/lib"]
+        Params["parameters"]
+        Perf["perf"]
+        Device["drivers/device&lt;br/&gt;sensor wrappers"]
+        Math["matrix, mathlib,&lt;br/&gt;control libraries"]
+        SystemLib["systemlib, version,&lt;br/&gt;events, led"]
+    end
+
+    subgraph Runtime["PX4 runtime"]
+        WorkQueues["Work queues"]
+        UORB[("uORB topics")]
+        Modules["Flight modules&lt;br/&gt;commander, sensors,&lt;br/&gt;ekf2, controllers"]
+        MAVLink["mavlink"]
+        SimOut["pwm_out_sim"]
+    end
+
+    BoardCfg --&gt; Drivers
+    BoardCfg --&gt; SystemCmds
+    BoardCfg --&gt; Modules
+    BSP --&gt; CDC
+    BSP --&gt; Params
+    BSP --&gt; Device
+    CDC --&gt; WorkQueues
+    CDC --&gt; MAVLink
+    GPS --&gt; UORB
+    RC --&gt; UORB
+    ParamCmd --&gt; Params
+    UorbCmd --&gt; UORB
+    Listener --&gt; UORB
+    WQCmd --&gt; WorkQueues
+    Diagnostics --&gt; Perf
+    Device --&gt; UORB
+    Math --&gt; Modules
+    SystemLib --&gt; Modules
+    MAVLink --&gt; UORB
+    UORB --&gt; Modules
+    Modules --&gt; SimOut
+    SimOut --&gt; MAVLink</pre>
+
+      <h2 id="interface-map">Interface Map</h2>
+      <table>
+        <thead>
+          <tr><th>Interface</th><th>Defined or used by</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>PX4 module entry point</td><td><code>px4_add_module(MAIN ...)</code>, <code>&lt;name&gt;_main</code>, <code>ModuleBase::Descriptor</code></td><td>Exposes commands such as <code>gps start</code>, <code>param show</code>, <code>work_queue status</code>, and <code>uorb top</code>.</td></tr>
+          <tr><td>Module lifecycle</td><td><code>ModuleBase::main</code>, <code>start_command</code>, <code>stop_command</code>, <code>status_command</code>, <code>print_status()</code></td><td>Standardizes start, stop, status, and cleanup across long-running modules.</td></tr>
+          <tr><td>Work queue scheduling</td><td><code>px4::ScheduledWorkItem</code>, <code>px4::WorkQueueManager</code></td><td>Runs periodic or event-driven module work without each module owning a dedicated task.</td></tr>
+          <tr><td>uORB publish/subscribe</td><td><code>uORB::Publication</code>, <code>uORB::PublicationMulti</code>, <code>uORB::Subscription</code>, <code>orb_subscribe</code>, <code>poll()</code></td><td>Moves sensor, state, setpoint, command, and diagnostic data between modules.</td></tr>
+          <tr><td>Parameter API</td><td><code>param_find</code>, <code>param_get</code>, <code>param_set</code>, <code>param_set_default_file</code>, <code>ModuleParams</code></td><td>Provides typed runtime configuration and board defaults.</td></tr>
+          <tr><td>Device abstraction</td><td><code>device::Device::init/read/write/ioctl</code>, device ID encoding</td><td>Gives I2C, SPI, serial, MAVLink, UAVCAN, and simulation devices a common identity model.</td></tr>
+          <tr><td>Sensor wrappers</td><td><code>PX4Accelerometer</code>, <code>PX4Gyroscope</code>, <code>PX4Barometer</code>, <code>PX4Magnetometer</code>, <code>PX4Rangefinder</code></td><td>Convert driver samples into typed uORB sensor topics with device IDs, scaling, and metadata.</td></tr>
+          <tr><td>Perf counters</td><td><code>perf_alloc</code>, <code>perf_begin</code>, <code>perf_end</code>, <code>perf_count</code>, <code>perf_print_all</code></td><td>Measures loop duration, intervals, counts, and latency.</td></tr>
+          <tr><td>OS and file APIs</td><td><code>px4_open</code>, <code>px4_close</code>, <code>poll</code>, NuttX <code>/dev/*</code>, MTD flash</td><td>Connects modules to serial ports, USB, device nodes, and storage.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="build-flow">Build and Selection Flow</h2>
+      <p><code>src/drivers/Kconfig</code> and <code>src/systemcmds/Kconfig</code> recursively include child Kconfig files with <code>rsource "*/Kconfig"</code>. Individual driver and command directories own their build rules. <code>src/lib/CMakeLists.txt</code> lists reusable library directories with <code>EXCLUDE_FROM_ALL</code>; they enter the firmware when selected or linked by another target.</p>
+      <pre class="mermaid">sequenceDiagram
+    participant Dev as Developer
+    participant Board as default.px4board
+    participant Kconfig as Kconfig
+    participant CMake as CMake module rules
+    participant Firmware as Nucleo firmware image
+
+    Dev-&gt;&gt;Board: choose st_nucleo-h753zi_default
+    Board-&gt;&gt;Kconfig: enable CONFIG_DRIVERS_*, CONFIG_SYSTEMCMDS_*, CONFIG_MODULES_*
+    Kconfig-&gt;&gt;CMake: expose enabled module and library options
+    CMake-&gt;&gt;CMake: read per-directory CMakeLists.txt
+    CMake-&gt;&gt;Firmware: link selected drivers, commands, modules, and libraries
+    Firmware--&gt;&gt;Dev: flashable PX4 image</pre>
+
+      <h2 id="boot-sequence">Boot-Time Runtime Sequence</h2>
+      <p>This target boots through board initialization, then PX4 startup scripts start the selected command and module set. The exact script ordering is documented in <code>rc_startup_sequence.md</code>; this diagram focuses on the requested source trees.</p>
+      <pre class="mermaid">sequenceDiagram
+    participant NuttX as NuttX board init
+    participant BSP as Nucleo BSP
+    participant RCS as rcS startup
+    participant Param as systemcmd: param
+    participant WQ as systemcmd: work_queue
+    participant UORB as systemcmd: uorb
+    participant CDC as driver: cdcacm_autostart
+    participant Mods as flight modules
+
+    NuttX-&gt;&gt;BSP: stm32_boardinitialize()
+    BSP-&gt;&gt;BSP: configure GPIO, USB, LEDs
+    BSP-&gt;&gt;BSP: board_app_initialize()
+    BSP-&gt;&gt;Param: initialize flash parameter backend
+    NuttX--&gt;&gt;RCS: run PX4 startup scripts
+    RCS-&gt;&gt;Param: select and load parameters
+    RCS-&gt;&gt;Param: apply rc.board_defaults
+    RCS-&gt;&gt;WQ: start work queues
+    RCS-&gt;&gt;UORB: start uORB
+    RCS-&gt;&gt;Mods: start HIL sensors, commander, ekf2, controllers
+    RCS-&gt;&gt;CDC: start USB CDC-ACM autostart
+    CDC--&gt;&gt;Mods: USB MAVLink becomes available when CN13 is connected</pre>
+
+      <h2 id="usb-hil-sequence">USB HIL Data Sequence</h2>
+      <p>With <code>SYS_USB_AUTO=2</code>, <code>cdcacm_autostart</code> starts MAVLink on <code>/dev/ttyACM0</code> after User USB VBUS is stable. HIL sensor data then enters PX4 through MAVLink and becomes normal uORB data for the estimator and controllers.</p>
+      <pre class="mermaid">sequenceDiagram
+    participant PC as Simulator or QGC PC
+    participant USB as USB VBUS and /dev/ttyACM0
+    participant CDC as cdcacm_autostart
+    participant MAV as mavlink
+    participant UORB as uORB
+    participant EKF as ekf2 and sensors
+    participant Ctrl as controllers
+    participant PWM as pwm_out_sim
+
+    PC-&gt;&gt;USB: connect CN13 User USB
+    CDC-&gt;&gt;USB: detect stable VBUS
+    CDC-&gt;&gt;USB: call sercon_main()
+    CDC-&gt;&gt;MAV: start MAVLink on /dev/ttyACM0
+    PC-&gt;&gt;MAV: send HIL_SENSOR, HIL_GPS, commands
+    MAV-&gt;&gt;UORB: publish sensor and command topics
+    UORB-&gt;&gt;EKF: deliver simulated IMU, baro, GPS, mag data
+    EKF-&gt;&gt;UORB: publish vehicle state estimates
+    UORB-&gt;&gt;Ctrl: deliver state and setpoints
+    Ctrl-&gt;&gt;UORB: publish actuator controls
+    UORB-&gt;&gt;PWM: deliver actuator controls
+    PWM-&gt;&gt;MAV: send HIL_ACTUATOR_CONTROLS
+    MAV-&gt;&gt;PC: return actuator outputs to simulator</pre>
+
+      <h2 id="system-command-sequence">System Command Inspection Sequence</h2>
+      <p>System commands provide the primary interactive interface for this board through the ST-LINK NSH console or the QGroundControl MAVLink shell.</p>
+      <pre class="mermaid">sequenceDiagram
+    participant User as User shell
+    participant NSH as NSH or PX4 shell
+    participant Cmd as systemcmd
+    participant Lib as src/lib service
+    participant UORB as uORB
+    participant Module as running module
+
+    User-&gt;&gt;NSH: listener vehicle_gps_position 1
+    NSH-&gt;&gt;Cmd: dispatch listener_main(argc, argv)
+    Cmd-&gt;&gt;UORB: orb_subscribe_multi()
+    Cmd-&gt;&gt;UORB: poll() until a sample arrives
+    Module-&gt;&gt;UORB: publish topic update
+    UORB--&gt;&gt;Cmd: readable subscription
+    Cmd--&gt;&gt;User: print decoded topic fields
+
+    User-&gt;&gt;NSH: param show SYS_HITL
+    NSH-&gt;&gt;Cmd: dispatch param_main(argc, argv)
+    Cmd-&gt;&gt;Lib: param_find(), param_get()
+    Lib--&gt;&gt;Cmd: current value and metadata
+    Cmd--&gt;&gt;User: print parameter value</pre>
+
+      <h2 id="driver-sequence">Generic Driver Publication Sequence</h2>
+      <p>The default Nucleo build has no physical sensor devices, but any future board extension follows the normal PX4 driver path:</p>
+      <pre class="mermaid">sequenceDiagram
+    participant Shell as rcS or user shell
+    participant Driver as selected driver
+    participant Bus as I2C/SPI/Serial device
+    participant Wrapper as src/lib sensor wrapper
+    participant UORB as uORB
+    participant Consumer as sensors or estimator
+
+    Shell-&gt;&gt;Driver: driver start
+    Driver-&gt;&gt;Bus: init bus and device registers
+    Driver-&gt;&gt;Driver: schedule periodic Run()
+    Driver-&gt;&gt;Bus: read raw sample
+    Driver-&gt;&gt;Wrapper: apply scaling, rotation, device ID
+    Wrapper-&gt;&gt;UORB: publish typed sensor topic
+    UORB-&gt;&gt;Consumer: deliver sample
+    Consumer-&gt;&gt;Consumer: validate, combine, estimate, or control</pre>
+
+      <h2 id="adding">Adding a Driver or Command to This Board</h2>
+      <ol>
+        <li>Ensure the driver or command has a <code>Kconfig</code> entry and <code>CMakeLists.txt</code>.</li>
+        <li>Enable the corresponding <code>CONFIG_DRIVERS_*</code> or <code>CONFIG_SYSTEMCMDS_*</code> option in <code>boards/st/nucleo-h753zi/default.px4board</code>.</li>
+        <li>If the module needs a physical bus device, update <code>boards/st/nucleo-h753zi/src/i2c.cpp</code> or <code>boards/st/nucleo-h753zi/src/spi.cpp</code>.</li>
+        <li>Add board defaults in <code>boards/st/nucleo-h753zi/init/rc.board_defaults</code> only when the setting is board-specific.</li>
+        <li>Rebuild with <code>make st_nucleo-h753zi_default</code>.</li>
+        <li>On target, validate with <code>ver</code>, <code>top</code>, <code>work_queue status</code>, <code>uorb top</code>, <code>listener &lt;topic&gt;</code>, <code>param status</code>, and the module's own <code>status</code> command.</li>
+      </ol>
+
+      <h2 id="debug">Practical Debug Commands</h2>
+      <table>
+        <thead>
+          <tr><th>Goal</th><th>Command</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Check compiled version and board metadata</td><td><code>ver all</code></td></tr>
+          <tr><td>Check parameters and backend state</td><td><code>param status</code></td></tr>
+          <tr><td>Inspect board defaults</td><td><code>param show SYS_HITL</code>, <code>param show SYS_USB_AUTO</code>, <code>param show GPS_1_CONFIG</code></td></tr>
+          <tr><td>See topic rates</td><td><code>uorb top</code></td></tr>
+          <tr><td>Print one topic sample</td><td><code>listener sensor_accel 1</code>, <code>listener vehicle_gps_position 1</code></td></tr>
+          <tr><td>Check work queues</td><td><code>work_queue status</code></td></tr>
+          <tr><td>Check CPU and stack</td><td><code>top</code></td></tr>
+          <tr><td>Check performance counters</td><td><code>perf</code></td></tr>
+          <tr><td>Read boot/runtime log buffer</td><td><code>dmesg</code></td></tr>
+          <tr><td>Reboot target</td><td><code>reboot</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="notes">Nucleo-H753ZI Design Notes</h2>
+      <ul>
+        <li><code>cdcacm_autostart</code> is the most board-relevant driver in the default build because it owns automatic MAVLink startup over User USB.</li>
+        <li>The <code>gps</code> and <code>rc_input</code> drivers are compiled but normally inactive or ignored in the default HIL setup.</li>
+        <li>HIL topics are normal uORB topics after MAVLink receives and translates them, so estimator and controller modules do not need board-specific HIL interfaces.</li>
+        <li>The board has no direct PWM outputs; actuator output is represented by <code>pwm_out_sim</code>.</li>
+        <li>Flash parameters are initialized in board startup through <code>parameter_flashfs_init()</code> and are not visible as normal files in <code>ls</code>.</li>
+        <li>Adding real I2C or SPI devices requires both enabling the driver and populating the board bus table with the device definition.</li>
+      </ul>
+    </main>
+  </div>
+
+  <footer class="footer">
+    Generated from <code>boards/st/nucleo-h753zi/docs/source_subsystems_architecture.md</code>.
+  </footer>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+#!/bin/sh
+# Zenoh runtime defaults for Nucleo-H753ZI.
+#
+# This script sets PX4 parameter defaults for Zenoh operation.
+# It is NOT executed automatically. Two ways to use it:
+#
+#   Option A – one-time manual NSH session:
+#     nsh> sh /etc/init.d/rc.board_zenoh
+#
+#   Option B – persistent via rc.board_defaults:
+#     Append ". ${R}etc/init.d/rc.board_zenoh" to
+#     boards/st/nucleo-h753zi/init/rc.board_defaults, then rebuild.
+#
+# After applying these defaults reboot once so rcS picks up ZENOH_ENABLE.
+# Configure the network locator with "zenoh config" before rebooting (see README).
+
+# Start Zenoh on every boot.
+param set-default ZENOH_ENABLE 1
+
+# ROS 2 domain ID — must match RMW_ZENOH_DOMAIN_ID on the host side.
+param set-default ZENOH_DOMAIN_ID 0
+
+# Global publisher QoS defaults (can be overridden per-publisher via
+# "zenoh config add publisher ... cc=block,express=true" when
+# CONFIG_ZENOH_PUB_OPTION_OVERRIDE=y is set).
+param set-default ZENOH_PUB_CC   0   # 0=Drop, 1=Block
+param set-default ZENOH_PUB_REL  0   # 0=Reliable, 1=BestEffort
+param set-default ZENOH_PUB_EXPR 1   # 0=Disabled, 1=Express
+param set-default ZENOH_PUB_PRIO 5   # 5=Data (range 1-7)

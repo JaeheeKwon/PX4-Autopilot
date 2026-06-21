@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Module Architecture: ekf2</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #f8f9fa;
+      --soft: #f1f3f5;
+      --soft-2: #e9ecef;
+      --line: #6c757d;
+      --text: #212529;
+      --muted: #5f666d;
+      --accent: #dee2e6;
+      --dark: #343a40;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+      padding: 28px min(6vw, 56px);
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px min(5vw, 44px) 64px;
+    }
+    h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: 0; }
+    h2 { margin-top: 36px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+    h3 { margin-top: 24px; }
+    a { color: #2f4f6f; }
+    code {
+      background: var(--soft-2);
+      border: 1px solid #cfd4d8;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.92em;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .meta div {
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid #cfd4d8;
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-width: 0;
+    }
+    .section-note {
+      color: var(--muted);
+      max-width: 940px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      table-layout: auto;
+    }
+    th, td {
+      border: 1px solid #d6dadd;
+      padding: 8px 10px;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    th { background: var(--soft-2); text-align: left; }
+    tr:nth-child(even) td { background: #fafafa; }
+    ul { padding-left: 22px; }
+    .diagram {
+      border: 1px solid #d6dadd;
+      background: #fff;
+      border-radius: 6px;
+      padding: 16px;
+      margin: 14px 0 24px;
+      overflow-x: auto;
+    }
+    .mermaid { min-width: 320px; }
+    .topnav { margin-bottom: 12px; color: var(--muted); }
+    .topnav a { margin-right: 14px; }
+    </style>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+  </script>
+</head>
+<body>
+  <header>
+    <div class="topnav"><a href="../index.html">Index</a><a href="ekf2.md">Markdown</a></div>
+    <h1>PX4 Module Architecture: <code>ekf2</code></h1>
+    <p>Architecture notes for the ekf2 module.</p>
+    <div class="meta">
+      <div><strong>Source</strong><br><code>src/modules/ekf2</code></div>
+      <div><strong>Build target</strong><br><code>modules__ekf2</code></div>
+      <div><strong>Runtime main</strong><br><code>ekf2</code></div>
+      <div><strong>Build kind</strong><br><code>px4 module</code></div>
+      <div><strong>Mermaid palette</strong><br><code>mist</code> grey tone</div>
+    </div>
+  </header>
+  <main>
+    <h2>Architecture Overview</h2>
+    <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+flowchart LR
+  Module[&quot;ekf2&quot;]:::module
+  Build[&quot;px4 module: modules__ekf2&quot;]:::data
+  Params[&quot;parameters / module.yaml&quot;]:::data
+  Schedule[&quot;task, work queue, or callback&quot;]:::exec
+  subgraph Inputs
+    In0[&quot;airspeed&quot;]:::io
+    In1[&quot;airspeed_validated&quot;]:::io
+    In2[&quot;aux_global_position&quot;]:::io
+    In3[&quot;estimator_attitude&quot;]:::io
+    In4[&quot;estimator_global_position&quot;]:::io
+    In5[&quot;estimator_local_position&quot;]:::io
+  end
+  subgraph Outputs
+    Out0[&quot;ekf2_timestamps&quot;]:::io
+    Out1[&quot;estimator_aid_src_airspeed&quot;]:::io
+    Out2[&quot;estimator_aid_src_aux_global_position&quot;]:::io
+    Out3[&quot;estimator_aid_src_aux_vel&quot;]:::io
+    Out4[&quot;estimator_aid_src_baro_hgt&quot;]:::io
+    Out5[&quot;estimator_aid_src_drag&quot;]:::io
+  end
+  In0 --&gt; Module
+  In1 --&gt; Module
+  In2 --&gt; Module
+  In3 --&gt; Module
+  In4 --&gt; Module
+  In5 --&gt; Module
+  Build --&gt; Module
+  Params --&gt; Module
+  Schedule --&gt; Module
+  Module --&gt; Out0
+  Module --&gt; Out1
+  Module --&gt; Out2
+  Module --&gt; Out3
+  Module --&gt; Out4
+  Module --&gt; Out5
+classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
+classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
+classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
+classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
+
+    <h2>Build and Entry Points</h2>
+    <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/ekf2</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__ekf2</td></tr><tr><td>Runtime main</td><td>ekf2</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>47</td></tr><tr><td>Detected headers</td><td>49</td></tr><tr><td>Detected configs</td><td>26</td></tr></tbody></table>
+
+    <h3>CMake Dependencies</h3>
+    <ul><li><code>geo</code></li><li><code>hysteresis</code></li><li><code>perf</code></li><li><code>px4_work_queue</code></li><li><code>world_magnetic_model</code></li><li><code>${EKF_LIBS}</code></li><li><code>lat_lon_alt</code></li><li><code>bias_estimator</code></li><li><code>output_predictor</code></li><li><code>UNITY_BUILD</code></li></ul>
+
+    <h3>Nested Module Targets</h3>
+    <ul><li>No nested module targets detected.</li></ul>
+
+    <h2>Data Flow</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+flowchart LR
+  UORBIn[&quot;uORB subscriptions&quot;]:::io
+  Params[&quot;parameter cache&quot;]:::data
+  Update[&quot;input update / polling&quot;]:::exec
+  Logic[&quot;ekf2 logic&quot;]:::module
+  UORBOut[&quot;uORB publications&quot;]:::io
+  Status[&quot;status, events, perf counters&quot;]:::data
+  UORBIn --&gt; Update
+  Params --&gt; Logic
+  Update --&gt; Logic
+  Logic --&gt; UORBOut
+  Logic --&gt; Status
+  Sub0[&quot;airspeed&quot;]:::io --&gt; UORBIn
+  Sub1[&quot;airspeed_validated&quot;]:::io --&gt; UORBIn
+  Sub2[&quot;aux_global_position&quot;]:::io --&gt; UORBIn
+  Sub3[&quot;estimator_attitude&quot;]:::io --&gt; UORBIn
+  Sub4[&quot;estimator_global_position&quot;]:::io --&gt; UORBIn
+  UORBOut --&gt; Pub0[&quot;ekf2_timestamps&quot;]:::io
+  UORBOut --&gt; Pub1[&quot;estimator_aid_src_airspeed&quot;]:::io
+  UORBOut --&gt; Pub2[&quot;estimator_aid_src_aux_global_position&quot;]:::io
+  UORBOut --&gt; Pub3[&quot;estimator_aid_src_aux_vel&quot;]:::io
+  UORBOut --&gt; Pub4[&quot;estimator_aid_src_baro_hgt&quot;]:::io
+classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
+classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
+classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
+classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
+    <h3>uORB Topics</h3>
+    <table><thead><tr><th>Topic</th><th>Detected direction</th></tr></thead><tbody><tr><td>airspeed</td><td>subscribed</td></tr><tr><td>airspeed_validated</td><td>subscribed</td></tr><tr><td>aux_global_position</td><td>subscribed</td></tr><tr><td>distance_sensor</td><td>referenced</td></tr><tr><td>ekf2_timestamps</td><td>published</td></tr><tr><td>estimator_aid_source1d</td><td>referenced</td></tr><tr><td>estimator_aid_source2d</td><td>referenced</td></tr><tr><td>estimator_aid_source3d</td><td>referenced</td></tr><tr><td>estimator_aid_src_airspeed</td><td>published</td></tr><tr><td>estimator_aid_src_aux_global_position</td><td>published</td></tr><tr><td>estimator_aid_src_aux_vel</td><td>published</td></tr><tr><td>estimator_aid_src_baro_hgt</td><td>published</td></tr><tr><td>estimator_aid_src_drag</td><td>published</td></tr><tr><td>estimator_aid_src_ev_hgt</td><td>published</td></tr><tr><td>estimator_aid_src_ev_pos</td><td>published</td></tr><tr><td>estimator_aid_src_ev_vel</td><td>published</td></tr><tr><td>estimator_aid_src_ev_yaw</td><td>published</td></tr><tr><td>estimator_aid_src_fake_hgt</td><td>published</td></tr><tr><td>estimator_aid_src_fake_pos</td><td>published</td></tr><tr><td>estimator_aid_src_gnss_hgt</td><td>published</td></tr><tr><td>estimator_aid_src_gnss_pos</td><td>published</td></tr><tr><td>estimator_aid_src_gnss_vel</td><td>published</td></tr><tr><td>estimator_aid_src_gnss_yaw</td><td>published</td></tr><tr><td>estimator_aid_src_gravity</td><td>published</td></tr><tr><td>estimator_aid_src_mag</td><td>published</td></tr><tr><td>estimator_aid_src_optical_flow</td><td>published</td></tr><tr><td>estimator_aid_src_ranging_beacon</td><td>published</td></tr><tr><td>estimator_aid_src_rng_hgt</td><td>published</td></tr><tr><td>estimator_aid_src_sideslip</td><td>published</td></tr><tr><td>estimator_attitude</td><td>subscribed, published</td></tr><tr><td>estimator_baro_bias</td><td>published</td></tr><tr><td>estimator_bias</td><td>referenced</td></tr><tr><td>estimator_bias3d</td><td>referenced</td></tr><tr><td>estimator_ev_pos_bias</td><td>published</td></tr><tr><td>estimator_event_flags</td><td>published</td></tr><tr><td>estimator_fusion_control</td><td>published</td></tr><tr><td>estimator_global_position</td><td>subscribed, published</td></tr><tr><td>estimator_gnss_hgt_bias</td><td>published</td></tr><tr><td>estimator_gps_status</td><td>published</td></tr><tr><td>estimator_innovation_test_ratios</td><td>published</td></tr><tr><td>estimator_innovation_variances</td><td>published</td></tr><tr><td>estimator_innovations</td><td>published</td></tr><tr><td>estimator_local_position</td><td>subscribed, published</td></tr><tr><td>estimator_odometry</td><td>subscribed, published</td></tr><tr><td>estimator_optical_flow_vel</td><td>published</td></tr><tr><td>estimator_selector_status</td><td>published</td></tr><tr><td>estimator_sensor_bias</td><td>published</td></tr><tr><td>estimator_states</td><td>published</td></tr><tr><td>... 28 more topics</td><td>omitted</td></tr></tbody></table>
+
+    <h2>Execution Flow</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+flowchart TD
+  Start[&quot;px4 ekf2 start&quot;]:::exec
+  Spawn[&quot;task_spawn / instantiate&quot;]:::exec
+  Init[&quot;init subscriptions, publishers, parameters&quot;]:::module
+  Schedule[&quot;schedule work item or enter task loop&quot;]:::exec
+  Poll[&quot;poll, callback, or interval tick&quot;]:::exec
+  Update[&quot;copy inputs and update parameters&quot;]:::module
+  Compute[&quot;run control, estimation, bridge, or service logic&quot;]:::module
+  Publish[&quot;publish outputs / events / status&quot;]:::io
+  Stop{&quot;stop requested?&quot;}:::data
+  Exit[&quot;cleanup and exit&quot;]:::exec
+  Start --&gt; Spawn --&gt; Init --&gt; Schedule --&gt; Poll --&gt; Update --&gt; Compute --&gt; Publish --&gt; Stop
+  Stop -- no --&gt; Poll
+  Stop -- yes --&gt; Exit
+classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
+classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
+classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
+classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
+    <p class="section-note">The common PX4 module lifecycle is command entry, object construction or task spawn, parameter loading, topic setup, scheduled execution, publication, status reporting, and stop/cleanup. Modules that use <code>ModuleBase</code>, <code>ScheduledWorkItem</code>, polling loops, or bridge callbacks still fit this lifecycle with different scheduling triggers.</p>
+
+    <h2>State Machine</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+stateDiagram-v2
+  [*] --&gt; Created
+  Created --&gt; Initialized: start
+  S0: ARMING_STATE_ARMED
+  Initialized --&gt; S0: detected state path
+  S1: EKF2_GPS_MODE
+  S0 --&gt; S1: detected state path
+  S2: EKF_STATE_H
+  S1 --&gt; S2: detected state path
+  S3: ESTIMATOR_CONST_POS_MODE
+  S2 --&gt; S3: detected state path
+  S4: HIL_STATE_ON
+  S3 --&gt; S4: detected state path
+  S5: JAMMING_STATE_DETECTED
+  S4 --&gt; S5: detected state path
+  S5 --&gt; Running: normal execution
+  Running --&gt; Stopped: stop
+  Stopped --&gt; [*]</pre></div>
+    <h3>Detected State-Like Symbols</h3>
+    <ul><li><code>ARMING_STATE_ARMED</code></li><li><code>EKF2_GPS_MODE</code></li><li><code>EKF_STATE_H</code></li><li><code>ESTIMATOR_CONST_POS_MODE</code></li><li><code>HIL_STATE_ON</code></li><li><code>JAMMING_STATE_DETECTED</code></li><li><code>N_MODELS_EKFGSF</code></li><li><code>SENS_IMU_MODE</code></li><li><code>SENS_MAG_MODE</code></li><li><code>SPOOFING_STATE_DETECTED</code></li></ul>
+
+    <h2>Sequence Diagram</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+sequenceDiagram
+  participant CLI as px4 shell
+  participant M as ekf2
+  participant P as Parameters
+  participant U as uORB
+  participant W as Scheduler
+  CLI-&gt;&gt;M: start ekf2
+  M-&gt;&gt;P: load cached parameter values
+  M-&gt;&gt;U: advertise and subscribe topics
+  M-&gt;&gt;W: schedule task or work item
+  loop execution cycle
+    W--&gt;&gt;M: timer, callback, or poll wakeup
+    U--&gt;&gt;M: input topic samples
+    M-&gt;&gt;P: consume parameter updates
+    M-&gt;&gt;M: validate, compute, and update state
+    M--&gt;&gt;U: publish outputs and status
+  end
+  CLI-&gt;&gt;M: status / stop</pre></div>
+
+    <h2>Class Diagram</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+classDiagram
+  class Ekf
+  Ekf : EKF/aid_sources/EstimatorAidSource.hpp
+  class EstimatorAidSource
+  EstimatorAidSource : EKF/aid_sources/EstimatorAidSource.hpp
+  class ZeroGyroUpdate
+  ZeroGyroUpdate : EKF/aid_sources/ZeroGyroUpdate.hpp
+  class EstimatorAidSource
+  EstimatorAidSource &lt;|-- ZeroGyroUpdate
+  class ZeroVelocityUpdate
+  ZeroVelocityUpdate : EKF/aid_sources/ZeroVelocityUpdate.hpp
+  class EstimatorAidSource
+  EstimatorAidSource &lt;|-- ZeroVelocityUpdate
+  class Ekf_4
+  Ekf_4 : EKF/aid_sources/aux_global_position/aux_global_posi...
+  class AuxGlobalPosition
+  AuxGlobalPosition : EKF/aid_sources/aux_global_position/aux_global_posi...
+  class ModuleParams
+  ModuleParams &lt;|-- AuxGlobalPosition
+  class Ekf_6
+  Ekf_6 : EKF/aid_sources/aux_global_position/aux_global_posi...
+  class AgpSource
+  AgpSource : EKF/aid_sources/aux_global_position/aux_global_posi...
+  class Ctrl
+  Ctrl : EKF/aid_sources/aux_global_position/aux_global_posi...
+  class Mode
+  Mode : EKF/aid_sources/aux_global_position/aux_global_posi...
+  class State
+  State : EKF/aid_sources/aux_global_position/aux_global_posi...
+  class ExternalVisionVel
+  ExternalVisionVel : EKF/aid_sources/external_vision/ev_vel.h
+  class EvVelBodyFrameFrd
+  EvVelBodyFrameFrd : EKF/aid_sources/external_vision/ev_vel.h
+  class ExternalVisionVel
+  ExternalVisionVel &lt;|-- EvVelBodyFrameFrd
+  class EvVelLocalFrameNed
+  EvVelLocalFrameNed : EKF/aid_sources/external_vision/ev_vel.h
+  class ExternalVisionVel
+  ExternalVisionVel &lt;|-- EvVelLocalFrameNed
+  class EvVelLocalFrameFrd
+  EvVelLocalFrameFrd : EKF/aid_sources/external_vision/ev_vel.h
+  class ExternalVisionVel
+  ExternalVisionVel &lt;|-- EvVelLocalFrameFrd
+  class GnssChecks
+  GnssChecks : EKF/aid_sources/gnss/gnss_checks.hpp</pre></div>
+    <h3>Detected Classes</h3>
+    <table><thead><tr><th>Class</th><th>Base</th><th>File</th></tr></thead><tbody><tr><td>Ekf</td><td></td><td>EKF/aid_sources/EstimatorAidSource.hpp</td></tr><tr><td>EstimatorAidSource</td><td></td><td>EKF/aid_sources/EstimatorAidSource.hpp</td></tr><tr><td>ZeroGyroUpdate</td><td>EstimatorAidSource</td><td>EKF/aid_sources/ZeroGyroUpdate.hpp</td></tr><tr><td>ZeroVelocityUpdate</td><td>EstimatorAidSource</td><td>EKF/aid_sources/ZeroVelocityUpdate.hpp</td></tr><tr><td>Ekf</td><td></td><td>EKF/aid_sources/aux_global_position/aux_global_position.hpp</td></tr><tr><td>AuxGlobalPosition</td><td>ModuleParams</td><td>EKF/aid_sources/aux_global_position/aux_global_position.hpp</td></tr><tr><td>Ekf</td><td></td><td>EKF/aid_sources/aux_global_position/aux_global_position_control.hpp</td></tr><tr><td>AgpSource</td><td></td><td>EKF/aid_sources/aux_global_position/aux_global_position_control.hpp</td></tr><tr><td>Ctrl</td><td></td><td>EKF/aid_sources/aux_global_position/aux_global_position_control.hpp</td></tr><tr><td>Mode</td><td></td><td>EKF/aid_sources/aux_global_position/aux_global_position_control.hpp</td></tr><tr><td>State</td><td></td><td>EKF/aid_sources/aux_global_position/aux_global_position_control.hpp</td></tr><tr><td>ExternalVisionVel</td><td></td><td>EKF/aid_sources/external_vision/ev_vel.h</td></tr><tr><td>EvVelBodyFrameFrd</td><td>ExternalVisionVel</td><td>EKF/aid_sources/external_vision/ev_vel.h</td></tr><tr><td>EvVelLocalFrameNed</td><td>ExternalVisionVel</td><td>EKF/aid_sources/external_vision/ev_vel.h</td></tr><tr><td>EvVelLocalFrameFrd</td><td>ExternalVisionVel</td><td>EKF/aid_sources/external_vision/ev_vel.h</td></tr><tr><td>GnssChecks</td><td></td><td>EKF/aid_sources/gnss/gnss_checks.hpp</td></tr><tr><td>GnssChecksMask</td><td></td><td>EKF/aid_sources/gnss/gnss_checks.hpp</td></tr><tr><td>RangeFinderConsistencyCheck</td><td></td><td>EKF/aid_sources/range_finder/range_finder_consistency_check.hpp</td></tr><tr><td>containing</td><td></td><td>EKF/aid_sources/range_finder/sensor_range_finder.hpp</td></tr><tr><td>SensorRangeFinder</td><td></td><td>EKF/aid_sources/range_finder/sensor_range_finder.hpp</td></tr><tr><td>BiasEstimator</td><td></td><td>EKF/bias_estimator/bias_estimator.hpp</td></tr><tr><td>HeightBiasEstimator</td><td>BiasEstimator</td><td>EKF/bias_estimator/height_bias_estimator.hpp</td></tr><tr><td>PositionBiasEstimator</td><td></td><td>EKF/bias_estimator/position_bias_estimator.hpp</td></tr><tr><td>PositionFrame</td><td></td><td>EKF/common.h</td></tr><tr><td>... 27 more</td><td></td><td></td></tr></tbody></table>
+    <h3>Detected Enums</h3>
+    <ul><li><code>Ctrl</code></li><li><code>EvCtrl</code></li><li><code>FlowGyroSource</code></li><li><code>GeoDeclinationMask</code></li><li><code>GnssChecksMask</code></li><li><code>GnssCtrl</code></li><li><code>GnssMode</code></li><li><code>HeightSensor</code></li><li><code>ImuCtrl</code></li><li><code>Likelihood</code></li><li><code>MagCheckMask</code></li><li><code>MagFuseType</code></li><li><code>Mode</code></li><li><code>PositionFrame</code></li><li><code>PositionSensor</code></li><li><code>ReferenceType</code></li><li><code>RngCtrl</code></li><li><code>SensEn</code></li><li><code>State</code></li><li><code>TerrainFusionMask</code></li><li><code>VelocityFrame</code></li></ul>
+
+    <h2>Parameters and Configuration</h2>
+    <ul><li>No parameters detected.</li></ul>
+
+    <h2>Source Map</h2>
+    <table><thead><tr><th>File</th><th>Kind</th></tr></thead><tbody><tr><td>CMakeLists.txt</td><td>build</td></tr><tr><td>EKF/CMakeLists.txt</td><td>build</td></tr><tr><td>EKF/aid_sources/EstimatorAidSource.hpp</td><td>header</td></tr><tr><td>EKF/aid_sources/ZeroGyroUpdate.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/ZeroGyroUpdate.hpp</td><td>header</td></tr><tr><td>EKF/aid_sources/ZeroVelocityUpdate.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/ZeroVelocityUpdate.hpp</td><td>header</td></tr><tr><td>EKF/aid_sources/airspeed/airspeed_fusion.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/aux_global_position/aux_global_position.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/aux_global_position/aux_global_position.hpp</td><td>header</td></tr><tr><td>EKF/aid_sources/aux_global_position/aux_global_position_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/aux_global_position/aux_global_position_control.hpp</td><td>header</td></tr><tr><td>EKF/aid_sources/auxvel/auxvel_fusion.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/barometer/baro_height_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/drag/drag_fusion.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/external_vision/ev_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/external_vision/ev_height_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/external_vision/ev_pos_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/external_vision/ev_vel.h</td><td>header</td></tr><tr><td>EKF/aid_sources/external_vision/ev_vel_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/external_vision/ev_yaw_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/fake_height_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/fake_pos_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/gnss/gnss_checks.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/gnss/gnss_checks.hpp</td><td>header</td></tr><tr><td>EKF/aid_sources/gnss/gnss_height_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/gnss/gnss_yaw_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/gnss/gps_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/gravity/gravity_fusion.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/magnetometer/mag_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/magnetometer/mag_fusion.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/optical_flow/optical_flow_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/optical_flow/optical_flow_fusion.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/range_finder/range_finder_consistency_check.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/range_finder/range_finder_consistency_check.hpp</td><td>header</td></tr><tr><td>EKF/aid_sources/range_finder/range_height_control.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/range_finder/range_height_fusion.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/range_finder/sensor_range_finder.cpp</td><td>source</td></tr><tr><td>EKF/aid_sources/range_finder/sensor_range_finder.hpp</td><td>header</td></tr><tr><td>EKF/aid_sources/ranging_beacon/ranging_beacon_control.cpp</td><td>source</td></tr><tr><td>... 82 more files</td><td>omitted</td></tr></tbody></table>
+
+    <h2>Review Notes</h2>
+    <ul>
+      <li>The diagrams are generated from static source inventory and should be used as a study map, not as a formal proof of every runtime branch.</li>
+      <li>Topic direction is inferred from nearby source context such as <code>Subscription</code>, <code>Publication</code>, <code>orb_subscribe</code>, and <code>publish</code> usage.</li>
+      <li>When a module has no explicit state enum, the state diagram shows the standard PX4 module lifecycle.</li>
+    </ul>
+  </main>
+</body>
+</html>

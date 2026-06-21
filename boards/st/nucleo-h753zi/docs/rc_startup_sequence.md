@@ -98,7 +98,7 @@ Current board defaults:
 |---|---|---|
 | Airframe and HITL | `SYS_AUTOSTART=1001`, `SYS_HITL=1` | Correct for classical MAVLink HITL with the generic quadrotor HIL airframe. |
 | Sensor presence | `SYS_HAS_MAG=1`, `SYS_HAS_BARO=1`, `SYS_HAS_GPS=1` | Correct for this board because jMAVSim or another HITL simulator supplies mag, GPS, and baro over MAVLink. |
-| EKF aiding | `EKF2_GPS_CTRL=7`, `EKF2_HGT_REF=1`, `EKF2_BARO_CTRL=1`, `EKF2_MAG_TYPE=6`, `EKF2_MAG_CHECK=0`, `EKF2_EV_CTRL=0` | Uses HIL GPS/baro for position and height, and uses the HIL magnetometer only to initialize heading. |
+| EKF aiding | `EKF2_GPS_CTRL=7`, `EKF2_HGT_REF=1`, `EKF2_BARO_CTRL=1`, `EKF2_MAG_TYPE=6`, `EKF2_MAG_CHECK=0`, `EKF2_EV_CTRL=0`, `SENS_IMU_MODE=0`, `EKF2_MULTI_IMU=3` | Uses HIL GPS/baro for position and height, uses the HIL magnetometer only to initialize heading, and matches the PX4 MAVLink simulator EKF/IMU routing defaults. |
 | Simulator tolerance | `EKF2_REQ_*`, `EKF2_DELAY_MAX` | Helps avoid startup transients blocking estimator readiness. |
 | Arming and IO | `COM_ARM_WO_GPS=1`, `COM_ARM_MAG_STR=0`, `CBRK_SUPPLY_CHK=894281`, `CBRK_IO_SAFETY=220127`, `COM_RC_IN_MODE=4`, `COM_DISARM_PRFLT=-1` | Correct for bench HITL, but intentionally not flight-safe. |
 | USB MAVLink | `GPS_1_CONFIG=0`, `GPS_2_CONFIG=0`, `RC_PORT_CONFIG=0`, `MAV_0_CONFIG=0`, `MAV_1_CONFIG=0`, `MAV_2_CONFIG=0`, `SYS_USB_AUTO=2`, `USB_MAV_MODE=2` | Keeps CN13 User USB owned by `cdcacm_autostart` for MAVLink HITL/QGC traffic. |

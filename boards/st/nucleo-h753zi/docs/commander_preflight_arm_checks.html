@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Commander Preflight and Arming Checks</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --panel: #ffffff;
+      --ink: #1f2528;
+      --muted: #5c666a;
+      --line: #d7dfd8;
+      --accent: #286f61;
+      --code: #edf2ef;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 2rem 1.25rem;
+    }
+    header > div, main { max-width: 1120px; margin: 0 auto; }
+    h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.08; letter-spacing: 0; }
+    h2 { margin-top: 2rem; padding-top: 0.4rem; border-top: 1px solid var(--line); }
+    h3 { margin-top: 1.5rem; }
+    p.lede { color: var(--muted); max-width: 880px; font-size: 1.04rem; }
+    main { padding: 1.5rem 1.25rem 3rem; }
+    a { color: #184f45; }
+    code {
+      background: var(--code);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      padding: 0.08rem 0.28rem;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+    }
+    pre {
+      overflow-x: auto;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+    }
+    pre code {
+      display: block;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+    }
+    pre.mermaid {
+      background: var(--panel);
+      color: var(--ink);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      background: var(--panel);
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.55rem 0.65rem;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #eef3ef; }
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--panel);
+      padding: 0.8rem 1rem;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>PX4 Commander Preflight and Arming Checks</h1>
+    <p class="lede">A source-level review of how commander decides whether the vehicle is ready to arm, with notes for the ST Nucleo-H753ZI HITL target.</p>
+  </div>
+</header>
+<main>
+  <p>Markdown source: <a href="commander_preflight_arm_checks.md"><code>commander_preflight_arm_checks.md</code></a>.</p>
+
+  <h2>Reviewed Scope</h2>
+  <table>
+    <tr><th>Area</th><th>Source</th></tr>
+    <tr><td>Arm/disarm transition</td><td><code>src/modules/commander/Commander.cpp</code></td></tr>
+    <tr><td>Commander object wiring</td><td><code>src/modules/commander/Commander.hpp</code></td></tr>
+    <tr><td>Health and arming framework</td><td><code>src/modules/commander/HealthAndArmingChecks/*</code></td></tr>
+    <tr><td>Mode requirement masks</td><td><code>src/modules/commander/ModeUtil/mode_requirements.cpp</code></td></tr>
+    <tr><td>Nucleo board defaults</td><td><code>boards/st/nucleo-h753zi/default.px4board</code>, <code>boards/st/nucleo-h753zi/init/rc.board_defaults</code></td></tr>
+  </table>
+
+  <h2>Summary</h2>
+  <p>Commander uses two layers before arming. First, <code>Commander::arm()</code> handles direct transition gates: already armed, calibration in progress, RC re-arm grace, manual throttle position, and whether checks should run. Second, <code>HealthAndArmingChecks::update()</code> runs the check framework and computes mode-specific <code>can_arm</code> and <code>can_run</code> bitmasks.</p>
+  <p>The final normal decision is:</p>
+  <pre><code>_health_and_arming_checks.update(false, true);
+if (!_health_and_arming_checks.canArm(_vehicle_status.nav_state)) {
+    return TRANSITION_DENIED;
+}</code></pre>
+  <p><code>canArm(nav_state)</code> is mode-specific. Some failures clear all modes, some clear only modes that need the failed resource, and warning-only checks use <code>NavModes::None</code> so they report without blocking arming.</p>
+
+  <h2>Runtime Architecture</h2>
+  <pre class="mermaid">flowchart TB
+    subgraph Inputs
+        cmd["vehicle command"]
+        action["action request"]
+        status_inputs["vehicle status inputs"]
+        sensor_inputs["sensor and estimator topics"]
+        mission_inputs["mission and subsystem topics"]
+    end
+
+    commander["Commander run loop"]
+    arm_path["Commander arm path"]
+    health["Health and arming update"]
+    result["Report result"]
+    mode_req["Mode requirements"]
+
+    subgraph CheckClasses
+        sensors["sensor checks"]
+        estimator["estimator checks"]
+        system["system checks"]
+        modes["mode checks"]
+        external["external checks"]
+    end
+
+    outputs["status topics and events"]
+
+    cmd --> commander
+    action --> commander
+    status_inputs --> commander
+    sensor_inputs --> health
+    mission_inputs --> health
+    commander --> arm_path
+    commander --> health
+    arm_path --> health
+    health --> mode_req
+    mode_req --> result
+    health --> sensors
+    health --> estimator
+    health --> system
+    health --> modes
+    health --> external
+    sensors --> result
+    estimator --> result
+    system --> result
+    modes --> result
+    external --> result
+    result --> outputs
+    result --> arm_path</pre>
+
+  <h2>Periodic Preflight Flow</h2>
+  <p>The main loop runs health-and-arming checks at 10 Hz, or immediately when vehicle status or failsafe-relevant state changes. The result updates <code>vehicle_status.pre_flight_checks_pass</code> and <code>actuator_armed.ready_to_arm</code>.</p>
+  <pre class="mermaid">flowchart TD
+    start["Commander loop tick"] --> updates["Update inputs"]
+    updates --> due{"Run checks now"}
+    due -->|no| commands["Handle commands"]
+    due -->|yes| run_checks["Run health checks"]
+    run_checks --> can_arm["Evaluate current mode"]
+    can_arm --> store["Store preflight result"]
+    store --> ready["Publish ready to arm"]
+    ready --> commands
+    commands --> done["Next loop"]</pre>
+
+  <h2>Arm Request Activity</h2>
+  <pre class="mermaid">flowchart TD
+    request["Arm request"] --> already{"Already armed"}
+    already -->|yes| no_change["No state change"]
+    already -->|no| calibration{"Calibration active"}
+    calibration -->|yes| deny_cal["Deny calibrating"]
+    calibration -->|no| grace{"Recent RC rearm"}
+    grace -->|yes| skip_checks["Skip checks"]
+    grace -->|no| run_preflight{"Run preflight checks"}
+    run_preflight -->|no| arm
+    run_preflight -->|yes| manual{"Manual control active"}
+    manual -->|yes| throttle{"Throttle safe"}
+    throttle -->|no| deny_throttle["Deny unsafe throttle"]
+    throttle -->|yes| health_update["Run health checks"]
+    manual -->|no| health_update
+    health_update --> can_arm{"Can arm current mode"}
+    can_arm -->|no| deny_health["Deny health failures"]
+    can_arm -->|yes| arm["Set armed state"]</pre>
+
+  <table>
+    <tr><th>Vehicle/control condition</th><th>Safe manual throttle range</th></tr>
+    <tr><td>Rover</td><td>Absolute throttle below <code>0.2</code>, near center/stop.</td></tr>
+    <tr><td>Climb-rate modes</td><td>Throttle &lt;= <code>0.2</code>, at or below center.</td></tr>
+    <tr><td>Manual/Stabilized/Acro on multicopter or fixed-wing</td><td>Throttle &lt; <code>-0.8</code>, low thrust.</td></tr>
+  </table>
+
+  <h2>Logical State Machine</h2>
+  <p>The firmware arming enum is essentially disarmed or armed; <code>prearmed</code> and <code>ready_to_arm</code> are separate <code>actuator_armed</code> flags. This is a logical view.</p>
+  <pre class="mermaid">stateDiagram-v2
+    [*] --> Disarmed
+    Disarmed --> Prearmed: prearm allowed
+    Prearmed --> Disarmed: safety on
+    Disarmed --> ReadyToArm: checks pass
+    ReadyToArm --> Blocked: check fails
+    Blocked --> ReadyToArm: failure clears
+    ReadyToArm --> Armed: arm accepted
+    Blocked --> Denied: arm denied
+    Denied --> Blocked: stay disarmed
+    Blocked --> Armed: checks skipped
+    Armed --> ArmedDegraded: degraded condition
+    ArmedDegraded --> Armed: condition clears
+    Armed --> Disarmed: disarm event</pre>
+
+  <h2>Arm Request Sequence</h2>
+  <pre class="mermaid">sequenceDiagram
+    participant User
+    participant Cmd
+    participant Commander as Commander
+    participant HAC
+    participant Checks
+    participant Report as Report
+    participant Pub
+
+    User->>Cmd: arm request
+    Cmd->>Commander: command received
+    Commander->>Commander: direct gates
+    alt Checks enabled
+        Commander->>HAC: update
+        HAC->>Report: reset and prepare
+        Report->>Report: mode requirements
+        HAC->>Checks: run checks
+        Checks->>Report: add failures
+        HAC->>Report: finalize and report
+        Report->>Pub: publish events
+        HAC->>Pub: publish reports
+        Commander->>HAC: query can arm
+    end
+    alt Can arm
+        Commander->>Pub: publish armed state
+        Commander-->>Cmd: ACCEPTED
+    else Denied
+        Commander->>Pub: publish denial
+        Commander-->>Cmd: TEMPORARILY_REJECTED
+    end</pre>
+
+  <h2>Decision Model</h2>
+  <ol>
+    <li><code>Report::reset()</code> starts a fresh result.</li>
+    <li><code>Report::prepare(vehicle_type)</code> fills <code>failsafe_flags.mode_req_*</code> masks.</li>
+    <li>Every check class runs <code>checkAndReport()</code>.</li>
+    <li><code>healthFailure()</code> and <code>armingCheckFailure()</code> set component flags and clear relevant <code>can_arm</code> bits.</li>
+    <li><code>clearCanRunBits()</code> prevents mode switching while armed.</li>
+    <li><code>finalize()</code> marks the result valid; <code>report()</code> emits rate-limited events.</li>
+    <li><code>health_report</code> is published when reporting happens; <code>failsafe_flags</code> is published every 500 ms or on changes.</li>
+  </ol>
+
+  <h2>Mode Requirements</h2>
+  <table>
+    <tr><th>Navigation mode group</th><th>Key requirements</th></tr>
+    <tr><td>Manual</td><td>Manual control signal.</td></tr>
+    <tr><td>Acro</td><td>Angular velocity and manual control.</td></tr>
+    <tr><td>Stabilized</td><td>Angular velocity, attitude, manual control.</td></tr>
+    <tr><td>Altitude Control / Altitude Cruise</td><td>Angular velocity, attitude, local altitude, manual control.</td></tr>
+    <tr><td>Position Control / Position Slow</td><td>Angular velocity, attitude, local altitude, relaxed local position, manual control.</td></tr>
+    <tr><td>Auto Mission / Auto Loiter</td><td>Angular velocity, attitude, local altitude, local/global position. Mission also needs a valid mission.</td></tr>
+    <tr><td>Auto RTL</td><td>Angular velocity, attitude, local altitude, local/global position, home position; also prevents arming.</td></tr>
+    <tr><td>Offboard</td><td>Angular velocity, attitude, and valid offboard control signal.</td></tr>
+    <tr><td>Auto Takeoff</td><td>Angular velocity, attitude, local altitude; rotary-wing also needs local position.</td></tr>
+    <tr><td>Auto Land, Follow Target, Precision Land, Orbit, Descend, Termination</td><td>Marked as modes that prevent arming.</td></tr>
+  </table>
+
+  <h2>Check Catalog</h2>
+  <table>
+    <tr><th>Check group</th><th>What it uses</th><th>Typical effect</th></tr>
+    <tr><td><code>ArmPermissionChecks</code>, <code>SystemChecks</code></td><td><code>COM_ARMABLE</code>, actuator kill/termination, USB, safety, VTOL state, arm authorization</td><td>All-mode blockers for safety configuration, active termination/kill, unsafe USB, safety not released, VTOL transition/fixed-wing arming, or failed authorization.</td></tr>
+    <tr><td><code>ModeChecks</code></td><td><code>failsafe_flags.mode_req_*</code> and validity flags</td><td>Mode-dependent translation layer. Converts invalid attitude, angular velocity, position, altitude, mission, home, manual control, offboard, and external flags into <code>can_arm</code>/<code>can_run</code> failures.</td></tr>
+    <tr><td><code>EstimatorChecks</code></td><td>EKF selector/status/flags, local/global position, attitude, angular velocity, GPS</td><td>Sets the validity flags consumed by mode checks. Also blocks for EKF initialization, unstable innovations, high IMU bias, heading problems, mag faults, and GPS quality depending on <code>COM_ARM_WO_GPS</code>.</td></tr>
+    <tr><td>Sensor checks</td><td>Accel, gyro, mag, baro, airspeed, optical flow, distance, GNSS topics and calibration state</td><td>All-mode blockers when required sensors are missing/stale/uncalibrated. HIL accepts accel/gyro/mag calibration. Some checks are warning-only or fixed-wing/VTOL-only.</td></tr>
+    <tr><td>Power and actuator checks</td><td>Battery, system power, ESC telemetry, motor current</td><td>All-mode blockers for missing required battery, unhealthy battery, configured low battery threshold, invalid power, ESC telemetry/faults, or motor failures. Power and battery checks are disabled by the Nucleo supply circuit breaker.</td></tr>
+    <tr><td>Operator and links</td><td>Manual switches, manual-control setpoint, GCS link, CPU/RAM, SD/storage, logger, companion computer</td><td>Unsafe switches block all modes. Lost manual input is mode-dependent. GCS loss can block all modes if configured. CPU/RAM and crash dumps can block; logger and companion temperature are health/warning surfaces.</td></tr>
+    <tr><td>Mission and environment</td><td>Mission result, home, offboard signal, geofence, rally points, navigator, failure detector, VTOL, wind, flight time</td><td>Mix of all-mode and mode-dependent blockers. Mission/home/offboard often feed mode requirements; geofence, rally, failure detector, VTOL, high wind action, and max flight time can block all modes.</td></tr>
+    <tr><td>External and compliance checks</td><td>External mode arming replies, Open Drone ID, traffic avoidance, parachute</td><td>Configurable. Can be warning-only, all-mode blocking, or limited to external/mission modes depending on registration and COM parameters.</td></tr>
+  </table>
+
+  <h2>Nucleo-H753ZI HITL Implications</h2>
+  <table>
+    <tr><th>Default</th><th>Effect</th></tr>
+    <tr><td><code>SYS_HITL=1</code></td><td>Enables HIL-aware behavior; accel, gyro, and mag calibration checks accept HIL data as calibrated.</td></tr>
+    <tr><td><code>SYS_HAS_MAG=1</code>, <code>SYS_HAS_BARO=1</code>, <code>SYS_HAS_GPS=1</code></td><td>Commander expects simulated mag, baro, and GPS data. Missing or stale HIL data can still fail checks.</td></tr>
+    <tr><td><code>COM_ARM_WO_GPS=1</code></td><td>GPS quality failures are warnings, but selected modes can still require valid local/global position estimates.</td></tr>
+    <tr><td><code>COM_ARM_MAG_STR=0</code></td><td>Disables magnetic field strength arming rejection.</td></tr>
+    <tr><td><code>CBRK_SUPPLY_CHK=894281</code></td><td>Disables battery supply and power-module checks because there is no real power module.</td></tr>
+    <tr><td><code>CBRK_IO_SAFETY=220127</code></td><td>Disables IO safety requirement for simulated outputs.</td></tr>
+    <tr><td><code>COM_RC_IN_MODE=4</code></td><td>Manual control is ignored. Modes requiring manual control cannot arm; use Hold/<code>auto:loiter</code> for normal HITL arming.</td></tr>
+    <tr><td><code>COM_DISARM_PRFLT=-1</code></td><td>Disables automatic pre-takeoff disarm while waiting for simulator commands.</td></tr>
+    <tr><td><code>CONFIG_BOARD_NO_SDCARD=y</code></td><td>Avoids the missing FMU SD card warning on this board. Crash-dump checks only apply when storage exists.</td></tr>
+  </table>
+
+  <pre><code>commander mode auto:loiter
+commander check
+commander arm</code></pre>
+
+  <div class="note">
+    If <code>commander check</code> fails on Nucleo HITL, inspect <code>vehicle_status</code>, <code>actuator_armed</code>, <code>failsafe_flags</code>, <code>health_report</code>, sensor topics, <code>vehicle_local_position</code>, and <code>estimator_status_flags</code>. Stale simulator data commonly appears as missing accel/gyro, no valid barometer, no valid position, no heading reference, or no manual/offboard signal for the selected mode.
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+</script>
+</body>
+</html>

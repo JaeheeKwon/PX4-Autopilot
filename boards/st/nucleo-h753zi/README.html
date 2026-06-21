@@ -431,7 +431,8 @@ openocd -f interface/stlink.cfg -f target/stm32h7x.cfg \
 <hr />
 <h2 id="hils-setup-hardware-in-the-loop-simulation">HILS Setup (Hardware-In-the-Loop Simulation)<a class="headerlink" href="#hils-setup-hardware-in-the-loop-simulation" title="Permanent link">&para;</a></h2>
 <p>The board has no real sensors. <code>SYS_HITL=1</code> is set as the default parameter, which activates classical MAVLink HIL mode on every boot.</p>
-<p>For the complete board-specific HITL parameter set, see <a href="docs/hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a>.</p>
+<p>For the complete board-specific HITL parameter set, see <a href="docs/hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a>.
+For the estimator-side architecture and signal flow, see <a href="docs/ekf2_architecture.html">PX4 EKF2 Architecture and Data Flow for Nucleo-H753ZI HITL</a>.</p>
 <h3 id="what-happens-at-boot-with-sys_hitl1">What happens at boot with <code>SYS_HITL=1</code><a class="headerlink" href="#what-happens-at-boot-with-sys_hitl1" title="Permanent link">&para;</a></h3>
 <p>The common startup script (<code>rcS</code>) automatically:</p>
 <ol>

@@ -1,0 +1,42 @@
+# Ethernet + TCP/IP network stack additions for Zenoh on Nucleo-H753ZI.
+#
+# Merge these lines into boards/st/nucleo-h753zi/nuttx-config/nsh/defconfig.
+# None of these keys appear in the current defconfig, so they are pure
+# additions — no existing line needs to be removed or replaced.
+#
+# Static IP addressing defaults (change to match your subnet):
+#   NETINIT_IPADDR   = 192.168.0.4   (board address)
+#   NETINIT_DRIPADDR = 192.168.0.1   (default gateway)
+#   NETINIT_DNSIPADDR= 192.168.0.254 (DNS server)
+# All three are 32-bit big-endian hex: 0xAABBCCDD = AA.BB.CC.DD
+#
+# To use DHCP instead of static addressing, add CONFIG_NETINIT_DHCPC=y and
+# remove the three NETINIT_*IPADDR lines.
+
+CONFIG_ETH0_PHY_LAN8742A=y
+CONFIG_NET_ARP_IPIN=y
+CONFIG_NET_ARP_SEND=y
+CONFIG_NET_BROADCAST=y
+CONFIG_NET_ETH_PKTSIZE=1518
+CONFIG_NET_ICMP=y
+CONFIG_NET_ICMP_SOCKET=y
+CONFIG_NETINIT_DNSIPADDR=0xC0A800FE
+CONFIG_NETINIT_DNS=y
+CONFIG_NETINIT_DRIPADDR=0xC0A80001
+CONFIG_NETINIT_IPADDR=0xC0A80004
+CONFIG_NETINIT_MONITOR=y
+CONFIG_NETINIT_THREAD=y
+CONFIG_NETINIT_THREAD_PRIORITY=49
+CONFIG_NET_NACTIVESOCKETS=16
+CONFIG_NET_SOLINGER=y
+CONFIG_NET_TCP=y
+CONFIG_NET_TCPBACKLOG=y
+CONFIG_NET_TCP_DELAYED_ACK=y
+CONFIG_NET_TCP_WRITE_BUFFERS=y
+CONFIG_NET_UDP=y
+CONFIG_NET_UDP_CHECKSUMS=y
+CONFIG_NET_UDP_WRITE_BUFFERS=y
+# CONFIG_NSH_DISABLE_IFUPDOWN is not set
+CONFIG_NSH_TELNET_LOGIN=y
+CONFIG_STM32H7_ETHMAC=y
+CONFIG_SYSTEM_DHCPC_RENEW=y

@@ -19,6 +19,10 @@ param set-default EKF2_MAG_TYPE 6
 param set-default EKF2_MAG_CHECK 0
 param set-default EKF2_EV_CTRL 0
 
+# Match the MAVLink simulator EKF/IMU routing defaults used for HITL.
+param set-default SENS_IMU_MODE 0
+param set-default EKF2_MULTI_IMU 3
+
 # Relax GPS acceptance for simulator startup transients.
 param set-default EKF2_REQ_EPH 100.0
 param set-default EKF2_REQ_EPV 100.0

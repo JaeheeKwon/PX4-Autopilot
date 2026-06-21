@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commander Arming Denied Debug Plan</title>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --panel: #ffffff;
+      --ink: #1f2528;
+      --muted: #5c666a;
+      --line: #d7dfd8;
+      --accent: #286f61;
+      --code: #edf2ef;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.56;
+    }
+    .header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 2rem 1.25rem;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; }
+    h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.08; letter-spacing: 0; }
+    h2 { margin-top: 2rem; padding-top: 0.4rem; border-top: 1px solid var(--line); }
+    h3 { margin-top: 1.4rem; }
+    p.lede { color: var(--muted); max-width: 900px; font-size: 1.04rem; }
+    .content { padding: 1.5rem 1.25rem 3rem; }
+    a { color: #184f45; }
+    code {
+      background: var(--code);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      padding: 0.08rem 0.28rem;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+    }
+    pre {
+      overflow-x: auto;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+    }
+    pre code {
+      display: block;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      background: var(--panel);
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 0.55rem 0.65rem;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #eef3ef; }
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--panel);
+      padding: 0.8rem 1rem;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+<div class="header">
+  <div class="wrap">
+    <h1>Commander Arming Denied Debug Plan</h1>
+    <p class="lede">A runbook for diagnosing PX4 commander preflight and arming denials on the ST Nucleo-H753ZI HITL target.</p>
+  </div>
+</div>
+<div class="content">
+<div class="wrap">
+  <p>Markdown source: <a href="commander_arming_denied_debug_plan.md"><code>commander_arming_denied_debug_plan.md</code></a>.</p>
+
+  <h2>Goal</h2>
+  <p>When arming is denied, identify whether the root cause is a direct commander gate, the selected mode, a health component, a HITL data path failure, or a saved-parameter mismatch. Do not start with force arming; collect the denial evidence first.</p>
+
+  <h2>First Capture</h2>
+  <pre><code>commander check
+commander status
+listener vehicle_status 1
+listener actuator_armed 1
+listener health_report 1
+listener failsafe_flags 1</code></pre>
+
+  <table>
+    <tr><th>Field or output</th><th>Good value</th><th>If bad</th></tr>
+    <tr><td><code>commander check</code></td><td><code>Preflight check: OK</code></td><td>Continue through this plan.</td></tr>
+    <tr><td><code>vehicle_status.pre_flight_checks_pass</code></td><td><code>true</code></td><td>Health or mode checks currently block arming.</td></tr>
+    <tr><td><code>actuator_armed.ready_to_arm</code></td><td><code>true</code></td><td>The current mode's <code>can_arm</code> bit is not set.</td></tr>
+    <tr><td><code>health_report.can_arm_mode_flags</code></td><td>Current <code>nav_state</code> bit set</td><td>Decode <code>failsafe_flags</code> and health flags.</td></tr>
+    <tr><td><code>failsafe_flags</code></td><td>Failure booleans false unless expected</td><td>True flags are the main next clue.</td></tr>
+  </table>
+
+  <h2>Direct Commander Gates</h2>
+  <table>
+    <tr><th>Check</th><th>How to inspect</th><th>What to do</th></tr>
+    <tr><td>Calibration active</td><td><code>listener vehicle_status 1</code>; check <code>calibration_enabled</code>, <code>rc_calibration_in_progress</code>. Also check <code>listener actuator_armed 1</code> for <code>in_esc_calibration_mode</code>.</td><td>Finish/cancel calibration or reboot if stuck.</td></tr>
+    <tr><td>Kill or termination active</td><td><code>listener actuator_armed 1</code>; check <code>kill</code>, <code>termination</code>.</td><td>Clear kill intentionally; reboot or follow recovery for termination.</td></tr>
+    <tr><td>Safety still on</td><td><code>listener vehicle_status 1</code>; check <code>safety_button_available</code> and <code>safety_off</code>.</td><td>Press safety or use <code>commander safety off</code> only for controlled HITL/bench work.</td></tr>
+    <tr><td>Unsafe throttle</td><td>Read arm denial text and inspect <code>listener manual_control_setpoint 1</code>.</td><td>Move throttle safe or select an autonomous mode.</td></tr>
+    <tr><td>USB/safety check</td><td>Check <code>usb_connected</code> and <code>param show CBRK_USB_CHK</code>.</td><td>Disconnect unsafe USB or use intended bench configuration.</td></tr>
+    <tr><td>Arm authorization</td><td><code>param show COM_ARM_AUTH_REQ</code> and authorizer/QGC messages.</td><td>Verify authorizer replies and accepts the request.</td></tr>
+  </table>
+
+  <h2>Mode Check</h2>
+  <p>Commander evaluates readiness against the current <code>vehicle_status.nav_state</code>. On Nucleo-H753ZI HITL, <code>COM_RC_IN_MODE=4</code> ignores manual input, so manual-control modes commonly fail. Use Hold/<code>auto:loiter</code> first.</p>
+  <pre><code>commander mode auto:loiter
+commander check
+commander arm</code></pre>
+
+  <table>
+    <tr><th>Mode</th><th>Common arming requirement</th></tr>
+    <tr><td>Manual</td><td>Manual control signal.</td></tr>
+    <tr><td>Stabilized / Altitude / Position</td><td>Manual control plus estimator state.</td></tr>
+    <tr><td>Auto Loiter</td><td>Position, attitude, angular velocity, and altitude estimates.</td></tr>
+    <tr><td>Auto Mission</td><td>Navigation estimates plus a valid mission.</td></tr>
+    <tr><td>Offboard</td><td>Recent offboard signal and setpoints.</td></tr>
+    <tr><td>RTL / Land / Descend / Termination / Follow / Orbit / Precision Land</td><td>Often not suitable for arming. Switch mode first.</td></tr>
+  </table>
+
+  <h2>Decode Failsafe Flags</h2>
+  <table>
+    <tr><th>True flag</th><th>Check with</th><th>Typical fix</th></tr>
+    <tr><td><code>angular_velocity_invalid</code></td><td><code>listener vehicle_angular_velocity 1</code>, <code>listener sensor_gyro 1</code></td><td>Fix sensor or HITL stream.</td></tr>
+    <tr><td><code>attitude_invalid</code></td><td><code>listener vehicle_attitude 1</code>, <code>listener estimator_status_flags 1</code></td><td>Wait for EKF alignment; check accel/gyro/mag/GPS inputs.</td></tr>
+    <tr><td><code>local_altitude_invalid</code></td><td><code>listener vehicle_local_position 1</code>, <code>listener vehicle_air_data 1</code></td><td>Restore baro/GPS HIL data and EKF height alignment.</td></tr>
+    <tr><td><code>local_position_invalid</code> or <code>global_position_invalid</code></td><td><code>listener vehicle_local_position 1</code>, <code>listener vehicle_global_position 1</code>, <code>listener vehicle_gps_position 1</code></td><td>Restore GPS/local aiding and wait for EKF acceptance.</td></tr>
+    <tr><td><code>home_position_invalid</code></td><td><code>listener home_position 1</code></td><td>Wait for home setup or avoid modes requiring home.</td></tr>
+    <tr><td><code>manual_control_signal_lost</code></td><td><code>listener manual_control_setpoint 1</code>, <code>param show COM_RC_IN_MODE</code></td><td>Connect input or use autonomous mode.</td></tr>
+    <tr><td><code>offboard_control_signal_lost</code></td><td><code>listener offboard_control_mode 1</code></td><td>Start offboard publisher before selecting/arming Offboard.</td></tr>
+    <tr><td><code>auto_mission_missing</code> or <code>mission_failure</code></td><td><code>listener mission_result 1</code></td><td>Upload/fix mission or leave Mission mode.</td></tr>
+    <tr><td><code>gcs_connection_lost</code></td><td><code>mavlink status</code>, <code>listener telemetry_status 1</code>, <code>param show NAV_DLL_ACT</code></td><td>Restore telemetry or keep <code>NAV_DLL_ACT=0</code> for Nucleo HITL.</td></tr>
+    <tr><td><code>battery_unhealthy</code> or <code>battery_warning</code></td><td><code>listener battery_status 1</code>, <code>param show CBRK_SUPPLY_CHK</code></td><td>Fix battery source or restore Nucleo HITL breaker setting.</td></tr>
+    <tr><td><code>fd_*</code> flags</td><td><code>listener failure_detector_status 1</code>, <code>listener esc_status 1</code></td><td>Resolve failure, clear kill/termination, reboot if latched.</td></tr>
+    <tr><td><code>geofence_breached</code></td><td><code>listener geofence_result 1</code>, <code>param show GF_ACTION</code></td><td>Move inside fence, fix fence, or select controlled test config.</td></tr>
+    <tr><td><code>gnss_lost</code></td><td><code>listener sensor_gps 1</code>, <code>param show SYS_HAS_NUM_GNSS COM_GNSSLOSS_ACT</code></td><td>Restore GPS data/fix or correct GNSS requirements.</td></tr>
+  </table>
+
+  <h2>Nucleo HITL Checklist</h2>
+  <pre><code>param show SYS_HITL
+param show SYS_HAS_MAG
+param show SYS_HAS_BARO
+param show SYS_HAS_GPS
+param show COM_ARM_WO_GPS
+param show COM_ARM_MAG_STR
+param show CBRK_SUPPLY_CHK
+param show CBRK_IO_SAFETY
+param show COM_RC_IN_MODE
+param show NAV_DLL_ACT
+param show COM_ARM_ODID
+param show BAT1_SOURCE</code></pre>
+
+  <table>
+    <tr><th>Parameter</th><th>Expected for normal HITL</th></tr>
+    <tr><td><code>SYS_HITL</code></td><td><code>1</code></td></tr>
+    <tr><td><code>SYS_HAS_MAG</code>, <code>SYS_HAS_BARO</code>, <code>SYS_HAS_GPS</code></td><td><code>1</code></td></tr>
+    <tr><td><code>COM_ARM_WO_GPS</code></td><td><code>1</code></td></tr>
+    <tr><td><code>COM_ARM_MAG_STR</code></td><td><code>0</code></td></tr>
+    <tr><td><code>CBRK_SUPPLY_CHK</code></td><td><code>894281</code></td></tr>
+    <tr><td><code>CBRK_IO_SAFETY</code></td><td><code>220127</code></td></tr>
+    <tr><td><code>COM_RC_IN_MODE</code></td><td><code>4</code></td></tr>
+    <tr><td><code>NAV_DLL_ACT</code>, <code>COM_ARM_ODID</code>, <code>BAT1_SOURCE</code></td><td><code>0</code></td></tr>
+  </table>
+
+  <pre><code>mavlink status
+pwm_out_sim status
+listener sensor_accel 1
+listener sensor_gyro 1
+listener sensor_mag 1
+listener vehicle_air_data 1
+listener vehicle_gps_position 1
+listener vehicle_attitude 1
+listener vehicle_local_position 1
+listener vehicle_global_position 1
+listener estimator_status_flags 1</code></pre>
+
+  <h2>Evidence to Save</h2>
+  <pre><code>commander status
+commander check
+listener vehicle_status 1
+listener actuator_armed 1
+listener health_report 1
+listener failsafe_flags 1
+listener estimator_status_flags 1
+listener vehicle_local_position 1
+listener vehicle_global_position 1
+listener vehicle_gps_position 1
+listener sensor_accel 1
+listener sensor_gyro 1
+listener sensor_mag 1
+listener vehicle_air_data 1
+mavlink status
+param show SYS_HITL
+param show COM_RC_IN_MODE
+param show COM_ARM_WO_GPS
+param show CBRK_SUPPLY_CHK
+param show NAV_DLL_ACT</code></pre>
+
+  <div class="note">
+    <strong>Force arming:</strong> use <code>commander arm -f</code> only for controlled bench experiments when actuator output cannot create a hazard and the denial reason is already understood.
+  </div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zenoh Integration — ST Nucleo-H753ZI</title>
+<style>
+  :root {
+    --accent: #0078d4;
+    --accent2: #888;
+    --bg: #ffffff;
+    --sidebar-bg: #1b1b1f;
+    --sidebar-width: 230px;
+    --code-bg: #1e1e1e;
+    --code-fg: #d4d4d4;
+    --border: #e0e0e0;
+    --row-alt: #f7f9fc;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    color: #222;
+    background: var(--bg);
+    display: flex;
+  }
+
+  /* ── Sidebar ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: var(--sidebar-bg);
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    z-index: 100;
+  }
+
+  nav .nav-title {
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 0 20px 16px;
+    border-bottom: 1px solid #333;
+    margin-bottom: 12px;
+  }
+
+  nav ul { list-style: none; }
+
+  nav ul li a {
+    display: block;
+    padding: 7px 20px;
+    color: #aaa;
+    text-decoration: none;
+    font-size: 13px;
+    transition: color .15s, background .15s;
+  }
+
+  nav ul li a:hover {
+    color: #fff;
+    background: #2a2a30;
+  }
+
+  nav ul li.section > a {
+    color: #ddd;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-top: 10px;
+  }
+
+  nav ul li.sub > a {
+    padding-left: 32px;
+    font-size: 12.5px;
+  }
+
+  /* ── Main content ── */
+  main {
+    margin-left: var(--sidebar-width);
+    padding: 48px 56px 80px;
+    max-width: calc(var(--sidebar-width) + 920px);
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #111;
+  }
+
+  .subtitle {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 40px;
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 48px 0 16px;
+    padding-left: 14px;
+    border-left: 4px solid var(--accent);
+    color: #111;
+  }
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 28px 0 10px;
+    padding-left: 10px;
+    border-left: 3px solid #ccc;
+    color: #333;
+  }
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 20px 0 6px;
+    color: #444;
+  }
+
+  p { margin: 10px 0; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Code ── */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 13px;
+    background: #f0f0f5;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #c7254e;
+  }
+
+  pre {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    padding: 16px 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 14px 0;
+  }
+
+  pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+  }
+
+  /* ── Tables ── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+
+  th {
+    background: #f0f4f8;
+    text-align: left;
+    padding: 9px 12px;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border);
+  }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td { background: var(--row-alt); }
+
+  /* ── Blockquotes / notes ── */
+  blockquote {
+    margin: 14px 0;
+    padding: 12px 16px;
+    background: #fffbe6;
+    border-left: 4px solid #f4c430;
+    border-radius: 0 4px 4px 0;
+    color: #555;
+    font-size: 14px;
+  }
+
+  blockquote strong { color: #333; }
+
+  /* ── Step boxes ── */
+  .step {
+    display: flex;
+    gap: 16px;
+    margin: 18px 0;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+
+  .step-body { flex: 1; }
+
+  /* ── Divider ── */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+
+  /* ── Responsive: hide sidebar below 900px ── */
+  @media (max-width: 900px) {
+    nav {
+      position: relative;
+      width: 100%;
+      height: auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 10px 16px;
+    }
+    nav .nav-title { border: none; margin: 0 16px 0 0; padding: 0; }
+    nav ul { display: flex; flex-wrap: wrap; gap: 2px; }
+    nav ul li.section { display: none; }
+    nav ul li a { padding: 5px 10px; font-size: 12px; color: #ccc; }
+    nav ul li.sub > a { padding-left: 10px; }
+    body { flex-direction: column; }
+    main { margin-left: 0; padding: 28px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-title">Zenoh / Nucleo-H753ZI</div>
+  <ul>
+    <li class="section"><a href="#intro">Introduction</a></li>
+    <li class="sub"><a href="#intro">Overview</a></li>
+
+    <li class="section"><a href="#arch">Architecture</a></li>
+    <li class="sub"><a href="#arch-module">Module Structure</a></li>
+    <li class="sub"><a href="#arch-session">Session Lifecycle</a></li>
+    <li class="sub"><a href="#arch-pub">Publisher Path</a></li>
+    <li class="sub"><a href="#arch-sub">Subscriber Path</a></li>
+    <li class="sub"><a href="#arch-keyexpr">Key Expressions</a></li>
+    <li class="sub"><a href="#arch-config">Config Backend</a></li>
+    <li class="sub"><a href="#arch-codegen">Code Generation</a></li>
+
+    <li class="section"><a href="#build">Build Config</a></li>
+    <li class="sub"><a href="#build-board">zenoh.px4board</a></li>
+    <li class="sub"><a href="#build-defconfig">defconfig.fragment</a></li>
+    <li class="sub"><a href="#build-kconfig">Kconfig Options</a></li>
+
+    <li class="section"><a href="#workflow">Integration Workflow</a></li>
+    <li class="sub"><a href="#wf-prereq">Prerequisites</a></li>
+    <li class="sub"><a href="#wf-steps">Steps 1–12</a></li>
+
+    <li class="section"><a href="#qos">QoS Config</a></li>
+    <li class="section"><a href="#troubleshoot">Troubleshooting</a></li>
+  </ul>
+</nav>
+
+<main>
+
+<h1>Zenoh Integration</h1>
+<p class="subtitle">ST Nucleo-H753ZI &mdash; PX4-Autopilot</p>
+
+<!-- ═══════════════════════════════════════════════════ 1. Introduction -->
+<h2 id="intro">1. Introduction</h2>
+
+<p>
+  This document covers the internal implementation of PX4's Zenoh module and
+  the complete step-by-step workflow for enabling it on the ST Nucleo-H753ZI
+  board.
+</p>
+
+<p>
+  PX4's Zenoh support replaces the uXRCE-DDS&nbsp;+&nbsp;micro-ROS Agent path
+  with a single <a href="https://github.com/eclipse-zenoh/zenoh-pico">zenoh-pico</a>
+  node running directly on the flight controller. The <code>zenoh</code> PX4
+  module bridges internal uORB topics to the Zenoh wire protocol over Ethernet,
+  using the same CDR serialisation and key expression format as
+  <a href="https://github.com/ros2/rmw_zenoh">rmw_zenoh_cpp</a>, so ROS&nbsp;2
+  Jazzy nodes discover PX4 topics natively with no intermediate bridge.
+</p>
+
+<pre>
+         PX4 (Nucleo-H753ZI)                       Host
+┌──────────────────────────────────┐     ┌──────────────────────────────┐
+│  uORB bus                        │     │  zenohd  (TCP :7447)         │
+│   sensor_combined ──┐            │     │     │                        │
+│   vehicle_attitude ─┤  zenoh     │ ETH │     │                        │
+│   vehicle_status   ─┤  module ───┼─────┼─────┘                        │
+│   ...              ─┤ (pub/sub)  │     │  ROS 2 (rmw_zenoh_cpp)       │
+│   trajectory_sp ◄───┤            │     │   ros2 topic echo /fmu/out/… │
+│   vehicle_command ◄─┘            │     └──────────────────────────────┘
+└──────────────────────────────────┘
+</pre>
+
+<p>Key properties:</p>
+<ul style="margin:8px 0 8px 24px; line-height:1.8">
+  <li>No bridge process needed on the host when using <code>rmw_zenoh_cpp</code>.</li>
+  <li>ROS&nbsp;2 Jazzy+ compatible (RIHS01 type hash). Disable
+      <code>CONFIG_ZENOH_KEY_TYPE_HASH</code> for Humble/Iron.</li>
+  <li>Topics and QoS configured at runtime via NSH — no rebuild required.</li>
+  <li>zenoh-pico is bundled at <code>src/modules/zenoh/zenoh-pico/</code>.</li>
+</ul>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════ 2. Architecture -->
+<h2 id="arch">2. Implementation Architecture</h2>
+
+<!-- 2.1 Module Structure -->
+<h3 id="arch-module">2.1 Module Structure</h3>
+
+<p>
+  Implemented as a standard PX4 module in <code>src/modules/zenoh/</code>:
+</p>
+
+<pre><code>class ZENOH : public ModuleBase&lt;ZENOH&gt;, public ModuleParams
+</code></pre>
+
+<p>
+  (<code>src/modules/zenoh/zenoh.h:53</code>) — single PX4 task, 4096-byte stack,
+  default scheduling priority.
+</p>
+
+<p>Member arrays (zenoh.h:109, 111):</p>
+<pre><code>uORB_Zenoh_Publisher **_zenoh_publishers;   // uORB → Zenoh
+Zenoh_Subscriber     **_zenoh_subscribers;  // Zenoh → uORB
+</code></pre>
+
+<p>Runtime parameters:</p>
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>ZENOH_DOMAIN_ID</code></td><td>ROS&nbsp;2 / Zenoh domain ID</td><td>0</td></tr>
+  <tr><td><code>ZENOH_PUB_CC</code></td><td>Congestion control (0=Drop, 1=Block)</td><td>0</td></tr>
+  <tr><td><code>ZENOH_PUB_REL</code></td><td>Reliability (0=Reliable, 1=BestEffort)</td><td>0</td></tr>
+  <tr><td><code>ZENOH_PUB_EXPR</code></td><td>Express mode (0=Off, 1=On)</td><td>0</td></tr>
+  <tr><td><code>ZENOH_PUB_PRIO</code></td><td>Priority (1=RealTime … 7=Background)</td><td>5</td></tr>
+</table>
+
+<!-- 2.2 Session Lifecycle -->
+<h3 id="arch-session">2.2 Session Lifecycle</h3>
+
+<h4>setupSession() — zenoh.cpp:216</h4>
+<ol style="margin:8px 0 8px 28px; line-height:1.8">
+  <li>Calls <code>z_config_default()</code>, inserts <code>mode</code> + <code>locator</code>
+      from <code>Zenoh_Config::getNetworkConfig()</code>
+      (<code>/fs/mtd_params/zenoh/net.cfg</code>).</li>
+  <li>Loops on <code>z_open()</code> until success, sleeping 5&nbsp;s between retries.</li>
+  <li>Starts two background tasks:
+    <ul style="margin:4px 0 4px 24px">
+      <li><strong>read task</strong> (<code>zp_start_read_task</code>) — drives the TCP receive loop.</li>
+      <li><strong>lease task</strong> (<code>zp_start_lease_task</code>) — sends keep-alive renewals;
+          lease = 60&nbsp;000&nbsp;ms, matching the <code>rmw_zenoh_cpp</code> default.</li>
+    </ul>
+  </li>
+</ol>
+
+<h4>cleanupSession() — zenoh.cpp:440</h4>
+<ol style="margin:8px 0 8px 28px; line-height:1.8">
+  <li>Deletes all publisher and subscriber objects.</li>
+  <li><code>zp_stop_read_task</code> / <code>zp_stop_lease_task</code>.</li>
+  <li><code>z_drop(z_session_move(&amp;_s))</code>.</li>
+</ol>
+
+<!-- 2.3 Publisher Path -->
+<h3 id="arch-pub">2.3 Publisher Data Path (uORB → Zenoh)</h3>
+
+<p>Class hierarchy:</p>
+<pre><code>Zenoh_Publisher              (publishers/zenoh_publisher.hpp)
+  └── uORB_Zenoh_Publisher   (publishers/uorb_publisher.hpp)
+</code></pre>
+
+<p><strong>Constructor</strong>: calls <code>orb_subscribe(meta)</code> or
+<code>orb_subscribe_multi(meta, instance)</code>; stores <code>_cdr_ops</code> — a
+pointer to the CycloneDDS type ops table generated at build time.</p>
+
+<p><strong><code>uORB_Zenoh_Publisher::update()</code></strong> (called on POLLIN):</p>
+<ol style="margin:8px 0 8px 28px; line-height:1.9">
+  <li><code>orb_copy(_uorb_meta, _uorb_sub, data)</code> — reads latest uORB sample.</li>
+  <li>Prepends 4-byte ROS&nbsp;2 CDR header <code>\x00\x01\x00\x00</code>.</li>
+  <li><code>dds_stream_write(&amp;os, &amp;dds_allocator, data, _cdr_ops)</code> — encodes into CDR.</li>
+  <li><code>Zenoh_Publisher::publish(buf, size)</code>:
+    <ul style="margin:4px 0 4px 24px">
+      <li>Increments <code>_attachment.sequence_number</code>, records HRT timestamp.</li>
+      <li>Attaches metadata via <code>z_bytes_from_static_buf</code>.</li>
+      <li>Calls <code>z_publisher_put(z_loan(_pub), z_move(payload), &amp;options)</code>.</li>
+    </ul>
+  </li>
+</ol>
+
+<p><strong>Main loop</strong> (<code>ZENOH::run()</code>, zenoh.cpp:476):</p>
+<pre><code>while (!should_exit()) {
+    int pret = px4_poll(pfds, _pub_count, 100);  // 100 ms timeout
+    for (int i = 0; i &lt; _pub_count; i++) {
+        if (pfds[i].revents &amp; POLLIN)
+            _zenoh_publishers[i]-&gt;update();
+    }
+}
+</code></pre>
+
+<blockquote>
+  <strong>Note:</strong> Subscribers are purely event-driven — the zenoh-pico read
+  task calls <code>data_handler_cb</code>. They do not appear in the poll set.
+</blockquote>
+
+<!-- 2.4 Subscriber Path -->
+<h3 id="arch-sub">2.4 Subscriber Data Path (Zenoh → uORB)</h3>
+
+<p>Class hierarchy:</p>
+<pre><code>Zenoh_Subscriber              (subscribers/zenoh_subscriber.hpp)
+  └── uORB_Zenoh_Subscriber   (subscribers/uorb_subscriber.hpp)
+</code></pre>
+
+<p><strong>Constructor</strong>: calls <code>orb_advertise()</code> or
+<code>orb_advertise_multi()</code> depending on the <code>instance</code> field
+from <code>sub.cfg</code> (<code>-1</code> = new instance, <code>0</code> = default).</p>
+
+<p><strong><code>data_handler_cb</code></strong> (invoked by zenoh-pico read task):</p>
+<ol style="margin:8px 0 8px 28px; line-height:1.9">
+  <li>Validates payload: <code>4 ≤ len ≤ o_size + 4</code>.</li>
+  <li><strong>Fast path</strong> (<code>Z_FEATURE_UNSTABLE_API</code>): decode directly from contiguous
+      zenoh buffer view — no copy.</li>
+  <li><strong>Fallback</strong>: copy payload into a VLA, then decode.</li>
+  <li><code>dds_stream_read(&amp;is, data, &amp;dds_allocator, _cdr_ops)</code> — CDR deserialisation.</li>
+  <li><code>fix_timestamp(data)</code> — overwrites timestamp with <code>hrt_absolute_time()</code>
+      (no clock sync with host yet).</li>
+  <li><code>orb_publish(_uorb_meta, _uorb_pub_handle, &amp;data)</code>.</li>
+</ol>
+
+<!-- 2.5 Key Expressions -->
+<h3 id="arch-keyexpr">2.5 ROS&nbsp;2 Key Expression Format</h3>
+
+<p>
+  All key expressions follow the <code>rmw_zenoh_cpp</code> convention so ROS&nbsp;2
+  nodes discover PX4 topics without a bridge.
+</p>
+
+<h4>Data key expression</h4>
+<pre><code>&lt;domain_id&gt;&lt;zenoh_topic&gt;/rt/&lt;CamelCaseType&gt;_/RIHS01_&lt;32-byte-hex-hash&gt;
+</code></pre>
+<p>Example:</p>
+<pre><code>0/fmu/out/vehicle_attitude/rt/VehicleAttitude_/RIHS01_aabb...ccdd
+</code></pre>
+
+<h4>Liveliness key expression</h4>
+<pre><code>@ros2_lv/&lt;domain&gt;/&lt;session-uuid&gt;/0/11/&lt;entity&gt;/%%/%%/px4_&lt;board-guid&gt;
+         /&lt;topic&gt;/rt/&lt;Type&gt;_/RIHS01_.../::,7:,:,:,,
+</code></pre>
+<p><code>entity</code> = <code>"MP"</code> for publishers, <code>"MS"</code> for subscribers.</p>
+
+<blockquote>
+  <strong>Humble / Iron users:</strong> add
+  <code># CONFIG_ZENOH_KEY_TYPE_HASH is not set</code> to <code>zenoh.px4board</code>
+  before building to omit the RIHS01 hash from key expressions.
+</blockquote>
+
+<!-- 2.6 Config Backend -->
+<h3 id="arch-config">2.6 Configuration Backend</h3>
+
+<p>Three CSV files under <code>/fs/mtd_params/zenoh/</code>:</p>
+<table>
+  <tr><th>File</th><th>CSV format</th><th>Purpose</th></tr>
+  <tr><td><code>net.cfg</code></td><td><code>mode;locator</code></td><td>Connection mode and router address</td></tr>
+  <tr><td><code>pub.cfg</code></td><td><code>zenoh_topic;uorb_type;instance[;options]</code></td><td>Publisher mappings</td></tr>
+  <tr><td><code>sub.cfg</code></td><td><code>zenoh_topic;uorb_type;instance</code></td><td>Subscriber mappings</td></tr>
+</table>
+
+<p>
+  On first boot, <code>Zenoh_Config</code> constructor (<code>zenoh_config.cpp:61</code>)
+  creates the directory and writes compiled-in defaults from
+  <code>default_pub_config</code> / <code>default_sub_config</code> (generated from
+  <code>dds_topics.yaml</code> at build time). Runtime edits via
+  <code>zenoh config add/delete/net</code> persist immediately; a reboot is needed
+  to apply them.
+</p>
+
+<!-- 2.7 Code Generation -->
+<h3 id="arch-codegen">2.7 Code Generation Pipeline</h3>
+
+<pre><code>src/modules/zenoh/dds_topics.yaml
+        │  (topic list + per-topic QoS)
+        │
+        ▼  generate_dds_topics.py  +  default_topics.c.em
+        │  (CMakeLists.txt custom command)
+        │
+build/.../default_topics.c
+        │  (default_pub_config / default_sub_config C strings)
+        │
+        ▼  Tools/zenoh/px_generate_zenoh_topic_files.py
+        │
+build/.../uorb_pubsub_factory.hpp
+           (genPublisher / genSubscriber / getRIHS01_Hash per type)
+</code></pre>
+
+<p>
+  <code>uorb_pubsub_factory.hpp</code> contains one typed instantiation per
+  configured uORB message. <code>ZENOH::setupTopics()</code> calls
+  <code>genPublisher(type_name, instance)</code> and
+  <code>genSubscriber(type_name, instance)</code> with strings read from
+  <code>pub.cfg</code> / <code>sub.cfg</code> at runtime.
+</p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════ 3. Build Config -->
+<h2 id="build">3. Build Configuration</h2>
+
+<h3 id="build-board">3.1 <code>zenoh.px4board</code></h3>
+
+<p>
+  Place at <code>boards/st/nucleo-h753zi/zenoh.px4board</code>. Contains four
+  overrides on top of <code>default.px4board</code>:
+</p>
+
+<table>
+  <tr><th>Key</th><th>Value</th><th>Reason</th></tr>
+  <tr><td><code>CONFIG_BOARD_ETHERNET</code></td><td><code>y</code></td><td>Links <code>px4_eth</code> network init into the build</td></tr>
+  <tr><td><code>CONFIG_MODULES_ZENOH</code></td><td><code>y</code></td><td>Includes the zenoh module</td></tr>
+  <tr><td><code>CONFIG_MODULES_UXRCE_DDS_CLIENT</code></td><td><code>n</code></td><td>Mutually exclusive with Zenoh</td></tr>
+  <tr><td><code>CONFIG_ZENOH_PUB_OPTION_OVERRIDE</code></td><td><code>y</code></td><td>Per-publisher QoS overrides; STM32H753 has sufficient flash</td></tr>
+</table>
+
+<h3 id="build-defconfig">3.2 <code>defconfig.fragment</code> (NuttX network stack)</h3>
+
+<p>
+  The current <code>nuttx-config/nsh/defconfig</code> has no network entries. The
+  fragment adds:
+</p>
+
+<table>
+  <tr><th>Key</th><th>Purpose</th></tr>
+  <tr><td><code>CONFIG_STM32H7_ETHMAC=y</code></td><td>STM32H7 Ethernet MAC driver</td></tr>
+  <tr><td><code>CONFIG_ETH0_PHY_LAN8742A=y</code></td><td>On-board LAN8742A PHY (CN1 connector)</td></tr>
+  <tr><td><code>CONFIG_NET_TCP=y</code> / <code>CONFIG_NET_UDP=y</code></td><td>TCP and UDP socket support</td></tr>
+  <tr><td><code>CONFIG_NET_TCP_WRITE_BUFFERS=y</code></td><td>Async TX (required by zenoh-pico)</td></tr>
+  <tr><td><code>CONFIG_NETINIT_THREAD=y</code></td><td>Bring up eth0 automatically at boot</td></tr>
+  <tr><td><code>CONFIG_NETINIT_IPADDR=0xC0A80004</code></td><td>Static IP 192.168.0.4</td></tr>
+  <tr><td><code>CONFIG_NETINIT_DRIPADDR=0xC0A80001</code></td><td>Default gateway 192.168.0.1</td></tr>
+  <tr><td><code>CONFIG_SYSTEM_DHCPC_RENEW=y</code></td><td>DHCP renewal support</td></tr>
+  <tr><td><code>CONFIG_NET_ICMP=y</code> / <code>CONFIG_NET_ICMP_SOCKET=y</code></td><td>ping connectivity testing</td></tr>
+</table>
+
+<blockquote>
+  IP addresses are 32-bit big-endian hex: <code>0xAABBCCDD</code> = <code>AA.BB.CC.DD</code>.
+  To use DHCP, add <code>CONFIG_NETINIT_DHCPC=y</code> and remove the three
+  <code>CONFIG_NETINIT_*IPADDR</code> lines.
+</blockquote>
+
+<h3 id="build-kconfig">3.3 Notable Kconfig Options</h3>
+
+<p>(<code>src/modules/zenoh/Kconfig</code>)</p>
+
+<table>
+  <tr><th>Option</th><th>Default</th><th>Notes</th></tr>
+  <tr><td><code>ZENOH_DEFAULT_LOCATOR</code></td><td><code>tcp/10.41.10.1:7447#iface=eth0</code></td><td>Override at runtime with <code>zenoh config net</code></td></tr>
+  <tr><td><code>ZENOH_RMW_LIVELINESS</code></td><td><code>y</code></td><td>Liveliness tokens for ROS&nbsp;2 graph discovery</td></tr>
+  <tr><td><code>ZENOH_KEY_TYPE_HASH</code></td><td><code>y</code></td><td>RIHS01 hash in key expressions (Jazzy+)</td></tr>
+  <tr><td><code>ZENOH_PUB_OPTION_OVERRIDE</code></td><td><code>n</code> (set <code>y</code> in board file)</td><td>Per-publisher QoS</td></tr>
+  <tr><td><code>ZENOH_PUBSUB_SELECTION</code></td><td><code>ALL</code></td><td>Switch to <code>MINIMAL</code> to reduce flash</td></tr>
+</table>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════ 4. Workflow -->
+<h2 id="workflow">4. Integration Workflow</h2>
+
+<h3 id="wf-prereq">Prerequisites</h3>
+<ul style="margin:8px 0 8px 24px; line-height:1.8">
+  <li>ARM GCC toolchain (<code>arm-none-eabi-gcc</code> ≥ 10)</li>
+  <li>ST-Link v2/v3 or DAPLink connected to Nucleo-H753ZI SWD header (CN4)</li>
+  <li>RJ-45 Ethernet cable from board CN1 to a switch or directly to the host</li>
+  <li>Python 3 with empy and jinja2: <code>pip install empy jinja2</code></li>
+</ul>
+
+<h3 id="wf-steps">Steps</h3>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <strong>Merge the NuttX defconfig fragment</strong>
+    <pre><code>cat boards/st/nucleo-h753zi/zenoh_ref/nuttx-config/nsh/defconfig.fragment \
+    >> boards/st/nucleo-h753zi/nuttx-config/nsh/defconfig
+
+# Optional: review and normalise
+make st_nucleo-h753zi_zenoh menuconfig
+make st_nucleo-h753zi_zenoh savedefconfig</code></pre>
+    <p>To customise the static IP, change <code>CONFIG_NETINIT_IPADDR</code> in the defconfig
+    (network byte order hex: <code>0xC0A80004</code> = <code>192.168.0.4</code>).</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <strong>Place the board variant file</strong>
+    <pre><code>cp boards/st/nucleo-h753zi/zenoh_ref/zenoh.px4board \
+   boards/st/nucleo-h753zi/zenoh.px4board</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <strong>Build</strong>
+    <pre><code>make st_nucleo-h753zi_zenoh</code></pre>
+    <p>Expected artefact: <code>build/st_nucleo-h753zi_zenoh/px4_nucleo-h753zi_zenoh.px4</code></p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <strong>Flash</strong>
+    <pre><code>make st_nucleo-h753zi_zenoh upload
+# or via OpenOCD:
+make st_nucleo-h753zi_zenoh upload UPLOADER=openocd</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">5</div>
+  <div class="step-body">
+    <strong>Connect to NSH</strong>
+    <pre><code># Find the CDC-ACM device
+ls /dev/ttyACM*
+
+# Connect (57600 baud)
+minicom -D /dev/ttyACM0 -b 57600
+# or
+screen /dev/ttyACM0 57600</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">6</div>
+  <div class="step-body">
+    <strong>Verify Ethernet link</strong>
+    <pre><code>nsh> ifconfig
+eth0    Link encap:Ethernet  HWaddr xx:xx:xx:xx:xx:xx
+        inet addr:192.168.0.4  Bcast:192.168.0.255  Mask:255.255.255.0
+
+nsh> ping 192.168.0.1</code></pre>
+    <blockquote>If <code>eth0</code> is absent, the <code>defconfig.fragment</code> was not merged correctly.
+    Re-check <code>nuttx-config/nsh/defconfig</code> and rebuild.</blockquote>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">7</div>
+  <div class="step-body">
+    <strong>Start zenohd on the host</strong>
+    <pre><code># Option A: standalone Zenoh router
+cargo install zenohd
+zenohd
+
+# Option B: bundled with rmw_zenoh_cpp (ROS 2 Jazzy)
+ros2 run rmw_zenoh_cpp rmw_zenohd &amp;</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">8</div>
+  <div class="step-body">
+    <strong>Configure the Zenoh locator</strong>
+    <p>From NSH (replace <code>192.168.0.1</code> with your host IP):</p>
+    <pre><code>nsh> zenoh config net client tcp/192.168.0.1:7447#iface=eth0</code></pre>
+    <p>For multicast peer discovery (no fixed router):</p>
+    <pre><code>nsh> zenoh config net peer udp/224.0.0.224:7446#iface=eth0</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">9</div>
+  <div class="step-body">
+    <strong>Apply parameters and enable</strong>
+    <pre><code>nsh> sh /etc/init.d/rc.board_zenoh
+nsh> param save
+nsh> reboot</code></pre>
+    <p>Or individually:</p>
+    <pre><code>nsh> param set ZENOH_ENABLE 1
+nsh> param set ZENOH_DOMAIN_ID 0
+nsh> param save
+nsh> reboot</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">10</div>
+  <div class="step-body">
+    <strong>Add topic mappings</strong>
+    <p>On first boot, default mappings from <code>dds_topics.yaml</code> are written to flash.
+    To add custom mappings after reboot:</p>
+    <pre><code>nsh> zenoh config add publisher /fmu/out/sensor_combined sensor_combined
+nsh> zenoh config add publisher /fmu/out/vehicle_attitude vehicle_attitude \
+         0 cc=drop,express=true,rel=best_effort
+nsh> zenoh config add subscriber /fmu/in/trajectory_setpoint trajectory_setpoint</code></pre>
+    <p>Changes take effect on next <code>zenoh start</code> or reboot.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">11</div>
+  <div class="step-body">
+    <strong>Verify on board</strong>
+    <pre><code>nsh> zenoh status
+Connected
+Publishers
+  uORB sensor_combined -> 0/fmu/out/sensor_combined/rt/SensorCombined_/RIHS01_...
+  uORB vehicle_attitude -> 0/fmu/out/vehicle_attitude/rt/VehicleAttitude_/RIHS01_...
+Subscribers
+  Topic: 0/fmu/in/trajectory_setpoint/rt/... -> uORB trajectory_setpoint</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">12</div>
+  <div class="step-body">
+    <strong>Verify from host (ROS&nbsp;2)</strong>
+    <pre><code>export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+export RMW_ZENOH_DOMAIN_ID=0   # must match ZENOH_DOMAIN_ID param
+
+ros2 topic list
+# /fmu/out/sensor_combined
+# /fmu/out/vehicle_attitude
+# ...
+
+ros2 topic echo /fmu/out/sensor_combined px4_msgs/msg/SensorCombined</code></pre>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════ 5. QoS -->
+<h2 id="qos">5. QoS Configuration</h2>
+
+<h3>5.1 Global Parameters</h3>
+
+<p>Applied to all publishers that have no per-publisher override (reboot required):</p>
+
+<table>
+  <tr><th>Parameter</th><th>NSH command</th><th>Effect</th></tr>
+  <tr><td><code>ZENOH_PUB_CC</code></td><td><code>param set ZENOH_PUB_CC 0</code></td><td>0=Drop, 1=Block</td></tr>
+  <tr><td><code>ZENOH_PUB_REL</code></td><td><code>param set ZENOH_PUB_REL 0</code></td><td>0=Reliable, 1=BestEffort</td></tr>
+  <tr><td><code>ZENOH_PUB_EXPR</code></td><td><code>param set ZENOH_PUB_EXPR 1</code></td><td>0=Off, 1=Express (bypass batching)</td></tr>
+  <tr><td><code>ZENOH_PUB_PRIO</code></td><td><code>param set ZENOH_PUB_PRIO 5</code></td><td>1=RealTime … 7=Background</td></tr>
+</table>
+
+<h3>5.2 Per-Publisher Overrides</h3>
+
+<p>Available when <code>CONFIG_ZENOH_PUB_OPTION_OVERRIDE=y</code> (set in <code>zenoh.px4board</code>):</p>
+
+<pre><code>zenoh config add publisher &lt;zenoh_topic&gt; &lt;uorb_type&gt; [instance] [key=val,...]
+</code></pre>
+
+<table>
+  <tr><th>Key</th><th>Values</th><th>Description</th></tr>
+  <tr><td><code>cc</code></td><td><code>drop</code>, <code>block</code></td><td>Congestion control</td></tr>
+  <tr><td><code>express</code></td><td><code>true</code>, <code>false</code></td><td>Bypass internal batching for lower latency</td></tr>
+  <tr><td><code>prio</code></td><td><code>real_time</code>, <code>interactive_high</code>, <code>interactive_low</code>, <code>data_high</code>, <code>data</code>, <code>data_low</code>, <code>background</code></td><td>Message priority</td></tr>
+  <tr><td><code>rel</code></td><td><code>reliable</code>, <code>best_effort</code></td><td>Delivery reliability</td></tr>
+</table>
+
+<h3>5.3 Recommended Profiles</h3>
+
+<table>
+  <tr><th>Topic category</th><th>Recommended options</th></tr>
+  <tr><td>High-rate telemetry (attitude, local position, odometry)</td><td><code>cc=drop,express=true,rel=best_effort</code></td></tr>
+  <tr><td>Command / arming messages</td><td><code>cc=block,rel=reliable,express=true</code></td></tr>
+  <tr><td>Low-rate status (battery, land detected)</td><td>global defaults</td></tr>
+</table>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════ 6. Troubleshooting -->
+<h2 id="troubleshoot">6. Troubleshooting</h2>
+
+<table>
+  <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+  <tr>
+    <td><code>zenoh status</code> shows "Connecting" indefinitely</td>
+    <td>No route to zenohd, wrong IP, or zenohd not running</td>
+    <td><code>ping &lt;host-ip&gt;</code> from NSH; verify zenohd listens on port 7447; check <code>net.cfg</code> with <code>zenoh config</code></td>
+  </tr>
+  <tr>
+    <td><code>ifconfig</code> shows no <code>eth0</code></td>
+    <td><code>defconfig.fragment</code> not merged</td>
+    <td>Re-append fragment to <code>nuttx-config/nsh/defconfig</code> and rebuild</td>
+  </tr>
+  <tr>
+    <td>Build error: <code>MODULES_ZENOH</code> undefined</td>
+    <td><code>zenoh.px4board</code> not placed in board directory</td>
+    <td>Copy <code>zenoh_ref/zenoh.px4board</code> to <code>boards/st/nucleo-h753zi/</code></td>
+  </tr>
+  <tr>
+    <td>ROS&nbsp;2 sees no topics</td>
+    <td>Wrong RMW or domain ID mismatch</td>
+    <td><code>export RMW_IMPLEMENTATION=rmw_zenoh_cpp</code>; verify <code>RMW_ZENOH_DOMAIN_ID</code> matches <code>ZENOH_DOMAIN_ID</code> param</td>
+  </tr>
+  <tr>
+    <td>Topics invisible in ROS&nbsp;2 Humble/Iron</td>
+    <td>RIHS01 hash not understood by older rmw</td>
+    <td>Add <code># CONFIG_ZENOH_KEY_TYPE_HASH is not set</code> to <code>zenoh.px4board</code> and rebuild</td>
+  </tr>
+  <tr>
+    <td><code>zenoh config add</code> prints "not found"</td>
+    <td>uORB type name typo</td>
+    <td>Check exact type names in <code>src/modules/zenoh/dds_topics.yaml</code></td>
+  </tr>
+  <tr>
+    <td>High latency on attitude / position topics</td>
+    <td>Express mode disabled or reliable delivery on high-rate topics</td>
+    <td>Use <code>cc=drop,express=true,rel=best_effort</code></td>
+  </tr>
+  <tr>
+    <td>Firmware too large to flash</td>
+    <td>Too many Zenoh topic stubs compiled in</td>
+    <td>Set <code>CONFIG_ZENOH_PUBSUB_SELECTION=MINIMAL</code> in <code>zenoh.px4board</code></td>
+  </tr>
+</table>
+
+</main>
+</body>
+</html>

@@ -1,9 +1,8 @@
 #!/bin/sh
 
 # /fs/flash is a tiny internal LittleFS volume dedicated to PX4 parameters.
-# Do not treat it like removable/general storage: that would enable parameter
-# backups, hardfault logs, external airframes, and update directories on the
-# same small flash partition.
+# Keep generic storage features disabled so this partition is not used for
+# parameter backups, hardfault logs, external airframes, or update directories.
 set STORAGE_CHECK no
 set USE_PARAM_BACKUPS no
 set USE_PARAM_IMPORT_DEBUG no

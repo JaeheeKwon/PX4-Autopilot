@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nucleo-H753ZI Board Integration</title>
+  <style>
+    :root {
+      --bg: #f7f9fb;
+      --panel: #fff;
+      --ink: #18202a;
+      --muted: #566579;
+      --line: #d8e0ea;
+      --blue: #1b6ca8;
+      --green: #2d7a4f;
+      --orange: #a86014;
+      --purple: #6949a6;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    nav {
+      margin-bottom: 18px;
+      color: var(--muted);
+    }
+    nav a, a {
+      color: var(--blue);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.08;
+    }
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 1.45rem;
+    }
+    h3 {
+      margin: 24px 0 8px;
+      font-size: 1.12rem;
+    }
+    p {
+      margin: 0 0 14px;
+    }
+    .lead {
+      max-width: 870px;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+    .diagram, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      overflow-x: auto;
+    }
+    svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      min-width: 760px;
+    }
+    .box {
+      fill: #fff;
+      stroke: #b8c5d4;
+      stroke-width: 1.4;
+    }
+    .host {
+      fill: #eaf4fb;
+      stroke: #82b9dc;
+    }
+    .fc {
+      fill: #edf7f1;
+      stroke: #84bf9e;
+    }
+    .wire {
+      stroke: #53657a;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrow-wire);
+    }
+    .link {
+      stroke: #53657a;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrow-arch);
+    }
+    .dds {
+      stroke: var(--purple);
+    }
+    .mav {
+      stroke: var(--orange);
+    }
+    text {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      fill: var(--ink);
+    }
+    .label {
+      font-size: 14px;
+      font-weight: 650;
+    }
+    .small {
+      font-size: 12px;
+      fill: var(--muted);
+    }
+    pre {
+      overflow-x: auto;
+      background: #102133;
+      color: #f4f8fb;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    code {
+      background: #eef3f8;
+      border: 1px solid #dde6ef;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+    pre code {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eef3f8;
+    }
+    tr:last-child td {
+      border-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <nav><a href="index.html">ROS 2 / DDS reference</a> / Board integration</nav>
+  <h1>Nucleo-H753ZI Board Integration</h1>
+  <p class="lead">
+    Firmware-side configuration for running the PX4 uXRCE-DDS client on
+    USART6 while preserving the existing USB MAVLink HITL link.
+  </p>
+
+  <h2>Architecture</h2>
+  <div class="diagram" role="img" aria-label="Board integration architecture">
+    <svg viewBox="0 0 1040 460" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow-arch" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#53657a"/>
+        </marker>
+      </defs>
+      <rect x="30" y="40" width="420" height="330" rx="12" class="host"/>
+      <text x="50" y="72" class="label">Ubuntu 22.04 host</text>
+      <rect x="80" y="125" width="150" height="70" rx="8" class="box"/>
+      <text x="118" y="154" class="label">ROS 2 app</text>
+      <text x="104" y="176" class="small">bridge monitor</text>
+      <rect x="275" y="125" width="135" height="70" rx="8" class="box"/>
+      <text x="292" y="154" class="label">XRCE Agent</text>
+      <text x="295" y="176" class="small">serial transport</text>
+      <rect x="80" y="255" width="150" height="70" rx="8" class="box"/>
+      <text x="127" y="284" class="label">QGC / HITL</text>
+      <text x="107" y="306" class="small">MAVLink endpoint</text>
+
+      <rect x="590" y="40" width="420" height="330" rx="12" class="fc"/>
+      <text x="610" y="72" class="label">PX4 on ST Nucleo-H753ZI</text>
+      <rect x="635" y="125" width="155" height="70" rx="8" class="box"/>
+      <text x="656" y="154" class="label">uxrce_dds_client</text>
+      <text x="672" y="176" class="small">/dev/ttyS1</text>
+      <rect x="830" y="125" width="130" height="70" rx="8" class="box"/>
+      <text x="875" y="154" class="label">uORB</text>
+      <text x="848" y="176" class="small">DDS topic map</text>
+      <rect x="635" y="255" width="155" height="70" rx="8" class="box"/>
+      <text x="686" y="284" class="label">mavlink</text>
+      <text x="672" y="306" class="small">/dev/ttyACM0</text>
+      <rect x="830" y="255" width="130" height="70" rx="8" class="box"/>
+      <text x="851" y="284" class="label">EKF / control</text>
+      <text x="851" y="306" class="small">HITL modules</text>
+
+      <path d="M230 160 H275" class="link dds"/>
+      <path d="M410 160 H635" class="link dds"/>
+      <text x="462" y="145" class="small">USART6, 921600 baud</text>
+      <path d="M790 160 H830" class="link dds"/>
+      <path d="M230 290 H635" class="link mav"/>
+      <text x="382" y="275" class="small">CN13 User USB</text>
+      <path d="M790 290 H830" class="link mav"/>
+      <path d="M895 195 V255" class="link"/>
+    </svg>
+  </div>
+
+  <h2>Physical Wiring</h2>
+  <div class="diagram" role="img" aria-label="USART6 wiring to USB UART adapter">
+    <svg viewBox="0 0 960 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow-wire" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#53657a"/>
+        </marker>
+      </defs>
+      <rect x="55" y="50" width="370" height="250" rx="12" class="fc"/>
+      <text x="80" y="85" class="label">Nucleo-H753ZI CN10 Arduino header</text>
+      <rect x="95" y="130" width="115" height="44" rx="6" class="box"/>
+      <text x="121" y="157" class="label">D0 / PG9</text>
+      <text x="230" y="157" class="small">USART6 RX</text>
+      <rect x="95" y="190" width="115" height="44" rx="6" class="box"/>
+      <text x="116" y="217" class="label">D1 / PG14</text>
+      <text x="230" y="217" class="small">USART6 TX</text>
+      <rect x="95" y="250" width="115" height="44" rx="6" class="box"/>
+      <text x="135" y="277" class="label">GND</text>
+      <text x="230" y="277" class="small">common ground</text>
+
+      <rect x="585" y="65" width="300" height="215" rx="12" class="host"/>
+      <text x="615" y="100" class="label">3.3 V USB-UART adapter</text>
+      <rect x="625" y="130" width="105" height="44" rx="6" class="box"/>
+      <text x="663" y="157" class="label">TX</text>
+      <rect x="625" y="190" width="105" height="44" rx="6" class="box"/>
+      <text x="663" y="217" class="label">RX</text>
+      <rect x="625" y="250" width="105" height="44" rx="6" class="box"/>
+      <text x="657" y="277" class="label">GND</text>
+      <text x="755" y="162" class="small">Host sees /dev/ttyUSB0</text>
+      <text x="755" y="222" class="small">Run MicroXRCEAgent</text>
+
+      <path d="M210 152 H625" class="wire"/>
+      <text x="352" y="139" class="small">adapter TX to board RX</text>
+      <path d="M210 212 H625" class="wire"/>
+      <text x="352" y="199" class="small">board TX to adapter RX</text>
+      <path d="M210 272 H625" class="wire"/>
+      <text x="362" y="259" class="small">shared ground</text>
+    </svg>
+  </div>
+
+  <h2>Firmware Configuration</h2>
+  <p>
+    This checkout already enables the client in
+    <code>boards/st/nucleo-h753zi/default.px4board</code>:
+  </p>
+  <pre><code>CONFIG_MODULES_UXRCE_DDS_CLIENT=y</code></pre>
+
+  <p>Build and flash:</p>
+  <pre><code>make st_nucleo-h753zi_default
+make st_nucleo-h753zi_default upload</code></pre>
+
+  <h2>Startup Options</h2>
+  <h3>Manual start</h3>
+  <pre><code>nsh&gt; uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600
+nsh&gt; uxrce_dds_client status</code></pre>
+
+  <h3>Boot-time start</h3>
+  <pre><code>cp boards/st/nucleo-h753zi/ros2_ref/config/rc.board_extras \
+   boards/st/nucleo-h753zi/init/rc.board_extras</code></pre>
+  <p>
+    Rebuild and flash after copying the file. PX4 sources
+    <code>rc.board_extras</code> late in startup, after core board defaults,
+    airframe setup, and the main modules are started.
+  </p>
+
+  <h2>DDS Topics</h2>
+  <p>The board-side DDS client is generated from <code>src/modules/uxrce_dds_client/dds_topics.yaml</code>.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Direction</th>
+        <th>Topic</th>
+        <th>ROS 2 type</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>PX4 to ROS 2</td><td><code>/fmu/out/vehicle_status</code></td><td><code>px4_msgs/msg/VehicleStatus</code></td></tr>
+      <tr><td>PX4 to ROS 2</td><td><code>/fmu/out/vehicle_odometry</code></td><td><code>px4_msgs/msg/VehicleOdometry</code></td></tr>
+      <tr><td>PX4 to ROS 2</td><td><code>/fmu/out/sensor_combined</code></td><td><code>px4_msgs/msg/SensorCombined</code></td></tr>
+      <tr><td>PX4 to ROS 2</td><td><code>/fmu/out/timesync_status</code></td><td><code>px4_msgs/msg/TimesyncStatus</code></td></tr>
+      <tr><td>ROS 2 to PX4</td><td><code>/fmu/in/onboard_computer_status</code></td><td><code>px4_msgs/msg/OnboardComputerStatus</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Namespaces</h2>
+  <p>
+    By default the topics are un-namespaced. For multi-vehicle testing, start
+    the PX4 client with <code>-n uav_0</code> or set <code>UXRCE_DDS_NS_IDX</code>.
+    The reference ROS 2 node accepts a <code>px4_namespace</code> parameter.
+  </p>
+</main>
+</body>
+</html>
+

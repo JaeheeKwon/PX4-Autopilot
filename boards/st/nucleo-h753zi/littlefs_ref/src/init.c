@@ -42,9 +42,9 @@ extern void led_off(int led);
 __END_DECLS
 
 #define PARAM_LITTLEFS_DEVICE       "/dev/mtd_params"
-#define PARAM_LITTLEFS_MOUNTPOINT   CONFIG_BOARD_ROOT_PATH
+#define PARAM_LITTLEFS_MOUNTPOINT   "/fs/flash"
 #define PARAM_LITTLEFS_ERASE_BLOCKS 4
-#define PARAM_LITTLEFS_TEST_FILE    CONFIG_BOARD_ROOT_PATH "/.mount_test"
+#define PARAM_LITTLEFS_TEST_FILE    PARAM_LITTLEFS_MOUNTPOINT "/.mount_test"
 
 static int mount_parameter_littlefs(void)
 {

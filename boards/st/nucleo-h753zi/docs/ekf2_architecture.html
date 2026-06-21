@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 EKF2 Architecture and Data Flow for Nucleo-H753ZI HITL</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f4;
+      --surface: #ffffff;
+      --surface-alt: #eef3ef;
+      --ink: #1f2528;
+      --muted: #5e686c;
+      --line: #d7dfd8;
+      --line-strong: #b9c5bb;
+      --accent: #286f61;
+      --accent-dark: #184f45;
+      --code-bg: #edf2ef;
+      --code-ink: #10211d;
+      --pre-bg: #17211f;
+      --pre-ink: #edf7f2;
+      --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+      --radius: 8px;
+      --content: 1220px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+
+    a { color: var(--accent-dark); text-underline-offset: 3px; }
+    code {
+      padding: 0.08rem 0.28rem;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--code-bg);
+      color: var(--code-ink);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 1rem;
+      border: 1px solid #263531;
+      border-radius: var(--radius);
+      background: var(--pre-bg);
+      color: var(--pre-ink);
+      line-height: 1.45;
+    }
+
+    pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+    .header {
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .header-inner {
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 2rem 1.25rem 1.5rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.7rem;
+      color: var(--accent-dark);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .lede {
+      max-width: 980px;
+      margin: 1rem 0 0;
+      color: var(--muted);
+      font-size: 1.04rem;
+    }
+
+    .navbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 0.8rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .navbar a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2rem;
+      padding: 0.25rem 0.55rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: #314042;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .navbar a[aria-current="page"] {
+      border-color: var(--accent);
+      background: #dbece7;
+      color: var(--accent-dark);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr);
+      gap: 1.4rem;
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 1.4rem 1.25rem 3rem;
+    }
+
+    .toc {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .toc h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.88rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .toc ul { margin: 0; padding-left: 1rem; }
+    .toc li { margin: 0.25rem 0; }
+    .toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+    .toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+
+    main {
+      min-width: 0;
+      padding: 1.25rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    main > :first-child { margin-top: 0; }
+    h2 {
+      margin-top: 2rem;
+      padding-top: 0.35rem;
+      border-top: 1px solid var(--line);
+      font-size: 1.65rem;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    h2:first-child { border-top: 0; }
+    h3 {
+      margin-top: 1.4rem;
+      font-size: 1.15rem;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    p { margin: 0.7rem 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li + li { margin-top: 0.25rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.94rem;
+    }
+
+    th, td {
+      padding: 0.58rem 0.7rem;
+      border: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--surface-alt);
+      text-align: left;
+    }
+
+    .note {
+      margin: 1rem 0;
+      padding: 0.8rem 1rem;
+      border: 1px solid var(--line-strong);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--surface-alt);
+    }
+
+    .note-title {
+      margin: 0 0 0.35rem;
+      font-weight: 700;
+      color: var(--accent-dark);
+    }
+
+    .mermaid {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+      overflow-x: auto;
+    }
+
+    details {
+      margin: 1rem 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-alt);
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 0.7rem 0.9rem;
+      font-weight: 700;
+      color: var(--accent-dark);
+    }
+
+    details pre {
+      margin: 0;
+      border: 0;
+      border-top: 1px solid var(--line);
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    .footer {
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 0 1.25rem 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 900px) {
+      .layout { display: block; }
+      .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>PX4 EKF2 Architecture and Data Flow for Nucleo-H753ZI HITL</h1>
+      <p class="lede">A code-oriented reference for how PX4 EKF2 starts, consumes sensor data, runs its update loop, and publishes vehicle state. It covers the Nucleo-H753ZI MAVLink HITL path and the equivalent real-drone sensor path.</p>
+    </div>
+  </header>
+
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="../README.html">ST Nucleo-H753ZI PX4 Board Support</a>
+    <a href="hitl_configuration.html">HITL Configuration</a>
+    <a href="hils_ros2_setup.html">HILS, ROS2, and uORB</a>
+    <a href="rc_startup_sequence.html">ROMFS Startup</a>
+    <a href="ekf2_architecture.html" aria-current="page">EKF2 Architecture</a>
+  </nav>
+
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#scope">Scope</a></li>
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#startup">Startup Sequence</a></li>
+        <li><a href="#computation-flow">Computation Flow</a></li>
+        <li><a href="#timestamp-horizon">Timestamps and Fusion Horizon</a></li>
+        <li><a href="#hitl-flow">HITL Data Flow</a></li>
+        <li><a href="#real-flow">Real Sensor Data Flow</a></li>
+        <li><a href="#topic-map">Topic and Signal Map</a></li>
+        <li><a href="#nucleo-defaults">Nucleo-H753ZI Defaults</a></li>
+        <li><a href="#health">Health and Debugging</a></li>
+        <li><a href="#source-map">Source Map</a></li>
+      </ul>
+    </aside>
+
+    <main>
+      <section id="scope">
+        <h2>Scope</h2>
+        <p>This document describes the EKF2 path used by the current <code>ST_NUCLEO_H753ZI</code> default build. It focuses on the PX4 wrapper module in <code>src/modules/ekf2</code>, the sensor publication pipeline in <code>src/modules/sensors</code>, and the MAVLink HITL conversion path in <code>src/modules/mavlink</code>.</p>
+        <div class="note">
+          <p class="note-title">Important distinction</p>
+          <p>EKF2 does not consume MAVLink messages directly and does not read physical sensor buses directly. EKF2 consumes uORB topics. HITL and real flight differ mainly in how those uORB topics are produced.</p>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture</h2>
+        <p>EKF2 is a PX4 module that wraps the ECL estimator core. The wrapper owns uORB subscriptions, parameter updates, command handling, work-queue scheduling, sensor sample conversion, publication of vehicle state topics, and estimator status topics. The core <code>Ekf</code> object owns the estimator state, covariance, prediction, aiding-source control, innovation checks, and output predictor.</p>
+
+        <div class="mermaid">
+flowchart TB
+    subgraph producers["Data producers"]
+        drivers["Real sensor drivers<br/>IMU, mag, baro, GPS, range, flow"]
+        mavrx["mavlink_receiver<br/>HITL MAVLink decoder"]
+        vision["External vision / landing target / aux sources"]
+        status["commander / land detector<br/>vehicle_status, vehicle_land_detected"]
+    end
+
+    subgraph sensors["PX4 sensor pipeline"]
+        raw["Raw sensor topics<br/>sensor_accel, sensor_gyro, sensor_mag, sensor_baro, sensor_gps"]
+        vehicle["Vehicle-level sensor topics<br/>vehicle_imu, vehicle_magnetometer,<br/>vehicle_air_data, vehicle_gps_position"]
+        selection["sensor_selection<br/>vehicle_imu_status"]
+    end
+
+    subgraph ekf2module["ekf2 module"]
+        wrapper["EKF2 C++ wrapper<br/>ScheduledWorkItem + ModuleParams"]
+        ecl["ECL Ekf core<br/>prediction, fusion, covariance"]
+        predictor["Output predictor<br/>low-latency attitude/odometry"]
+    end
+
+    subgraph consumers["Estimator consumers"]
+        state["vehicle_attitude<br/>vehicle_local_position<br/>vehicle_global_position<br/>vehicle_odometry"]
+        statusout["estimator_status_flags<br/>estimator_status<br/>estimator_aid_src_*"]
+        commander["commander<br/>health and arming checks"]
+        controllers["flight mode manager<br/>position/attitude/rate controllers"]
+    end
+
+    drivers --> raw
+    mavrx --> raw
+    mavrx --> sensorGps["sensor_gps"]
+    sensorGps --> vehicle
+    vision --> wrapper
+    status --> wrapper
+    raw --> vehicle
+    raw --> selection
+    vehicle --> wrapper
+    selection --> wrapper
+    wrapper --> ecl
+    ecl --> predictor
+    ecl --> state
+    predictor --> state
+    ecl --> statusout
+    state --> commander
+    state --> controllers
+    statusout --> commander
+        </div>
+
+        <h3>Major pieces</h3>
+        <table>
+          <thead>
+            <tr><th>Piece</th><th>Role</th><th>Local source</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>EKF2</code> wrapper</td><td>PX4 module, work item, uORB input/output, parameter sync, command handling, status publication.</td><td><code>src/modules/ekf2/EKF2.cpp</code>, <code>EKF2.hpp</code></td></tr>
+            <tr><td><code>Ekf</code> core</td><td>State and covariance propagation, sensor fusion, fault checks, alignment, reset logic, aid source status.</td><td><code>src/modules/ekf2/EKF/</code></td></tr>
+            <tr><td>Sensor pipeline</td><td>Converts raw driver/HITL publications into vehicle-level topics with calibration, integration, voting, and selection.</td><td><code>src/modules/sensors/</code></td></tr>
+            <tr><td>MAVLink HITL receiver</td><td>Decodes <code>HIL_SENSOR</code>, <code>HIL_GPS</code>, and optional HIL flow messages into PX4 sensor topics.</td><td><code>src/modules/mavlink/mavlink_receiver.cpp</code></td></tr>
+            <tr><td>Commander and controllers</td><td>Consume EKF2 state and health. Commander checks flags such as yaw alignment before arming.</td><td><code>src/modules/commander</code>, <code>src/modules/mc_*</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="startup">
+        <h2>Startup Sequence</h2>
+        <p>For this board, <code>rc.board_defaults</code> sets <code>SYS_HITL=1</code> and <code>SYS_AUTOSTART=1001</code>. The common <code>rcS</code> script sees <code>SYS_HITL &gt; 0</code> and starts the sensor and commander paths in HITL mode. USB MAVLink starts through <code>cdcacm_autostart</code> on CN13.</p>
+
+        <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Boot as NuttX boot / rcS
+    participant Params as param system
+    participant Sensors as sensors
+    participant Mavlink as mavlink / cdcacm
+    participant EKF2 as ekf2
+    participant Commander as commander
+    participant PWM as pwm_out_sim
+
+    Boot->>Params: load saved flash parameters
+    Boot->>Params: apply rc.board_defaults with param set-default
+    Boot->>Params: load airframe 1001_rc_quad_x.hil
+    Boot->>Sensors: sensors start -h
+    Boot->>EKF2: start via vehicle app startup
+    Boot->>Commander: commander start -h
+    Boot->>PWM: pwm_out_sim start -m hil
+    Boot->>Mavlink: cdcacm_autostart on CN13 USB
+    Mavlink-->>Sensors: publish HIL-derived sensor topics
+    Sensors-->>EKF2: publish vehicle-level estimator inputs
+    EKF2-->>Commander: publish estimator flags and vehicle state
+        </div>
+
+        <details>
+          <summary>PlantUML equivalent: startup sequence</summary>
+          <pre><code class="language-plantuml">@startuml
+title Nucleo-H753ZI HITL startup path
+participant "NuttX boot / rcS" as Boot
+participant "param system" as Params
+participant sensors as Sensors
+participant "mavlink / cdcacm" as Mavlink
+participant ekf2 as EKF2
+participant commander as Commander
+participant "pwm_out_sim" as PWM
+
+Boot -> Params: load saved flash parameters
+Boot -> Params: apply rc.board_defaults
+Boot -> Params: load airframe 1001_rc_quad_x.hil
+Boot -> Sensors: sensors start -h
+Boot -> EKF2: start estimator module
+Boot -> Commander: commander start -h
+Boot -> PWM: pwm_out_sim start -m hil
+Boot -> Mavlink: cdcacm_autostart on CN13 USB
+Mavlink -> Sensors: HIL-derived sensor topics
+Sensors -> EKF2: vehicle-level estimator inputs
+EKF2 -> Commander: state and estimator flags
+@enduml</code></pre>
+        </details>
+      </section>
+
+      <section id="computation-flow">
+        <h2>Computation Flow</h2>
+        <p>The EKF2 run loop is driven by IMU data. In multi-instance mode it subscribes to <code>vehicle_imu</code>; otherwise it can use <code>sensor_combined</code>. This board now uses the EKF selector path with <code>SENS_IMU_MODE=0</code> and <code>EKF2_MULTI_IMU=3</code>, matching PX4's MAVLink simulator defaults.</p>
+
+        <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant WQ as Work queue callback
+    participant EKF2 as EKF2::Run()
+    participant Params as Parameters
+    participant IMU as vehicle_imu / sensor_combined
+    participant Aid as aiding topics
+    participant Core as Ekf core
+    participant Pub as uORB publications
+
+    WQ->>EKF2: wake on IMU update
+    EKF2->>Params: updateParams(), initFusionControl(), VerifyParams()
+    EKF2->>IMU: copy latest IMU sample
+    EKF2->>Core: setIMUData(delta angle, delta velocity)
+    EKF2->>Aid: poll GPS, mag, baro, EV, flow, range, airspeed
+    EKF2->>Core: setGpsData(), setMagData(), setBaroData(), ...
+    EKF2->>Core: update()
+    Core-->>EKF2: updated state, covariance, flags, innovations
+    EKF2->>Pub: vehicle_attitude, local/global position, odometry
+    EKF2->>Pub: estimator_status_flags, status, aid source status
+    EKF2->>WQ: ScheduleDelayed(100 ms) backup timeout
+        </div>
+
+        <h3>One EKF2 update cycle</h3>
+        <table>
+          <thead>
+            <tr><th>Step</th><th>What happens</th><th>Why it matters</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Parameter sync</td><td>Checks <code>parameter_update</code>, updates <code>ModuleParams</code>, initializes fusion-control bits, verifies parameter combinations.</td><td>Changes to <code>EKF2_GPS_CTRL</code>, <code>EKF2_MAG_TYPE</code>, <code>EKF2_BARO_CTRL</code>, and similar parameters affect the next estimator behavior.</td></tr>
+            <tr><td>IMU ingestion</td><td>Copies delta angle, delta velocity, integration times, clipping flags, device IDs, and calibration counters.</td><td>IMU deltas are the estimator propagation clock. Without IMU updates, EKF2 does not run normal prediction and fusion.</td></tr>
+            <tr><td>Bias reset checks</td><td>Detects accel/gyro device or calibration-count changes and resets relevant learned biases.</td><td>Prevents stale learned bias from one device/calibration from being applied to another.</td></tr>
+            <tr><td>Aiding ingestion</td><td>Polls each compiled-in aiding topic and converts uORB messages into ECL sample structs.</td><td>GPS, mag, baro, range, optical flow, external vision, airspeed, and auxiliary velocity all enter the core through explicit <code>set*Data()</code> calls.</td></tr>
+            <tr><td>Core update</td><td>Calls <code>_ekf.update()</code>. The core performs prediction, fusion, innovation checks, status flag updates, and reset management.</td><td>This is where alignments such as tilt, yaw, height, and global position become valid or invalid.</td></tr>
+            <tr><td>Publication</td><td>Publishes vehicle state, odometry, estimator status, estimator flags, aid-source status, GPS status, and yaw estimator status.</td><td>Commander and controllers consume these outputs for arming checks and control.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Primary EKF2 output topics</h3>
+        <table>
+          <thead>
+            <tr><th>Output topic</th><th>Purpose</th><th>Typical consumers</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>vehicle_attitude</code></td><td>Low-latency quaternion attitude from EKF2 output predictor.</td><td>Attitude controller, rate controller, logging, telemetry.</td></tr>
+            <tr><td><code>vehicle_local_position</code></td><td>NED local position, velocity, acceleration, heading, validity flags, reset counters.</td><td>Flight mode manager, position controller, commander.</td></tr>
+            <tr><td><code>vehicle_global_position</code></td><td>Latitude, longitude, altitude, global validity, terrain and reset data.</td><td>Navigator, commander, telemetry.</td></tr>
+            <tr><td><code>vehicle_odometry</code></td><td>Combined pose and velocity representation for downstream consumers.</td><td>ROS2 bridge, controllers, logging.</td></tr>
+            <tr><td><code>estimator_status_flags</code></td><td>Boolean estimator health, alignment, aiding, and fault flags.</td><td>Commander health and arming checks.</td></tr>
+            <tr><td><code>estimator_aid_src_*</code></td><td>Per-aiding-source innovation, variance, test ratio, observation timestamp, and health.</td><td>Debugging, logging, estimator analysis.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="timestamp-horizon">
+        <h2>Timestamps and Fusion Horizon</h2>
+        <p>EKF2 is deliberately timestamp-driven. It does not simply fuse every observation at the moment the message is received. The estimator keeps an IMU history and runs its main fusion on a delayed time horizon so slower or delayed aiding sources can be aligned with the matching IMU state.</p>
+
+        <div class="note">
+          <p class="note-title">Why HITL can differ from a real system</p>
+          <p>HITL and real hardware can have different <code>timestamp_sample</code> meanings. In this Nucleo-H753ZI HITL path, most <code>HIL_SENSOR</code> values are timestamped when PX4 receives and decodes the MAVLink packet. In a real system, drivers often timestamp closer to the hardware sample time, FIFO sample time, interrupt time, or PPS-corrected GPS observation time. EKF2 will treat both as valid timestamps, so different timestamp semantics can shift when an observation becomes eligible for fusion.</p>
+        </div>
+
+        <div class="mermaid">
+flowchart LR
+    imuNow["Latest IMU sample<br/>_time_latest_us"]
+    imuBuffer["IMU ring buffer<br/>size from EKF2_DELAY_MAX"]
+    horizon["Delayed fusion horizon<br/>_time_delayed_us = oldest retained IMU"]
+    aidRaw["Aiding observation<br/>GPS / mag / baro / flow / range"]
+    delay["Apply configured delay<br/>sensor timestamp - EKF2_*_DELAY"]
+    aidBuffer["Aiding ring buffer"]
+    ready["pop_first_older_than<br/>observation <= delayed IMU time"]
+    fuse["Fuse observation<br/>innovation and state update"]
+    output["Output predictor<br/>propagates to current time"]
+
+    imuNow --> imuBuffer --> horizon
+    aidRaw --> delay --> aidBuffer --> ready --> fuse
+    horizon --> ready
+    fuse --> output
+        </div>
+
+        <p>In the ECL interface, <code>setIMUData()</code> pushes downsampled IMU into the IMU buffer and sets <code>_time_delayed_us</code> from the oldest retained IMU sample. Aiding samples are pushed into their own buffers after applying configured delays such as <code>EKF2_MAG_DELAY</code>, <code>EKF2_BARO_DELAY</code>, <code>EKF2_OF_DELAY</code>, and <code>EKF2_RNG_DELAY</code>. GPS is special: <code>VehicleGPSPosition</code> applies <code>SENS_GPS0_DELAY</code> or <code>SENS_GPS1_DELAY</code> to <code>timestamp_sample</code> if the GPS driver did not provide a corrected sample timestamp, then EKF2 buffers that GPS sample.</p>
+
+        <h3>Timestamp source comparison</h3>
+        <table>
+          <thead>
+            <tr><th>Signal</th><th>HITL timestamp source on this path</th><th>Real-system timestamp source</th><th>EKF2 timing effect</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>IMU gyro/accel</td><td><code>mavlink_receiver</code> uses <code>hrt_absolute_time()</code> when <code>HIL_SENSOR</code> is decoded, then simulated PX4 gyro/accel wrappers publish <code>sensor_gyro</code> and <code>sensor_accel</code>.</td><td>Driver timestamp close to hardware sample, FIFO sample, or interrupt/poll time.</td><td>The EKF propagation clock follows the received HIL packet timing, so USB/MAVLink jitter can appear as IMU timing jitter.</td></tr>
+            <tr><td>Magnetometer</td><td><code>HIL_SENSOR</code> mag fields use PX4 receive/decode time as the raw sample time.</td><td>Mag driver timestamp close to hardware sample or driver poll time.</td><td>Mag heading initialization and mag consistency checks run when the delayed mag sample reaches the fusion horizon.</td></tr>
+            <tr><td>Barometer</td><td><code>HIL_SENSOR</code> baro fields use PX4 receive/decode time, then <code>VehicleAirData</code> republishes averaged pressure/altitude with that sample timing.</td><td>Barometer driver timestamp close to hardware sample or poll time.</td><td>Height fusion timing can differ if MAVLink delivery latency is not representative of the simulated measurement time.</td></tr>
+            <tr><td>GPS</td><td><code>HIL_GPS</code> enters as <code>sensor_gps</code> at receive time, then <code>VehicleGPSPosition</code> usually shifts <code>timestamp_sample</code> backward by <code>SENS_GPS0_DELAY</code> or <code>SENS_GPS1_DELAY</code> when no corrected sample timestamp exists.</td><td>GPS driver timestamp, optionally corrected by PPS/time sync, then selected or blended by <code>VehicleGPSPosition</code>.</td><td>GPS observations are fused when the corrected GPS sample time falls behind the EKF fusion horizon.</td></tr>
+            <tr><td>Optical flow / range / external vision</td><td>Optional HITL or MAVLink sources use their message-derived sample timestamps, receive time, or midpoint correction depending on the message path.</td><td>Driver or companion-computer timestamps, ideally synchronized to PX4 time.</td><td>Wrong or unsynchronized timestamps can delay fusion, cause stale data rejection, or produce larger innovations.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Fusion horizon behavior</h3>
+        <table>
+          <thead>
+            <tr><th>Mechanism</th><th>Code behavior</th><th>Practical result</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>EKF2_DELAY_MAX</code></td><td>Sets the maximum expected aiding delay and therefore the IMU/observation buffer sizing.</td><td>Must be large enough for the slowest or most delayed aiding source. This board defaults it to <code>300 ms</code> to tolerate HITL timing.</td></tr>
+            <tr><td>IMU buffer</td><td>The delayed EKF state runs at the oldest retained IMU sample time, while the output predictor propagates estimates back to current time.</td><td>Fusion is time-aligned, but outputs remain low latency for controllers.</td></tr>
+            <tr><td>Aiding buffers</td><td>Each observation is pushed with its corrected sample time, usually minus a configured sensor delay and half an EKF update period.</td><td>A measurement is not fused immediately. It waits until it is older than the delayed IMU horizon.</td></tr>
+            <tr><td>Readiness check</td><td>Fusion controllers use buffer calls such as <code>pop_first_older_than(imu_delayed.time_us, ...)</code>.</td><td>If a timestamp is too new, fusion waits. If it is too old or arrives irregularly, the source can become intermittent or stale.</td></tr>
+            <tr><td>Timestamp semantics</td><td>EKF2 trusts the uORB sample timestamp semantics provided by the upstream module.</td><td>HITL receive-time timestamps are good enough for functional HITL when latency is low and stable, but they are not identical to hardware-sample timestamps.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Expected differences</h3>
+        <p>For normal Nucleo-H753ZI HITL bring-up, this timestamp difference is acceptable if the MAVLink stream is stable. The current working state proves that the estimator can align tilt, yaw, GPS position, and height and pass commander checks. However, it can still produce behavior that is not bit-for-bit equivalent to a real vehicle:</p>
+        <ul>
+          <li>GPS, baro, mag, or flow innovations can differ because the observation is fused at a slightly different relative time.</li>
+          <li>Startup alignment timing can differ, especially yaw alignment and GPS health checks.</li>
+          <li>High USB/MAVLink jitter can show up as IMU interval jitter because HIL IMU sample time follows receive time.</li>
+          <li>Controller phase and latency can differ if the estimator output predictor is correcting for a different delay profile than real hardware.</li>
+          <li>Precise estimator timing validation should use synchronized simulator sample time rather than receive time.</li>
+        </ul>
+
+        <p>If high-fidelity estimator timing is required, the better design is to translate simulator sample time into PX4 monotonic time using MAVLink time synchronization, then publish <code>timestamp_sample</code> as the simulated measurement time. That would make HIL closer to the real driver model, where sample timestamps represent when the measurement was taken rather than when the packet was received.</p>
+      </section>
+
+      <section id="hitl-flow">
+        <h2>HITL Data Flow</h2>
+        <p>In classical MAVLink HITL, the simulator sends MAVLink sensor messages over CN13 USB. <code>mavlink_receiver</code> decodes those messages and publishes normal PX4 sensor topics. The rest of PX4 sees normal uORB topics, except that device IDs identify simulated or MAVLink devices.</p>
+
+        <div class="mermaid">
+flowchart LR
+    sim["Simulator<br/>jMAVSim / Gazebo / external HITL"]
+    usb["CN13 USB CDC ACM<br/>MAVLink"]
+    rx["mavlink_receiver"]
+    accel["PX4Accelerometer<br/>sensor_accel"]
+    gyro["PX4Gyroscope<br/>sensor_gyro"]
+    mag["PX4Magnetometer<br/>sensor_mag"]
+    baro["sensor_baro"]
+    gps["sensor_gps"]
+    vimu["VehicleIMU<br/>vehicle_imu"]
+    vmag["VehicleMagnetometer<br/>vehicle_magnetometer"]
+    vair["VehicleAirData<br/>vehicle_air_data"]
+    vgps["VehicleGPSPosition<br/>vehicle_gps_position"]
+    ekf2["EKF2<br/>setIMUData, setMagData,<br/>setBaroData, setGpsData"]
+
+    sim -- "HIL_SENSOR<br/>gyro accel mag baro diff pressure" --> usb
+    sim -- "HIL_GPS" --> usb
+    usb --> rx
+    rx --> accel --> vimu
+    rx --> gyro --> vimu
+    rx --> mag --> vmag
+    rx --> baro --> vair
+    rx --> gps --> vgps
+    vimu --> ekf2
+    vmag --> ekf2
+    vair --> ekf2
+    vgps --> ekf2
+        </div>
+
+        <details>
+          <summary>PlantUML equivalent: HITL sensor path</summary>
+          <pre><code class="language-plantuml">@startuml
+title HITL sensor path into EKF2
+participant Simulator
+participant "CN13 USB MAVLink" as USB
+participant mavlink_receiver as RX
+participant "PX4 sensor wrappers" as Wrappers
+participant sensors as Sensors
+participant ekf2 as EKF2
+participant "Ekf core" as Core
+
+Simulator -> USB: HIL_SENSOR
+Simulator -> USB: HIL_GPS
+USB -> RX: MAVLink frames
+RX -> Wrappers: gyro, accel, mag updates
+RX -> Sensors: sensor_baro, sensor_gps
+Wrappers -> Sensors: sensor_accel, sensor_gyro, sensor_mag
+Sensors -> Sensors: calibrate, select, integrate
+Sensors -> EKF2: vehicle_imu
+Sensors -> EKF2: vehicle_magnetometer
+Sensors -> EKF2: vehicle_air_data
+Sensors -> EKF2: vehicle_gps_position
+EKF2 -> Core: setIMUData()
+EKF2 -> Core: setMagData()
+EKF2 -> Core: setBaroData()
+EKF2 -> Core: setGpsData()
+EKF2 -> Core: update()
+@enduml</code></pre>
+        </details>
+
+        <h3>HITL MAVLink signal mapping</h3>
+        <table>
+          <thead>
+            <tr><th>MAVLink message</th><th>Fields used</th><th>First PX4 publication</th><th>Vehicle-level topic</th><th>EKF2 ingestion</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>HIL_SENSOR</code></td><td><code>xgyro</code>, <code>ygyro</code>, <code>zgyro</code> when <code>fields_updated</code> includes gyro.</td><td><code>sensor_gyro</code> via <code>PX4Gyroscope</code>, simulated device ID.</td><td><code>vehicle_imu</code> after integration with accel.</td><td><code>setIMUData()</code> with delta angle.</td></tr>
+            <tr><td><code>HIL_SENSOR</code></td><td><code>xacc</code>, <code>yacc</code>, <code>zacc</code> when <code>fields_updated</code> includes accel.</td><td><code>sensor_accel</code> via <code>PX4Accelerometer</code>, simulated device ID.</td><td><code>vehicle_imu</code> after integration with gyro.</td><td><code>setIMUData()</code> with delta velocity.</td></tr>
+            <tr><td><code>HIL_SENSOR</code></td><td><code>xmag</code>, <code>ymag</code>, <code>zmag</code> when <code>fields_updated</code> includes mag.</td><td><code>sensor_mag</code> via <code>PX4Magnetometer</code>, simulated mag device ID.</td><td><code>vehicle_magnetometer</code>.</td><td><code>setMagData()</code>.</td></tr>
+            <tr><td><code>HIL_SENSOR</code></td><td><code>abs_pressure</code> and <code>temperature</code> when <code>fields_updated</code> includes baro.</td><td><code>sensor_baro</code>, pressure converted from hPa to Pa.</td><td><code>vehicle_air_data</code>, baro altitude and density computed by sensors.</td><td><code>setBaroData()</code> and <code>set_air_density()</code>.</td></tr>
+            <tr><td><code>HIL_SENSOR</code></td><td><code>diff_pressure</code> and temperature when differential pressure is marked updated.</td><td><code>differential_pressure</code>.</td><td><code>airspeed</code> or <code>airspeed_validated</code> if the airspeed pipeline is active.</td><td><code>setAirspeedData()</code> when airspeed fusion is configured and valid.</td></tr>
+            <tr><td><code>HIL_GPS</code></td><td>Lat/lon, altitude, fix type, eph, epv, NED velocity, COG, UTC time, satellites.</td><td><code>sensor_gps</code>, MAVLink simulated GPS device ID.</td><td><code>vehicle_gps_position</code>.</td><td><code>setGpsData()</code>.</td></tr>
+            <tr><td><code>HIL_OPTICAL_FLOW</code>, optional</td><td>Integrated flow, integrated gyro, distance, quality.</td><td><code>sensor_optical_flow</code>.</td><td><code>vehicle_optical_flow</code>, and range fallback if distance is present.</td><td><code>setOpticalFlowData()</code>, optionally <code>setRangeData()</code>.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="note">
+          <p class="note-title">Observed working Nucleo-H753ZI HITL state</p>
+          <p>With <code>SYS_HAS_MAG=1</code>, <code>EKF2_MAG_TYPE=6</code>, and <code>EKF2_MAG_CHECK=0</code>, the board received <code>sensor_mag</code> and <code>vehicle_magnetometer</code>, EKF2 reported <code>cs_yaw_align: True</code> and <code>cs_heading_observable: True</code>, and <code>commander check</code> returned <code>Preflight check: OK</code>.</p>
+        </div>
+      </section>
+
+      <section id="real-flow">
+        <h2>Real Sensor Data Flow</h2>
+        <p>On a real flight controller, the simulator and MAVLink HITL conversion are replaced by hardware drivers. The estimator-facing topics are intentionally the same. Drivers publish raw sensor topics; the sensors module calibrates, selects, integrates, and republishes vehicle-level topics for EKF2.</p>
+
+        <div class="mermaid">
+flowchart LR
+    imuBus["SPI/I2C IMU hardware"]
+    magBus["I2C/SPI/UAVCAN mag"]
+    baroBus["I2C/SPI barometer"]
+    gpsBus["UART/CAN GPS"]
+    rangeBus["I2C/UART/CAN rangefinder"]
+    flowBus["SPI/UART/CAN optical flow"]
+
+    imuDrv["IMU driver<br/>sensor_accel, sensor_gyro,<br/>sensor_accel_fifo, sensor_gyro_fifo"]
+    magDrv["Mag driver<br/>sensor_mag"]
+    baroDrv["Baro driver<br/>sensor_baro"]
+    gpsDrv["GPS driver<br/>sensor_gps"]
+    rangeDrv["Range driver<br/>distance_sensor"]
+    flowDrv["Flow driver<br/>sensor_optical_flow"]
+
+    vimu["VehicleIMU<br/>calibrated integrated deltas"]
+    vmag["VehicleMagnetometer<br/>calibrated selected mag"]
+    vair["VehicleAirData<br/>baro altitude and density"]
+    vgps["VehicleGPSPosition<br/>selected/blended GPS"]
+    vflow["VehicleOpticalFlow"]
+    ekf2["EKF2"]
+
+    imuBus --> imuDrv --> vimu --> ekf2
+    magBus --> magDrv --> vmag --> ekf2
+    baroBus --> baroDrv --> vair --> ekf2
+    gpsBus --> gpsDrv --> vgps --> ekf2
+    rangeBus --> rangeDrv --> ekf2
+    flowBus --> flowDrv --> vflow --> ekf2
+        </div>
+
+        <details>
+          <summary>PlantUML equivalent: real sensor component path</summary>
+          <pre><code class="language-plantuml">@startuml
+title Real sensor path into EKF2
+component "IMU driver" as IMU
+component "Mag driver" as MAG
+component "Baro driver" as BARO
+component "GPS driver" as GPS
+component "sensors module" as Sensors
+component "ekf2 wrapper" as EKF2
+component "ECL Ekf core" as Core
+
+IMU --> Sensors: sensor_accel / sensor_gyro
+MAG --> Sensors: sensor_mag
+BARO --> Sensors: sensor_baro
+GPS --> Sensors: sensor_gps
+Sensors --> EKF2: vehicle_imu
+Sensors --> EKF2: vehicle_magnetometer
+Sensors --> EKF2: vehicle_air_data
+Sensors --> EKF2: vehicle_gps_position
+EKF2 --> Core: setIMUData + aiding samples
+Core --> EKF2: states, flags, innovations
+@enduml</code></pre>
+        </details>
+
+        <h3>Real sensor differences from HITL</h3>
+        <table>
+          <thead>
+            <tr><th>Area</th><th>HITL</th><th>Real drone</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Data origin</td><td>Simulator publishes MAVLink <code>HIL_SENSOR</code> and <code>HIL_GPS</code>.</td><td>Hardware drivers poll or receive data from physical buses.</td></tr>
+            <tr><td>First PX4 topics</td><td><code>mavlink_receiver</code> creates simulated <code>sensor_*</code> topics.</td><td>Device drivers create <code>sensor_*</code> topics directly.</td></tr>
+            <tr><td>Device IDs</td><td>SIMULATION or MAVLINK bus/device IDs, such as simulated IMU, mag, baro, and GPS.</td><td>Actual driver device IDs tied to bus type, bus number, address, and device type.</td></tr>
+            <tr><td>Calibration</td><td>Usually identity or minimal simulated calibration. Learned offsets may still appear in saved params.</td><td>Physical sensor calibration, rotation, scale, thermal behavior, clipping, and device replacement matter.</td></tr>
+            <tr><td>Timing</td><td>HIL sensor timestamps are based on PX4 receive time for most simulated sensor samples.</td><td>Drivers often timestamp close to hardware sample time, and FIFO/integration timing is device-dependent.</td></tr>
+            <tr><td>Failure modes</td><td>Mostly link rate, missing MAVLink fields, simulator startup order, or stale topics.</td><td>Bus failures, sensor noise, vibration, clipping, calibration errors, magnetic interference, antenna quality, and power issues.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="topic-map">
+        <h2>Topic and Signal Map</h2>
+        <p>The table below follows each estimator input from producer to EKF2. Some topics are compiled in for this target but are not normally active in the default quadrotor HITL workflow.</p>
+
+        <table>
+          <thead>
+            <tr><th>EKF2 input topic</th><th>HITL producer</th><th>Real producer</th><th>EKF2 method</th><th>Main controls</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>vehicle_imu</code></td><td><code>HIL_SENSOR</code> gyro/accel through simulated PX4 gyro/accel and <code>VehicleIMU</code>.</td><td>IMU drivers through <code>VehicleIMU</code>.</td><td><code>setIMUData()</code></td><td><code>SENS_IMU_MODE</code>, <code>EKF2_MULTI_IMU</code>, IMU calibration params.</td></tr>
+            <tr><td><code>vehicle_magnetometer</code></td><td><code>HIL_SENSOR</code> mag through simulated magnetometer and <code>VehicleMagnetometer</code>.</td><td>Magnetometer driver through <code>VehicleMagnetometer</code>.</td><td><code>setMagData()</code></td><td><code>SYS_HAS_MAG</code>, <code>EKF2_MAG_TYPE</code>, <code>EKF2_MAG_CHECK</code>, <code>SENS_MAG_MODE</code>.</td></tr>
+            <tr><td><code>vehicle_air_data</code></td><td><code>HIL_SENSOR</code> baro pressure through <code>sensor_baro</code> and <code>VehicleAirData</code>.</td><td>Barometer driver through <code>VehicleAirData</code>.</td><td><code>setBaroData()</code>, <code>set_air_density()</code></td><td><code>SYS_HAS_BARO</code>, <code>EKF2_BARO_CTRL</code>, <code>EKF2_HGT_REF</code>.</td></tr>
+            <tr><td><code>vehicle_gps_position</code></td><td><code>HIL_GPS</code> through <code>sensor_gps</code> and <code>VehicleGPSPosition</code>.</td><td>GPS driver through <code>VehicleGPSPosition</code>.</td><td><code>setGpsData()</code></td><td><code>SYS_HAS_GPS</code>, <code>EKF2_GPS_CTRL</code>, <code>EKF2_REQ_*</code>, GPS delay params.</td></tr>
+            <tr><td><code>airspeed_validated</code> or <code>airspeed</code></td><td>Optional simulated differential pressure path.</td><td>Differential pressure sensor and airspeed validator.</td><td><code>setAirspeedData()</code></td><td><code>EKF2_ARSP_THR</code>, airspeed sensor/calibration params, fixed-wing use cases.</td></tr>
+            <tr><td><code>vehicle_visual_odometry</code></td><td>External vision source, not standard jMAVSim HITL.</td><td>VIO/mocap/companion computer.</td><td><code>setExtVisionData()</code></td><td><code>EKF2_EV_CTRL</code>, EV noise/delay/position params.</td></tr>
+            <tr><td><code>vehicle_optical_flow</code></td><td>Optional <code>HIL_OPTICAL_FLOW</code>.</td><td>Optical flow driver.</td><td><code>setOpticalFlowData()</code></td><td><code>EKF2_OF_CTRL</code>, optical-flow quality and range validity.</td></tr>
+            <tr><td><code>distance_sensor</code></td><td>Optional MAVLink or simulated range source.</td><td>Rangefinder driver.</td><td><code>setRangeData()</code></td><td><code>EKF2_RNG_CTRL</code>, downward-facing orientation, range quality.</td></tr>
+            <tr><td><code>landing_target_pose</code></td><td>Optional companion/HITL target source.</td><td>Landing target estimator.</td><td><code>setAuxVelData()</code></td><td><code>EKF2_AVEL_EN</code>.</td></tr>
+            <tr><td><code>vehicle_status</code>, <code>vehicle_land_detected</code></td><td>Commander and land detector in HITL.</td><td>Commander and land detector in real flight.</td><td><code>setSystemFlagData()</code></td><td>Arming state, vehicle type, landed state, ground effect, constant position mode.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="nucleo-defaults">
+        <h2>Nucleo-H753ZI Defaults</h2>
+        <p>The current working Nucleo-H753ZI HITL estimator defaults are intentionally set in <code>boards/st/nucleo-h753zi/init/rc.board_defaults</code>. They use the HIL magnetometer for yaw initialization, HIL GPS for position/velocity, GPS as height reference, and HIL baro as an additional height source.</p>
+
+        <table>
+          <thead>
+            <tr><th>Parameter</th><th>Default</th><th>Estimator effect</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>SYS_HITL</code></td><td><code>1</code></td><td>Activates classical MAVLink HITL startup behavior.</td></tr>
+            <tr><td><code>SYS_AUTOSTART</code></td><td><code>1001</code></td><td>Loads the generic HIL quadrotor airframe.</td></tr>
+            <tr><td><code>SYS_HAS_MAG</code></td><td><code>1</code></td><td>Starts the vehicle magnetometer path and requires a HIL mag topic.</td></tr>
+            <tr><td><code>SYS_HAS_BARO</code></td><td><code>1</code></td><td>Starts the vehicle air data path and expects HIL barometer data.</td></tr>
+            <tr><td><code>SYS_HAS_GPS</code></td><td><code>1</code></td><td>Starts the vehicle GPS path and expects HIL GPS data.</td></tr>
+            <tr><td><code>EKF2_GPS_CTRL</code></td><td><code>7</code></td><td>Fuses HIL GPS position and velocity.</td></tr>
+            <tr><td><code>EKF2_HGT_REF</code></td><td><code>1</code></td><td>Uses GPS as the height reference.</td></tr>
+            <tr><td><code>EKF2_BARO_CTRL</code></td><td><code>1</code></td><td>Keeps barometer height fusion enabled.</td></tr>
+            <tr><td><code>EKF2_MAG_TYPE</code></td><td><code>6</code></td><td>Uses magnetometer only to initialize heading.</td></tr>
+            <tr><td><code>EKF2_MAG_CHECK</code></td><td><code>0</code></td><td>Disables magnetic field strength/inclination rejection for simulated mag data.</td></tr>
+            <tr><td><code>SENS_IMU_MODE</code></td><td><code>0</code></td><td>Uses the EKF selector path for IMU handling.</td></tr>
+            <tr><td><code>EKF2_MULTI_IMU</code></td><td><code>3</code></td><td>Matches PX4 MAVLink simulator multi-EKF IMU defaults.</td></tr>
+            <tr><td><code>EKF2_REQ_EPH</code>, <code>EKF2_REQ_EPV</code>, <code>EKF2_REQ_HDRIFT</code>, <code>EKF2_REQ_VDRIFT</code></td><td><code>100</code></td><td>Relaxes GPS acceptance checks for simulator startup transients.</td></tr>
+            <tr><td><code>EKF2_DELAY_MAX</code></td><td><code>300</code></td><td>Allows larger sensor delay alignment window for HITL timing.</td></tr>
+          </tbody>
+        </table>
+
+        <p>Saved flash parameters override <code>param set-default</code>. If a board has old values, reset the estimator-related defaults before testing:</p>
+        <pre><code class="language-sh">param reset SYS_HAS_MAG SYS_HAS_BARO SYS_HAS_GPS
+param reset EKF2_GPS_CTRL EKF2_HGT_REF EKF2_BARO_CTRL EKF2_MAG_TYPE EKF2_MAG_CHECK EKF2_EV_CTRL
+param reset SENS_IMU_MODE EKF2_MULTI_IMU
+param reset EKF2_REQ_EPH EKF2_REQ_EPV EKF2_REQ_HDRIFT EKF2_REQ_VDRIFT EKF2_DELAY_MAX
+param save
+reboot</code></pre>
+      </section>
+
+      <section id="health">
+        <h2>Health and Debugging</h2>
+        <p>The most useful EKF2 debug topics are the sensor inputs, estimator flags, and commander preflight result. For the Nucleo HITL case, the key heading checks are <code>vehicle_magnetometer</code>, <code>cs_yaw_align</code>, <code>cs_heading_observable</code>, <code>cs_mag</code>, and <code>commander check</code>.</p>
+
+        <table>
+          <thead>
+            <tr><th>Command</th><th>Expected working signal</th><th>Failure meaning</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>listener sensor_accel 1</code></td><td>SIMULATION device ID, fresh timestamp, acceleration near gravity while still.</td><td>Simulator is not sending accel fields, MAVLink link is not connected, or sensors are not in HITL mode.</td></tr>
+            <tr><td><code>listener sensor_gyro 1</code></td><td>SIMULATION device ID, fresh timestamp, small rates while still.</td><td>Simulator is not sending gyro fields or MAVLink link is broken.</td></tr>
+            <tr><td><code>listener sensor_mag 1</code></td><td>SIMULATION mag device ID and finite gauss values.</td><td>Simulator does not send mag fields or <code>fields_updated</code> lacks mag.</td></tr>
+            <tr><td><code>listener vehicle_magnetometer 1</code></td><td>Fresh calibrated magnetometer publication.</td><td>Raw mag exists but sensor pipeline did not create the vehicle-level mag topic.</td></tr>
+            <tr><td><code>listener vehicle_air_data 1</code></td><td>Fresh simulated baro pressure/altitude and density.</td><td>HIL baro missing or <code>SYS_HAS_BARO</code> disabled.</td></tr>
+            <tr><td><code>listener vehicle_gps_position 1</code></td><td>Fix type 3 or better, valid NED velocity, finite latitude/longitude.</td><td><code>HIL_GPS</code> is missing, stale, or rejected by the GPS pipeline.</td></tr>
+            <tr><td><code>listener estimator_status_flags 1</code></td><td><code>cs_tilt_align: True</code>, <code>cs_yaw_align: True</code>, <code>cs_gnss_pos: True</code>, <code>cs_baro_hgt</code> or <code>cs_gps_hgt</code> true.</td><td>EKF alignment or aiding is incomplete. For heading failures, check mag topic and mag params first.</td></tr>
+            <tr><td><code>commander check</code></td><td><code>Preflight check: OK</code> after HIL data is streaming.</td><td>Commander is seeing estimator or sensor health flags that still block arming.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Common failure patterns</h3>
+        <table>
+          <thead>
+            <tr><th>Symptom</th><th>Likely cause</th><th>Next check</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>Preflight Fail: no heading reference</code></td><td>EKF2 has not aligned yaw. On this board that usually means HIL mag is missing or EKF2 is configured not to use it.</td><td><code>param show SYS_HAS_MAG EKF2_MAG_TYPE EKF2_MAG_CHECK</code>, then <code>listener sensor_mag 1</code> and <code>listener vehicle_magnetometer 1</code>.</td></tr>
+            <tr><td><code>Found 0 compass (required: 1)</code> at boot</td><td>Simulator has not started streaming yet, or <code>SYS_HAS_MAG=1</code> is active before HIL mag arrives.</td><td>Start simulator, then re-check <code>sensor_mag</code> and commander.</td></tr>
+            <tr><td>Accel/gyro/baro missing at boot</td><td>Same startup ordering issue: PX4 is up before HIL messages arrive.</td><td>Confirm <code>mavlink status</code>, then input topics.</td></tr>
+            <tr><td><code>EKF2_MAG_CHECK</code> missing</td><td>Old firmware image or EKF2 mag parameters not compiled into the target.</td><td>Check <code>ver all</code> build time and <code>build/st_nucleo-h753zi_default/parameters.xml</code>.</td></tr>
+            <tr><td>GPS topic exists but global position not valid</td><td>GPS checks, velocity validity, delay, or origin alignment not satisfied.</td><td>Check <code>vehicle_gps_position</code>, <code>estimator_status_flags</code>, and <code>estimator_gps_status</code> if available.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="source-map">
+        <h2>Source Map</h2>
+        <table>
+          <thead>
+            <tr><th>Area</th><th>File or directory</th><th>Relevant details</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>EKF2 wrapper</td><td><code>src/modules/ekf2/EKF2.cpp</code>, <code>src/modules/ekf2/EKF2.hpp</code></td><td><code>Run()</code>, <code>Update*Sample()</code>, <code>Publish*()</code>, uORB subscriptions and publications.</td></tr>
+            <tr><td>ECL core</td><td><code>src/modules/ekf2/EKF/</code></td><td>Estimator state, covariance, prediction, sensor fusion controllers, innovation checks, reset logic.</td></tr>
+            <tr><td>Magnetometer control</td><td><code>src/modules/ekf2/EKF/aid_sources/magnetometer/</code></td><td>Yaw/mag fusion control, heading initialization, magnetic consistency checks.</td></tr>
+            <tr><td>EKF2 parameters</td><td><code>src/modules/ekf2/params_*.yaml</code></td><td>Parameter definitions for GPS, magnetometer, baro, range, optical flow, external vision, multi-EKF, and output predictor behavior.</td></tr>
+            <tr><td>MAVLink HITL conversion</td><td><code>src/modules/mavlink/mavlink_receiver.cpp</code></td><td><code>handle_message_hil_sensor()</code>, <code>handle_message_hil_gps()</code>, and optional HIL optical flow handlers.</td></tr>
+            <tr><td>Sensor orchestration</td><td><code>src/modules/sensors/sensors.cpp</code></td><td>Starts vehicle air data, GPS, magnetometer, optical flow, and VehicleIMU paths according to system params.</td></tr>
+            <tr><td>IMU integration</td><td><code>src/modules/sensors/vehicle_imu/VehicleIMU.cpp</code></td><td>Integrates calibrated gyro/accel samples into <code>vehicle_imu</code>.</td></tr>
+            <tr><td>Mag processing</td><td><code>src/modules/sensors/vehicle_magnetometer/VehicleMagnetometer.cpp</code></td><td>Calibrates, selects, and publishes <code>vehicle_magnetometer</code>.</td></tr>
+            <tr><td>Baro processing</td><td><code>src/modules/sensors/vehicle_air_data/VehicleAirData.cpp</code></td><td>Converts pressure and temperature into baro altitude and air density.</td></tr>
+            <tr><td>GPS processing</td><td><code>src/modules/sensors/vehicle_gps_position/VehicleGPSPosition.cpp</code></td><td>Selects or blends GPS data and publishes <code>vehicle_gps_position</code>.</td></tr>
+            <tr><td>Nucleo board defaults</td><td><code>boards/st/nucleo-h753zi/init/rc.board_defaults</code></td><td>Board-specific HITL estimator, sensor presence, and USB defaults.</td></tr>
+            <tr><td>Startup script</td><td><code>ROMFS/px4fmu_common/init.d/rcS</code></td><td>Starts <code>sensors -h</code>, <code>commander -h</code>, <code>pwm_out_sim -m hil</code>, serial setup, and USB MAVLink.</td></tr>
+            <tr><td>Fusion horizon and buffers</td><td><code>src/modules/ekf2/EKF/estimator_interface.cpp</code></td><td>Maintains the IMU buffer, delayed fusion horizon, observation buffers, and sensor delay handling.</td></tr>
+            <tr><td>GPS timestamp correction</td><td><code>src/modules/sensors/vehicle_gps_position/VehicleGPSPosition.cpp</code></td><td>Applies <code>SENS_GPS0_DELAY</code> or <code>SENS_GPS1_DELAY</code> to <code>timestamp_sample</code> when the driver did not provide a corrected sample timestamp.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    Standalone board documentation page: <code>boards/st/nucleo-h753zi/docs/ekf2_architecture.html</code>.
+  </footer>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

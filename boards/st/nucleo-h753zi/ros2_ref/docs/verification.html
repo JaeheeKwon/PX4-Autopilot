@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nucleo-H753ZI ROS 2 / DDS Verification</title>
+  <style>
+    :root {
+      --bg: #f7f9fb;
+      --panel: #fff;
+      --ink: #18202a;
+      --muted: #566579;
+      --line: #d8e0ea;
+      --blue: #1b6ca8;
+      --green: #2d7a4f;
+      --orange: #a86014;
+      --red: #a64242;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    nav {
+      margin-bottom: 18px;
+      color: var(--muted);
+    }
+    nav a, a {
+      color: var(--blue);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.08;
+    }
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 1.45rem;
+    }
+    p {
+      margin: 0 0 14px;
+    }
+    .lead {
+      max-width: 870px;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+    .diagram, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      overflow-x: auto;
+    }
+    svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      min-width: 800px;
+    }
+    .box {
+      fill: #fff;
+      stroke: #b8c5d4;
+      stroke-width: 1.4;
+    }
+    .ok {
+      fill: #edf7f1;
+      stroke: #84bf9e;
+    }
+    .warn {
+      fill: #fff7ed;
+      stroke: #e5c296;
+    }
+    .link {
+      stroke: #53657a;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrow-verify);
+    }
+    text {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      fill: var(--ink);
+    }
+    .label {
+      font-size: 14px;
+      font-weight: 650;
+    }
+    .small {
+      font-size: 12px;
+      fill: var(--muted);
+    }
+    pre {
+      overflow-x: auto;
+      background: #102133;
+      color: #f4f8fb;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    code {
+      background: #eef3f8;
+      border: 1px solid #dde6ef;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+    pre code {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+    }
+    ul {
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <nav><a href="index.html">ROS 2 / DDS reference</a> / Verification</nav>
+  <h1>Verification and Troubleshooting</h1>
+  <p class="lead">
+    A deterministic bring-up sequence for checking firmware, serial transport,
+    ROS 2 topic discovery, QoS compatibility, and the reference node.
+  </p>
+
+  <h2>Bring-up Flow</h2>
+  <div class="diagram" role="img" aria-label="Verification flow diagram">
+    <svg viewBox="0 0 1060 390" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow-verify" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#53657a"/>
+        </marker>
+      </defs>
+
+      <rect x="40" y="80" width="145" height="84" rx="10" class="box"/>
+      <text x="75" y="110" class="label">PX4 boot</text>
+      <text x="63" y="133" class="small">console reachable</text>
+      <text x="72" y="151" class="small">module exists</text>
+
+      <rect x="230" y="80" width="155" height="84" rx="10" class="box"/>
+      <text x="263" y="110" class="label">DDS client</text>
+      <text x="256" y="133" class="small">/dev/ttyS1</text>
+      <text x="260" y="151" class="small">921600 baud</text>
+
+      <rect x="430" y="80" width="160" height="84" rx="10" class="box"/>
+      <text x="466" y="110" class="label">XRCE Agent</text>
+      <text x="466" y="133" class="small">session created</text>
+      <text x="459" y="151" class="small">writers/readers</text>
+
+      <rect x="635" y="80" width="160" height="84" rx="10" class="box"/>
+      <text x="673" y="110" class="label">ROS topics</text>
+      <text x="661" y="133" class="small">/fmu/out visible</text>
+      <text x="662" y="151" class="small">QoS compatible</text>
+
+      <rect x="840" y="80" width="165" height="84" rx="10" class="ok"/>
+      <text x="878" y="110" class="label">Ref node</text>
+      <text x="866" y="133" class="small">rx_hz updates</text>
+      <text x="859" y="151" class="small">onboard status in</text>
+
+      <path d="M185 122 H230" class="link"/>
+      <path d="M385 122 H430" class="link"/>
+      <path d="M590 122 H635" class="link"/>
+      <path d="M795 122 H840" class="link"/>
+
+      <rect x="160" y="245" width="760" height="58" rx="8" class="warn"/>
+      <text x="183" y="275" class="small">
+        If a step fails, check serial ownership, TX/RX wiring, ROS_DOMAIN_ID, px4_msgs compatibility, and PX4 QoS.
+      </text>
+    </svg>
+  </div>
+
+  <h2>PX4 Checks</h2>
+  <pre><code>picocom -b 57600 /dev/ttyACM0</code></pre>
+  <pre><code>nsh&gt; uxrce_dds_client status
+nsh&gt; uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600</code></pre>
+
+  <p>If the command is unknown, rebuild with <code>CONFIG_MODULES_UXRCE_DDS_CLIENT=y</code>.</p>
+
+  <h2>Agent Checks</h2>
+  <pre><code>boards/st/nucleo-h753zi/ros2_ref/scripts/run_agent_serial.sh /dev/ttyUSB0</code></pre>
+  <p>Expected signs:</p>
+  <ul>
+    <li>Serial initialization succeeds.</li>
+    <li>The agent creates a session for client key <code>0x00000001</code>.</li>
+    <li>PX4 logs show DDS data writers and readers being created.</li>
+  </ul>
+
+  <h2>ROS 2 Topic Checks</h2>
+  <pre><code>source /opt/ros/humble/setup.bash
+source ~/nucleo_px4_ros2_ws/install/setup.bash
+ros2 topic list | grep /fmu</code></pre>
+
+  <p>Examples that should appear:</p>
+  <pre><code>/fmu/out/vehicle_status
+/fmu/out/vehicle_odometry
+/fmu/out/sensor_combined
+/fmu/out/timesync_status</code></pre>
+
+  <h2>QoS-Compatible Echo</h2>
+  <pre><code>ros2 topic echo /fmu/out/vehicle_status \
+  --qos-reliability best_effort \
+  --qos-durability transient_local</code></pre>
+
+  <h2>Reference Node</h2>
+  <pre><code>boards/st/nucleo-h753zi/ros2_ref/scripts/run_reference_node.sh</code></pre>
+  <p>Expected node output includes receive rates:</p>
+  <pre><code>rx_hz vehicle_status=... vehicle_odometry=... sensor_combined=...</code></pre>
+
+  <p>Confirm the ROS 2 to PX4 path from the PX4 shell:</p>
+  <pre><code>nsh&gt; listener onboard_computer_status</code></pre>
+
+  <h2>Common Failures</h2>
+  <ul>
+    <li>No agent session: swap TX/RX, connect grounds, verify 3.3 V logic, and check that no process owns <code>/dev/ttyUSB0</code>.</li>
+    <li>Agent session but no ROS topics: check <code>ROS_DOMAIN_ID</code>, namespace settings, and <code>px4_msgs</code> compatibility.</li>
+    <li><code>ros2 topic echo</code> is silent: use best-effort and transient-local QoS for PX4 output topics.</li>
+    <li>HITL stops after DDS starts: confirm DDS is using <code>/dev/ttyS1</code>, not the CN13 USB MAVLink link.</li>
+  </ul>
+</main>
+</body>
+</html>
+

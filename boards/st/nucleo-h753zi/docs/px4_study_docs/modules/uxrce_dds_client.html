@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Module Architecture: uxrce_dds_client</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #fbfbfb;
+      --soft: #f2f2f2;
+      --soft-2: #e6e6e6;
+      --line: #707070;
+      --text: #222222;
+      --muted: #5f666d;
+      --accent: #d7d7d7;
+      --dark: #3d3d3d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+      padding: 28px min(6vw, 56px);
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px min(5vw, 44px) 64px;
+    }
+    h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: 0; }
+    h2 { margin-top: 36px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+    h3 { margin-top: 24px; }
+    a { color: #2f4f6f; }
+    code {
+      background: var(--soft-2);
+      border: 1px solid #cfd4d8;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.92em;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .meta div {
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid #cfd4d8;
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-width: 0;
+    }
+    .section-note {
+      color: var(--muted);
+      max-width: 940px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      table-layout: auto;
+    }
+    th, td {
+      border: 1px solid #d6dadd;
+      padding: 8px 10px;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    th { background: var(--soft-2); text-align: left; }
+    tr:nth-child(even) td { background: #fafafa; }
+    ul { padding-left: 22px; }
+    .diagram {
+      border: 1px solid #d6dadd;
+      background: #fff;
+      border-radius: 6px;
+      padding: 16px;
+      margin: 14px 0 24px;
+      overflow-x: auto;
+    }
+    .mermaid { min-width: 320px; }
+    .topnav { margin-bottom: 12px; color: var(--muted); }
+    .topnav a { margin-right: 14px; }
+    </style>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+  </script>
+</head>
+<body>
+  <header>
+    <div class="topnav"><a href="../index.html">Index</a><a href="uxrce_dds_client.md">Markdown</a></div>
+    <h1>PX4 Module Architecture: <code>uxrce_dds_client</code></h1>
+    <p>Architecture notes for the UXRCE-DDS Client module.</p>
+    <div class="meta">
+      <div><strong>Source</strong><br><code>src/modules/uxrce_dds_client</code></div>
+      <div><strong>Build target</strong><br><code>modules__uxrce_dds_client</code></div>
+      <div><strong>Runtime main</strong><br><code>uxrce_dds_client</code></div>
+      <div><strong>Build kind</strong><br><code>px4 module</code></div>
+      <div><strong>Mermaid palette</strong><br><code>ash</code> grey tone</div>
+    </div>
+  </header>
+  <main>
+    <h2>Architecture Overview</h2>
+    <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+flowchart LR
+  Module[&quot;uxrce_dds_client&quot;]:::module
+  Build[&quot;px4 module: modules__uxrce_dds_client&quot;]:::data
+  Params[&quot;parameters / module.yaml&quot;]:::data
+  Schedule[&quot;task, work queue, or callback&quot;]:::exec
+  subgraph Inputs
+    In0[&quot;message_format_request&quot;]:::io
+    In1[&quot;vehicle_command_ack&quot;]:::io
+  end
+  subgraph Outputs
+    Out0[&quot;message_format_response&quot;]:::io
+    Out1[&quot;vehicle_command&quot;]:::io
+  end
+  In0 --&gt; Module
+  In1 --&gt; Module
+  Build --&gt; Module
+  Params --&gt; Module
+  Schedule --&gt; Module
+  Module --&gt; Out0
+  Module --&gt; Out1
+classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
+classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
+classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
+classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
+
+    <h2>Build and Entry Points</h2>
+    <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/uxrce_dds_client</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__uxrce_dds_client</td></tr><tr><td>Runtime main</td><td>uxrce_dds_client</td></tr><tr><td>Stack main</td><td>9000</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>3</td></tr><tr><td>Detected headers</td><td>4</td></tr><tr><td>Detected configs</td><td>3</td></tr></tbody></table>
+
+    <h3>CMake Dependencies</h3>
+    <ul><li><code>git_micro_xrce_dds_client</code></li><li><code>libmicroxrceddsclient_project</code></li><li><code>microxrceddsclient</code></li><li><code>libmicroxrceddsclient</code></li><li><code>libmicrocdr</code></li><li><code>timesync</code></li><li><code>topic_bridge_files</code></li><li><code>uorb_ucdr_headers</code></li></ul>
+
+    <h3>Nested Module Targets</h3>
+    <ul><li>No nested module targets detected.</li></ul>
+
+    <h2>Data Flow</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+flowchart LR
+  UORBIn[&quot;uORB subscriptions&quot;]:::io
+  Params[&quot;parameter cache&quot;]:::data
+  Update[&quot;input update / polling&quot;]:::exec
+  Logic[&quot;uxrce_dds_client logic&quot;]:::module
+  UORBOut[&quot;uORB publications&quot;]:::io
+  Status[&quot;status, events, perf counters&quot;]:::data
+  UORBIn --&gt; Update
+  Params --&gt; Logic
+  Update --&gt; Logic
+  Logic --&gt; UORBOut
+  Logic --&gt; Status
+  Sub0[&quot;message_format_request&quot;]:::io --&gt; UORBIn
+  Sub1[&quot;vehicle_command_ack&quot;]:::io --&gt; UORBIn
+  UORBOut --&gt; Pub0[&quot;message_format_response&quot;]:::io
+  UORBOut --&gt; Pub1[&quot;vehicle_command&quot;]:::io
+classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
+classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
+classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
+classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
+    <h3>uORB Topics</h3>
+    <table><thead><tr><th>Topic</th><th>Detected direction</th></tr></thead><tbody><tr><td>message_format_request</td><td>subscribed</td></tr><tr><td>message_format_response</td><td>published</td></tr><tr><td>uORBTopics</td><td>referenced</td></tr><tr><td>vehicle_command</td><td>published</td></tr><tr><td>vehicle_command_ack</td><td>subscribed</td></tr></tbody></table>
+
+    <h2>Execution Flow</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+flowchart TD
+  Start[&quot;px4 uxrce_dds_client start&quot;]:::exec
+  Spawn[&quot;task_spawn / instantiate&quot;]:::exec
+  Init[&quot;init subscriptions, publishers, parameters&quot;]:::module
+  Schedule[&quot;schedule work item or enter task loop&quot;]:::exec
+  Poll[&quot;poll, callback, or interval tick&quot;]:::exec
+  Update[&quot;copy inputs and update parameters&quot;]:::module
+  Compute[&quot;run control, estimation, bridge, or service logic&quot;]:::module
+  Publish[&quot;publish outputs / events / status&quot;]:::io
+  Stop{&quot;stop requested?&quot;}:::data
+  Exit[&quot;cleanup and exit&quot;]:::exec
+  Start --&gt; Spawn --&gt; Init --&gt; Schedule --&gt; Poll --&gt; Update --&gt; Compute --&gt; Publish --&gt; Stop
+  Stop -- no --&gt; Poll
+  Stop -- yes --&gt; Exit
+classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
+classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
+classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
+classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
+    <p class="section-note">The common PX4 module lifecycle is command entry, object construction or task spawn, parameter loading, topic setup, scheduled execution, publication, status reporting, and stop/cleanup. Modules that use <code>ModuleBase</code>, <code>ScheduledWorkItem</code>, polling loops, or bridge callbacks still fit this lifecycle with different scheduling triggers.</p>
+
+    <h2>State Machine</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+stateDiagram-v2
+  [*] --&gt; Created
+  Created --&gt; Initialized: start
+  S0: PARMRK
+  Initialized --&gt; S0: detected state path
+  S0 --&gt; Running: normal execution
+  Running --&gt; Stopped: stop
+  Stopped --&gt; [*]</pre></div>
+    <h3>Detected State-Like Symbols</h3>
+    <ul><li><code>PARMRK</code></li></ul>
+
+    <h2>Sequence Diagram</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+sequenceDiagram
+  participant CLI as px4 shell
+  participant M as uxrce_dds_client
+  participant P as Parameters
+  participant U as uORB
+  participant W as Scheduler
+  CLI-&gt;&gt;M: start uxrce_dds_client
+  M-&gt;&gt;P: load cached parameter values
+  M-&gt;&gt;U: advertise and subscribe topics
+  M-&gt;&gt;W: schedule task or work item
+  loop execution cycle
+    W--&gt;&gt;M: timer, callback, or poll wakeup
+    U--&gt;&gt;M: input topic samples
+    M-&gt;&gt;P: consume parameter updates
+    M-&gt;&gt;M: validate, compute, and update state
+    M--&gt;&gt;U: publish outputs and status
+  end
+  CLI-&gt;&gt;M: status / stop</pre></div>
+
+    <h2>Class Diagram</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
+classDiagram
+  class SrvBase
+  SrvBase : srv_base.h
+  class defines
+  defines : srv_base.h
+  class UxrceddsClient
+  UxrceddsClient : uxrce_dds_client.h
+  class ModuleBase
+  ModuleBase &lt;|-- UxrceddsClient
+  class Transport
+  Transport : uxrce_dds_client.h
+  class ParticipantConfig
+  ParticipantConfig : uxrce_dds_client.h
+  class VehicleCommandSrv
+  VehicleCommandSrv : vehicle_command_srv.h
+  class implement
+  implement : vehicle_command_srv.h</pre></div>
+    <h3>Detected Classes</h3>
+    <table><thead><tr><th>Class</th><th>Base</th><th>File</th></tr></thead><tbody><tr><td>SrvBase</td><td></td><td>srv_base.h</td></tr><tr><td>defines</td><td></td><td>srv_base.h</td></tr><tr><td>UxrceddsClient</td><td>ModuleBase</td><td>uxrce_dds_client.h</td></tr><tr><td>Transport</td><td></td><td>uxrce_dds_client.h</td></tr><tr><td>ParticipantConfig</td><td></td><td>uxrce_dds_client.h</td></tr><tr><td>VehicleCommandSrv</td><td></td><td>vehicle_command_srv.h</td></tr><tr><td>implement</td><td></td><td>vehicle_command_srv.h</td></tr></tbody></table>
+    <h3>Detected Enums</h3>
+    <ul><li><code>ParticipantConfig</code></li><li><code>Transport</code></li></ul>
+
+    <h2>Parameters and Configuration</h2>
+    <ul><li><code>UXRCE_DDS_AG_IP</code></li><li><code>UXRCE_DDS_CFG</code></li><li><code>UXRCE_DDS_DOM_ID</code></li><li><code>UXRCE_DDS_FLCTRL</code></li><li><code>UXRCE_DDS_KEY</code></li><li><code>UXRCE_DDS_NS_IDX</code></li><li><code>UXRCE_DDS_PRT</code></li><li><code>UXRCE_DDS_PTCFG</code></li><li><code>UXRCE_DDS_RX_TO</code></li><li><code>UXRCE_DDS_SYNCC</code></li><li><code>UXRCE_DDS_SYNCT</code></li><li><code>UXRCE_DDS_TX_TO</code></li></ul>
+
+    <h2>Source Map</h2>
+    <table><thead><tr><th>File</th><th>Kind</th></tr></thead><tbody><tr><td>CMakeLists.txt</td><td>build</td></tr><tr><td>dds_topics.yaml</td><td>config</td></tr><tr><td>module.yaml</td><td>config</td></tr><tr><td>srv_base.cpp</td><td>source</td></tr><tr><td>srv_base.h</td><td>header</td></tr><tr><td>utilities.hpp</td><td>header</td></tr><tr><td>uxrce_dds_client.cpp</td><td>source</td></tr><tr><td>uxrce_dds_client.h</td><td>header</td></tr><tr><td>vehicle_command_srv.cpp</td><td>source</td></tr><tr><td>vehicle_command_srv.h</td><td>header</td></tr></tbody></table>
+
+    <h2>Review Notes</h2>
+    <ul>
+      <li>The diagrams are generated from static source inventory and should be used as a study map, not as a formal proof of every runtime branch.</li>
+      <li>Topic direction is inferred from nearby source context such as <code>Subscription</code>, <code>Publication</code>, <code>orb_subscribe</code>, and <code>publish</code> usage.</li>
+      <li>When a module has no explicit state enum, the state diagram shows the standard PX4 module lifecycle.</li>
+    </ul>
+  </main>
+</body>
+</html>

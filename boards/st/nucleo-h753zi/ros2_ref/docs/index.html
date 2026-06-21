@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nucleo-H753ZI ROS 2 / DDS Reference</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f9fb;
+      --panel: #ffffff;
+      --ink: #18202a;
+      --muted: #566579;
+      --line: #d8e0ea;
+      --blue: #1b6ca8;
+      --green: #2d7a4f;
+      --orange: #a86014;
+      --purple: #6949a6;
+      --code: #102133;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.05;
+    }
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 1.45rem;
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 1.08rem;
+    }
+    p {
+      margin: 0 0 14px;
+    }
+    a {
+      color: var(--blue);
+    }
+    .lead {
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+    }
+    .tile, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .tile h3 {
+      margin-top: 0;
+    }
+    .tile p {
+      color: var(--muted);
+      margin-bottom: 0;
+    }
+    .diagram {
+      overflow-x: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    svg {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      min-width: 760px;
+    }
+    .box {
+      fill: #fff;
+      stroke: #b8c5d4;
+      stroke-width: 1.4;
+    }
+    .host {
+      fill: #eaf4fb;
+      stroke: #82b9dc;
+    }
+    .fc {
+      fill: #edf7f1;
+      stroke: #84bf9e;
+    }
+    .link {
+      stroke: #53657a;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrow-index);
+    }
+    .dds {
+      stroke: var(--purple);
+    }
+    .mav {
+      stroke: var(--orange);
+    }
+    text {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      fill: var(--ink);
+    }
+    .label {
+      font-size: 14px;
+      font-weight: 650;
+    }
+    .small {
+      font-size: 12px;
+      fill: var(--muted);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #eef3f8;
+    }
+    tr:last-child td {
+      border-bottom: 0;
+    }
+    code {
+      color: var(--code);
+      background: #eef3f8;
+      border: 1px solid #dde6ef;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Nucleo-H753ZI ROS 2 / DDS Reference</h1>
+    <p class="lead">
+      Board-specific HTML documentation and reference implementation for
+      connecting PX4 on the ST Nucleo-H753ZI to ROS 2 through uXRCE-DDS.
+    </p>
+  </header>
+
+  <section class="grid" aria-label="Document navigation">
+    <article class="tile">
+      <h3><a href="host_setup_ubuntu_22_04.html">Ubuntu 22.04 Host Setup</a></h3>
+      <p>ROS 2 Humble, Micro XRCE-DDS Agent, workspace build, and serial access.</p>
+    </article>
+    <article class="tile">
+      <h3><a href="board_integration.html">Board Integration</a></h3>
+      <p>USART6 wiring, PX4 startup hook, DDS topic map, and namespace behavior.</p>
+    </article>
+    <article class="tile">
+      <h3><a href="verification.html">Verification</a></h3>
+      <p>Bring-up checks, ROS 2 topic tests, QoS checks, and troubleshooting.</p>
+    </article>
+    <article class="tile">
+      <h3><a href="../README.md">Source README</a></h3>
+      <p>Markdown quickstart and reference tree overview.</p>
+    </article>
+  </section>
+
+  <h2>System Topology</h2>
+  <div class="diagram" role="img" aria-label="ROS 2 DDS topology for the Nucleo-H753ZI board">
+    <svg viewBox="0 0 1040 470" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow-index" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#53657a"/>
+        </marker>
+      </defs>
+
+      <rect x="30" y="40" width="420" height="340" rx="12" class="host"/>
+      <text x="50" y="72" class="label">Ubuntu 22.04 host</text>
+      <text x="50" y="94" class="small">ROS 2 Humble, simulator, QGroundControl, agent</text>
+
+      <rect x="90" y="130" width="150" height="70" rx="8" class="box"/>
+      <text x="116" y="158" class="label">ROS 2 nodes</text>
+      <text x="111" y="180" class="small">px4_msgs API</text>
+
+      <rect x="270" y="130" width="140" height="70" rx="8" class="box"/>
+      <text x="288" y="158" class="label">XRCE Agent</text>
+      <text x="291" y="180" class="small">MicroXRCEAgent</text>
+
+      <rect x="90" y="260" width="150" height="70" rx="8" class="box"/>
+      <text x="128" y="288" class="label">HITL / QGC</text>
+      <text x="107" y="310" class="small">MAVLink over USB</text>
+
+      <rect x="590" y="40" width="420" height="340" rx="12" class="fc"/>
+      <text x="610" y="72" class="label">ST Nucleo-H753ZI running PX4</text>
+      <text x="610" y="94" class="small">STM32H753, NuttX, uORB, HITL defaults</text>
+
+      <rect x="630" y="130" width="150" height="70" rx="8" class="box"/>
+      <text x="650" y="158" class="label">uxrce_dds_client</text>
+      <text x="663" y="180" class="small">USART6 / ttyS1</text>
+
+      <rect x="820" y="130" width="130" height="70" rx="8" class="box"/>
+      <text x="863" y="158" class="label">uORB</text>
+      <text x="839" y="180" class="small">PX4 pub/sub bus</text>
+
+      <rect x="630" y="260" width="150" height="70" rx="8" class="box"/>
+      <text x="679" y="288" class="label">mavlink</text>
+      <text x="668" y="310" class="small">CN13 / ttyACM0</text>
+
+      <rect x="820" y="260" width="130" height="70" rx="8" class="box"/>
+      <text x="844" y="288" class="label">EKF / control</text>
+      <text x="840" y="310" class="small">HITL execution</text>
+
+      <path d="M240 165 H270" class="link dds"/>
+      <path d="M410 165 H630" class="link dds"/>
+      <text x="452" y="150" class="small">serial DDS bridge, 921600 baud</text>
+
+      <path d="M780 165 H820" class="link dds"/>
+      <path d="M240 295 H630" class="link mav"/>
+      <text x="370" y="280" class="small">USB MAVLink HITL</text>
+
+      <path d="M780 295 H820" class="link mav"/>
+      <path d="M885 200 V260" class="link"/>
+
+      <rect x="130" y="400" width="780" height="42" rx="8" fill="#fff7ed" stroke="#e5c296"/>
+      <text x="150" y="426" class="small">
+        The reference node verifies both DDS directions but does not arm, switch modes, or publish actuator commands.
+      </text>
+    </svg>
+  </div>
+
+  <h2>Reference Implementation</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Path</th>
+        <th>Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>PX4 startup hook</td>
+        <td><code>../config/rc.board_extras</code></td>
+        <td>Starts <code>uxrce_dds_client</code> on <code>/dev/ttyS1</code>.</td>
+      </tr>
+      <tr>
+        <td>ROS 2 package</td>
+        <td><code>../ros2_ws/src/nucleo_px4_ros2_ref</code></td>
+        <td>Contains the reference bridge health monitor node.</td>
+      </tr>
+      <tr>
+        <td>Agent helper</td>
+        <td><code>../scripts/run_agent_serial.sh</code></td>
+        <td>Runs <code>MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600</code>.</td>
+      </tr>
+      <tr>
+        <td>Workspace helper</td>
+        <td><code>../scripts/build_ros2_workspace.sh</code></td>
+        <td>Creates and builds a host ROS 2 workspace with <code>px4_msgs</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>
+
