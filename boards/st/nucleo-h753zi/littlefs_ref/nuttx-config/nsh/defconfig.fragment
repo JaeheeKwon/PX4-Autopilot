@@ -1,0 +1,9 @@
+# Merge into boards/st/nucleo-h753zi/nuttx-config/nsh/defconfig near CONFIG_FS_LITTLEFS.
+# These settings make the tiny LittleFS volume parameter-focused and avoid
+# metadata relocation that needs additional spare erase blocks.
+
+CONFIG_FS_LITTLEFS=y
+CONFIG_FS_LITTLEFS_PROGRAM_SIZE_FACTOR=1
+CONFIG_FS_LITTLEFS_READ_SIZE_FACTOR=1
+CONFIG_FS_LITTLEFS_CACHE_SIZE_FACTOR=1
+CONFIG_FS_LITTLEFS_BLOCK_CYCLE=-1
