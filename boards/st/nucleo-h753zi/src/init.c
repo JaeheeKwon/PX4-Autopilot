@@ -2,7 +2,7 @@
  * boards/st/nucleo-h753zi/src/init.c
  *
  * PX4 board init for ST Nucleo-H753ZI.
- * Minimal: LEDs, USB, DMA pool, flash-based params.
+ * Minimal: LEDs, USB, DMA pool, LittleFS-backed params.
  ****************************************************************************/
 
 #include <arch/board/board.h>
@@ -15,12 +15,14 @@
 #include <mpu.h>
 #include <nuttx/board.h>
 #include <nuttx/config.h>
+#include <nuttx/fs/fs.h>
 #include <nuttx/mtd/mtd.h>
 #include <px4_arch/io_timer.h>
 #include <px4_platform/board_dma_alloc.h>
 #include <px4_platform/gpio.h>
 #include <px4_platform_common/init.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stm32_uart.h>
 #include <string.h>
@@ -28,19 +30,113 @@
 #include <sys/stat.h>
 #include <syslog.h>
 #include <systemlib/px4_macros.h>
+#include <unistd.h>
 
 #include "arm_internal.h"
 #include "board_config.h"
-
-#if defined(FLASH_BASED_PARAMS)
-#include <parameters/flashparams/flashfs.h>
-#endif
 
 __BEGIN_DECLS
 extern void led_init(void);
 extern void led_on(int led);
 extern void led_off(int led);
 __END_DECLS
+
+#define PARAM_LITTLEFS_DEVICE       "/dev/mtd_params"
+#define PARAM_LITTLEFS_MOUNTPOINT   "/fs/flash"
+#define PARAM_LITTLEFS_ERASE_BLOCKS 4
+#define PARAM_LITTLEFS_TEST_FILE    PARAM_LITTLEFS_MOUNTPOINT "/.mount_test"
+
+static int mount_parameter_littlefs(void)
+{
+	struct mtd_dev_s *progmem = progmem_initialize();
+
+	if (progmem == NULL) {
+		syslog(LOG_ERR, "[boot] progmem_initialize failed\n");
+		return -ENODEV;
+	}
+
+	struct mtd_geometry_s geo;
+	memset(&geo, 0, sizeof(geo));
+
+	int ret = progmem->ioctl(progmem, MTDIOC_GEOMETRY,
+				 (unsigned long)((uintptr_t)&geo));
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "[boot] progmem geometry failed: %d\n", ret);
+		return ret;
+	}
+
+	if (geo.blocksize == 0 || geo.erasesize == 0 ||
+	    geo.neraseblocks < PARAM_LITTLEFS_ERASE_BLOCKS ||
+	    (geo.erasesize % geo.blocksize) != 0) {
+		syslog(LOG_ERR,
+		       "[boot] invalid progmem geometry: block=%lu erase=%lu n=%lu\n",
+		       (unsigned long)geo.blocksize,
+		       (unsigned long)geo.erasesize,
+		       (unsigned long)geo.neraseblocks);
+		return -EINVAL;
+	}
+
+	const off_t blocks_per_erase = geo.erasesize / geo.blocksize;
+	const off_t first_block = (geo.neraseblocks - PARAM_LITTLEFS_ERASE_BLOCKS) *
+				  blocks_per_erase;
+	const off_t block_count = PARAM_LITTLEFS_ERASE_BLOCKS * blocks_per_erase;
+
+	struct mtd_dev_s *params_mtd = mtd_partition(progmem, first_block,
+				    block_count);
+
+	if (params_mtd == NULL) {
+		syslog(LOG_ERR,
+		       "[boot] failed to create param MTD partition at erase block %lu\n",
+		       (unsigned long)(geo.neraseblocks - PARAM_LITTLEFS_ERASE_BLOCKS));
+		return -ENODEV;
+	}
+
+	ret = register_mtddriver(PARAM_LITTLEFS_DEVICE, params_mtd, 0755, NULL);
+
+	if (ret < 0 && ret != -EEXIST) {
+		syslog(LOG_ERR, "[boot] register %s failed: %d\n",
+		       PARAM_LITTLEFS_DEVICE, ret);
+		return ret;
+	}
+
+	ret = mkdir("/fs", 0777);
+
+	if (ret < 0 && errno != EEXIST) {
+		syslog(LOG_ERR, "[boot] mkdir /fs failed: %d\n", errno);
+		return -errno;
+	}
+
+	ret = mkdir(PARAM_LITTLEFS_MOUNTPOINT, 0777);
+
+	if (ret < 0 && errno != EEXIST) {
+		syslog(LOG_ERR, "[boot] mkdir %s failed: %d\n",
+		       PARAM_LITTLEFS_MOUNTPOINT, errno);
+		return -errno;
+	}
+
+	ret = nx_mount(PARAM_LITTLEFS_DEVICE, PARAM_LITTLEFS_MOUNTPOINT,
+		       "littlefs", 0, "autoformat");
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "[boot] mount LittleFS params failed: %d\n", ret);
+		return ret;
+	}
+
+	int fd = open(PARAM_LITTLEFS_TEST_FILE, O_CREAT | O_WRONLY | O_TRUNC, 0600);
+
+	if (fd < 0) {
+		ret = -errno;
+		syslog(LOG_ERR, "[boot] LittleFS mount is not writable: %d\n", errno);
+		return ret;
+	}
+
+	close(fd);
+	unlink(PARAM_LITTLEFS_TEST_FILE);
+	syslog(LOG_INFO, "[boot] LittleFS params mounted at %s\n",
+	       PARAM_LITTLEFS_MOUNTPOINT);
+	return OK;
+}
 
 /* LD2 (Blue, PE1) heartbeat: 500ms toggle to indicate the application is
  * running. */
@@ -80,7 +176,7 @@ __EXPORT int board_app_initialize(uintptr_t arg) {
 	led_off(LED_GREEN);
 	led_off(LED_BLUE);
 
-	/* Start LD2 (Blue, PE1) 500ms heartbeat — indicates application is
+	/* Start LD2 (Blue, PE1) 500ms heartbeat - indicates application is
 	 * running. */
 	hrt_call_after(&_led2_call, 500000, led2_heartbeat, NULL);
 
@@ -88,22 +184,9 @@ __EXPORT int board_app_initialize(uintptr_t arg) {
 		led_on(LED_RED);
 	}
 
-#if defined(FLASH_BASED_PARAMS)
-	/* Parameters in the last 128 KB flash sector: sector 15. */
-	static sector_descriptor_t params_sector_map[] = {
-		{15, 128 * 1024, 0x081E0000},
-		{0, 0, 0},
-	};
-	// paramfs uses raw flash for storage, so it is not visible via ls.
-	int result = parameter_flashfs_init(params_sector_map, NULL, 0);
-
-	if (result != OK) {
-		syslog(LOG_ERR, "[boot] FAILED to init params in FLASH %d\n",
-		       result);
+	if (mount_parameter_littlefs() != OK) {
 		led_on(LED_RED);
 	}
-
-#endif
 
 	px4_platform_configure();
 

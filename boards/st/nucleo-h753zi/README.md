@@ -404,16 +404,21 @@ HCLK = SYSCLK / 2 = 200 MHz
 PCLK1/2/3/4 = HCLK / 2 = 100 MHz
 ```
 
-### Flash parameter storage (`src/board_config.h`)
+### LittleFS parameter storage (`src/init.c`)
 
-No external FRAM/EEPROM. Parameters are stored in the last 128 KB sector of internal flash Bank 2:
+No external FRAM/EEPROM. Parameters are stored as a BSON file on a LittleFS
+volume mounted at `/fs/flash`. The parameter file selected by `rcS` is
+`/fs/flash/params`.
 
-| Sector | Address | Size |
-|---|---|---|
-| 15 | `0x081E0000` | 128 KB |
+The last four internal flash sectors are reserved for the parameter filesystem:
 
-For the planned migration from raw flashfs parameters to LittleFS-backed file
-parameters, see [Nucleo-H753ZI LittleFS Parameter Storage Migration](littlefs_ref/littlefs_parameter_migration.html).
+| Region | Sectors | Address range | Size |
+|---|---:|---|---:|
+| PX4 app | 1-11 | `0x08020000` - `0x0817ffff` | 1408 KiB |
+| LittleFS params | 12-15 | `0x08180000` - `0x081fffff` | 512 KiB |
+
+For integration details and validation commands, see
+[Nucleo-H753ZI LittleFS Parameter Storage Migration](littlefs_ref/littlefs_parameter_migration.html).
 
 ### Bootloader compatibility (`src/hw_config.h`)
 
