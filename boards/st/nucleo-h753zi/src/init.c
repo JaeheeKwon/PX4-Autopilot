@@ -25,9 +25,9 @@
 #include <stm32_uart.h>
 #include <string.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <syslog.h>
 #include <systemlib/px4_macros.h>
-#include <sys/stat.h>
 
 #include "arm_internal.h"
 #include "board_config.h"
@@ -67,66 +67,7 @@ __EXPORT void stm32_boardinitialize(void) {
 
 	stm32_usbinitialize();
 }
-#if 0
-static int stm32h7_paramfs_init(void) {
-	int ret;
 
-	struct mtd_dev_s *mtd = progmem_initialize();
-	if (!mtd) {
-		syslog(LOG_ERR, "flash init failed\n");
-		return -ENODEV;
-	}
-
-	//
-	// STM32H753:
-	// 128KB sector
-	//
-	const off_t startblock = 15;
-	const off_t nblocks = 1;
-
-	struct mtd_dev_s* part = mtd_partition(mtd, startblock, nblocks);
-
-	if (!part) {
-		syslog(LOG_ERR, "partition failed\n");
-		return -ENODEV;
-	}
-
-	ret = ftl_initialize(0, part);
-
-	if (ret < 0) {
-		syslog(LOG_ERR, "ftl failed %d\n", ret);
-		return ret;
-	}
-
-	mkdir("/fs", 0777);
-	mkdir("/fs/mtd", 0777);
-
-	ret = mount("/dev/mtdblock0", "/fs/mtd", "littlefs", 0, NULL);
-
-	if (ret < 0) {
-		syslog(LOG_INFO, "format littlefs\n");
-
-		ret = mkfs("/dev/mtdblock0", "littlefs", 0, NULL);
-
-		if (ret < 0) {
-			syslog(LOG_ERR, "mkfs failed %d\n", ret);
-			return ret;
-		}
-
-		ret =
-		    mount("/dev/mtdblock0", "/fs/mtd", "littlefs", 0, NULL);
-
-		if (ret < 0) {
-			syslog(LOG_ERR, "mount failed %d\n", ret);
-			return ret;
-		}
-	}
-
-	syslog(LOG_INFO, "param fs mounted\n");
-
-	return OK;
-}
-#endif
 __EXPORT int board_app_initialize(uintptr_t arg) {
 	px4_platform_init();
 
@@ -154,7 +95,9 @@ __EXPORT int board_app_initialize(uintptr_t arg) {
 	    {15, 128 * 1024, 0x081E0000},
 	    {0, 0, 0},
 	};
-
+	// paramfs is not a file system but use the flash memory for parameter
+	// storage thus it's not visiable via filesystem api. no not shown by
+	// ls command.
 	int result = parameter_flashfs_init(params_sector_map, NULL, 0);
 
 	if (result != OK) {
@@ -165,15 +108,7 @@ __EXPORT int board_app_initialize(uintptr_t arg) {
 
 #endif
 
-	// int ret = stm32h7_paramfs_init();
-	//
-	// if (ret < 0) {
-	// 	syslog(LOG_ERR, "param fs init failed %d\n", ret);
-	// 	led_on(LED_RED);
-	// }
-
 	px4_platform_configure();
 
 	return OK;
 }
-
