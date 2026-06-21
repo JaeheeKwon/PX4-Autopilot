@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nucleo-H753ZI HITL Configuration and Parameters</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+.header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.header-inner {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1.5rem;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+h1 { max-width: 920px; margin: 0; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.08; letter-spacing: 0; }
+.lede { max-width: 920px; margin: 1rem 0 0; color: var(--muted); font-size: 1.04rem; }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] { border-color: var(--accent); background: #dbece7; color: var(--accent-dark); }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 { margin: 0 0 0.75rem; font-size: 0.88rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+.toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+h2 { margin-top: 2rem; padding-top: 0.3rem; border-top: 1px solid var(--line); font-size: 1.65rem; line-height: 1.2; letter-spacing: 0; }
+h2:first-child { border-top: 0; }
+h3 { margin-top: 1.4rem; font-size: 1.15rem; line-height: 1.25; letter-spacing: 0; }
+h4 { margin-top: 1.1rem; font-size: 1rem; letter-spacing: 0; }
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { padding: 0.58rem 0.7rem; border: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-alt); text-align: left; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface-alt);
+  color: #344044;
+}
+.admonition {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+}
+.admonition-title { margin: 0 0 0.35rem; font-weight: 700; color: var(--accent-dark); }
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  overflow-x: auto;
+}
+.footer {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+}
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>Nucleo-H753ZI HITL Configuration and Parameters</h1>
+      <p class="lede">This page records the Hardware-In-the-Loop configuration used by the ST Nucleo-H753ZI PX4 board support. The board has no real flight sensors or SD card, so the default configuration is a classical MAVLink HITL setup...</p>
+    </div>
+  </header>
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="../../index.html">Middleware</a><a href="../../flight_controller_software_architecture.html">PX4 Flight Controller Software Architecture</a><a href="../../uorb_architecture.html">uORB Middleware Architecture Deep Dive</a><a href="../README.html">ST Nucleo-H753ZI PX4 Board Support</a><a href="hitl_configuration.html" aria-current="page">Nucleo-H753ZI HITL Configuration and Parameters</a><a href="hils_ros2_setup.html">HILS, ROS2, and uORB Communication Setup</a>
+  </nav>
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <div class="toc">
+<ul>
+<li><a href="#configuration-summary">Configuration Summary</a></li>
+<li><a href="#build-time-board-options">Build-Time Board Options</a></li>
+<li><a href="#flash-parameter-storage">Flash Parameter Storage</a></li>
+<li><a href="#board-default-parameters">Board Default Parameters</a><ul>
+<li><a href="#hitl-mode-and-airframe">HITL Mode and Airframe</a></li>
+<li><a href="#sensor-presence">Sensor Presence</a></li>
+<li><a href="#ekf2-aiding">EKF2 Aiding</a></li>
+<li><a href="#gps-acceptance-relaxation">GPS Acceptance Relaxation</a></li>
+<li><a href="#arming-and-io">Arming and I/O</a></li>
+<li><a href="#usb-mavlink">USB MAVLink</a></li>
+</ul>
+</li>
+<li><a href="#parameters-that-should-stay-at-px4-defaults">Parameters That Should Stay at PX4 Defaults</a></li>
+<li><a href="#applying-defaults-on-a-board-with-saved-flash-parameters">Applying Defaults on a Board With Saved Flash Parameters</a></li>
+<li><a href="#jmavsim-hitl-command">jMAVSim HITL Command</a></li>
+<li><a href="#arming-workflow">Arming Workflow</a></li>
+<li><a href="#runtime-checks">Runtime Checks</a></li>
+<li><a href="#qgroundcontrol-notes">QGroundControl Notes</a></li>
+</ul>
+</div>
+
+    </aside>
+    <main>
+      <h1 id="nucleo-h753zi-hitl-configuration-and-parameters">Nucleo-H753ZI HITL Configuration and Parameters<a class="headerlink" href="#nucleo-h753zi-hitl-configuration-and-parameters" title="Permanent link">&para;</a></h1>
+<p>This page records the Hardware-In-the-Loop configuration used by the ST Nucleo-H753ZI PX4 board support. The board has no real flight sensors or SD card, so the default configuration is a classical MAVLink HITL setup with parameters stored in internal flash.</p>
+<h2 id="configuration-summary">Configuration Summary<a class="headerlink" href="#configuration-summary" title="Permanent link">&para;</a></h2>
+<div class="mermaid">
+flowchart LR
+    sim["jMAVSim / external simulator"]
+    qgc["QGroundControl"]
+    usb["CN13 User USB<br/>CDC ACM MAVLink"]
+    mavlink["mavlink_receiver"]
+    uorb[("uORB")]
+    ekf2["ekf2"]
+    commander["commander"]
+    controllers["mc_pos_control<br/>mc_att_control<br/>mc_rate_control"]
+    pwm["pwm_out_sim"]
+
+    sim -- "HIL_SENSOR<br/>HIL_GPS" --> usb
+    qgc -- "commands<br/>parameters<br/>console" --> usb
+    usb --> mavlink
+    mavlink --> uorb
+    uorb --> ekf2
+    ekf2 --> uorb
+    uorb --> commander
+    uorb --> controllers
+    controllers --> uorb
+    uorb --> pwm
+    pwm -- "HIL_ACTUATOR_CONTROLS" --> usb
+    usb --> sim
+</div>
+<p>The active configuration is:</p>
+<ul>
+<li><code>SYS_HITL=1</code> for classical MAVLink HITL.</li>
+<li><code>SYS_AUTOSTART=1001</code> for the generic quadrotor airframe.</li>
+<li>HIL sensor input arrives through MAVLink on CN13 User USB.</li>
+<li><code>pwm_out_sim</code> returns actuator commands to the simulator as <code>HIL_ACTUATOR_CONTROLS</code>.</li>
+<li>No SD card is required.</li>
+<li>PX4 parameters are saved in the last internal flash sector.</li>
+<li>Board defaults use <code>param set-default</code>, so saved flash parameters override these defaults until reset.</li>
+</ul>
+<h2 id="build-time-board-options">Build-Time Board Options<a class="headerlink" href="#build-time-board-options" title="Permanent link">&para;</a></h2>
+<p>The relevant build-time options are in <code>boards/st/nucleo-h753zi/default.px4board</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th align="right">Value</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CONFIG_BOARD_NO_SDCARD</code></td>
+<td align="right"><code>y</code></td>
+<td>Board does not depend on a microSD card.</td>
+</tr>
+<tr>
+<td><code>CONFIG_DRIVERS_CDCACM_AUTOSTART</code></td>
+<td align="right"><code>y</code></td>
+<td>Starts USB CDC ACM automatically on CN13.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_MAVLINK</code></td>
+<td align="right"><code>y</code></td>
+<td>Provides MAVLink for QGC and HITL messages.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_SENSORS</code></td>
+<td align="right"><code>y</code></td>
+<td>Runs the PX4 sensor pipeline in HIL mode.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_EKF2</code></td>
+<td align="right"><code>y</code></td>
+<td>Estimates attitude and position from HIL sensor data.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_COMMANDER</code></td>
+<td align="right"><code>y</code></td>
+<td>Handles arming, modes, health checks, and failsafes.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_NAVIGATOR</code></td>
+<td align="right"><code>y</code></td>
+<td>Provides Hold, Takeoff, Mission, RTL, and related modes.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_FLIGHT_MODE_MANAGER</code></td>
+<td align="right"><code>y</code></td>
+<td>Generates multicopter mode setpoints.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_MC_POS_CONTROL</code></td>
+<td align="right"><code>y</code></td>
+<td>Multicopter position controller.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_MC_ATT_CONTROL</code></td>
+<td align="right"><code>y</code></td>
+<td>Multicopter attitude controller.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_MC_RATE_CONTROL</code></td>
+<td align="right"><code>y</code></td>
+<td>Multicopter rate controller.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_CONTROL_ALLOCATOR</code></td>
+<td align="right"><code>y</code></td>
+<td>Maps torque/thrust to actuator topics.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_SIMULATION_PWM_OUT_SIM</code></td>
+<td align="right"><code>y</code></td>
+<td>Sends simulated actuator output back to the simulator.</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES_SIMULATION_BATTERY_SIMULATOR</code></td>
+<td align="right"><code>y</code></td>
+<td>Provides simulated battery status.</td>
+</tr>
+<tr>
+<td><code>CONFIG_SYSTEMCMDS_PARAM</code></td>
+<td align="right"><code>y</code></td>
+<td>Enables parameter inspection and updates from NSH.</td>
+</tr>
+<tr>
+<td><code>CONFIG_SYSTEMCMDS_TOPIC_LISTENER</code></td>
+<td align="right"><code>y</code></td>
+<td>Enables <code>listener</code> for uORB topic debugging.</td>
+</tr>
+<tr>
+<td><code>CONFIG_SYSTEMCMDS_UORB</code></td>
+<td align="right"><code>y</code></td>
+<td>Enables <code>uorb status</code> and <code>uorb top</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="flash-parameter-storage">Flash Parameter Storage<a class="headerlink" href="#flash-parameter-storage" title="Permanent link">&para;</a></h2>
+<p>The board has no SD card, FRAM, or EEPROM. Parameters are stored in internal flash.</p>
+<table>
+<thead>
+<tr>
+<th align="right">Sector</th>
+<th align="right">Address</th>
+<th align="right">Size</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="right">15</td>
+<td align="right"><code>0x081E0000</code></td>
+<td align="right">128 KiB</td>
+<td>PX4 parameter storage</td>
+</tr>
+</tbody>
+</table>
+<p>The application image is constrained so it does not overlap this sector.</p>
+<h2 id="board-default-parameters">Board Default Parameters<a class="headerlink" href="#board-default-parameters" title="Permanent link">&para;</a></h2>
+<p>These defaults are applied by <code>boards/st/nucleo-h753zi/init/rc.board_defaults</code>.</p>
+<h3 id="hitl-mode-and-airframe">HITL Mode and Airframe<a class="headerlink" href="#hitl-mode-and-airframe" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th align="right">Default</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SYS_AUTOSTART</code></td>
+<td align="right"><code>1001</code></td>
+<td>Generic quadrotor airframe for jMAVSim/Gazebo HITL.</td>
+</tr>
+<tr>
+<td><code>SYS_HITL</code></td>
+<td align="right"><code>1</code></td>
+<td>Classical MAVLink HITL mode.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sensor-presence">Sensor Presence<a class="headerlink" href="#sensor-presence" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th align="right">Default</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SYS_HAS_MAG</code></td>
+<td align="right"><code>0</code></td>
+<td>No physical magnetometer is installed or required for arming.</td>
+</tr>
+<tr>
+<td><code>SYS_HAS_BARO</code></td>
+<td align="right"><code>1</code></td>
+<td>HIL barometer data is expected from MAVLink.</td>
+</tr>
+<tr>
+<td><code>SYS_HAS_GPS</code></td>
+<td align="right"><code>1</code></td>
+<td>HIL GPS data is expected from MAVLink.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ekf2-aiding">EKF2 Aiding<a class="headerlink" href="#ekf2-aiding" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th align="right">Default</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EKF2_GPS_CTRL</code></td>
+<td align="right"><code>7</code></td>
+<td>Fuse GPS position and velocity from HIL GPS.</td>
+</tr>
+<tr>
+<td><code>EKF2_HGT_REF</code></td>
+<td align="right"><code>1</code></td>
+<td>Use GPS as the height reference.</td>
+</tr>
+<tr>
+<td><code>EKF2_BARO_CTRL</code></td>
+<td align="right"><code>1</code></td>
+<td>Keep HIL barometer fusion enabled.</td>
+</tr>
+<tr>
+<td><code>EKF2_MAG_TYPE</code></td>
+<td align="right"><code>5</code></td>
+<td>Do not require magnetometer fusion.</td>
+</tr>
+<tr>
+<td><code>EKF2_EV_CTRL</code></td>
+<td align="right"><code>0</code></td>
+<td>Disable external-vision aiding by default.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gps-acceptance-relaxation">GPS Acceptance Relaxation<a class="headerlink" href="#gps-acceptance-relaxation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th align="right">Default</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EKF2_REQ_EPH</code></td>
+<td align="right"><code>100.0</code></td>
+<td>Avoid rejecting simulator GPS during startup transients.</td>
+</tr>
+<tr>
+<td><code>EKF2_REQ_EPV</code></td>
+<td align="right"><code>100.0</code></td>
+<td>Avoid rejecting simulator GPS during startup transients.</td>
+</tr>
+<tr>
+<td><code>EKF2_REQ_HDRIFT</code></td>
+<td align="right"><code>100.0</code></td>
+<td>Relax horizontal drift acceptance for simulator startup.</td>
+</tr>
+<tr>
+<td><code>EKF2_REQ_VDRIFT</code></td>
+<td align="right"><code>100.0</code></td>
+<td>Relax vertical drift acceptance for simulator startup.</td>
+</tr>
+<tr>
+<td><code>EKF2_DELAY_MAX</code></td>
+<td align="right"><code>300.0</code></td>
+<td>Allow larger sensor delay alignment window for HITL timing.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="arming-and-io">Arming and I/O<a class="headerlink" href="#arming-and-io" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th align="right">Default</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>COM_ARM_WO_GPS</code></td>
+<td align="right"><code>1</code></td>
+<td>Permit arming with a warning if GPS readiness is still settling.</td>
+</tr>
+<tr>
+<td><code>COM_ARM_MAG_STR</code></td>
+<td align="right"><code>0</code></td>
+<td>Disable magnetic field strength arming rejection.</td>
+</tr>
+<tr>
+<td><code>CBRK_SUPPLY_CHK</code></td>
+<td align="right"><code>894281</code></td>
+<td>Disable power-supply checks; no real power module exists.</td>
+</tr>
+<tr>
+<td><code>CBRK_IO_SAFETY</code></td>
+<td align="right"><code>220127</code></td>
+<td>Disable IO safety requirement for simulated outputs.</td>
+</tr>
+<tr>
+<td><code>COM_RC_IN_MODE</code></td>
+<td align="right"><code>4</code></td>
+<td>Ignore manual control sources; this HITL setup is driven by QGC/autonomous modes.</td>
+</tr>
+<tr>
+<td><code>COM_DISARM_PRFLT</code></td>
+<td align="right"><code>-1</code></td>
+<td>Disable pre-takeoff auto-disarm while waiting for simulator commands.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="usb-mavlink">USB MAVLink<a class="headerlink" href="#usb-mavlink" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th align="right">Default</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SYS_USB_AUTO</code></td>
+<td align="right"><code>2</code></td>
+<td>Automatically start MAVLink on USB.</td>
+</tr>
+<tr>
+<td><code>USB_MAV_MODE</code></td>
+<td align="right"><code>2</code></td>
+<td>Use USB MAVLink mode suitable for GCS/HITL traffic.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="parameters-that-should-stay-at-px4-defaults">Parameters That Should Stay at PX4 Defaults<a class="headerlink" href="#parameters-that-should-stay-at-px4-defaults" title="Permanent link">&para;</a></h2>
+<p>These are not forced by <code>rc.board_defaults</code>, but they matter for this no-sensor HITL workflow.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th align="right">Expected value</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NAV_DLL_ACT</code></td>
+<td align="right"><code>0</code></td>
+<td>Do not deny arming because QGC is not connected yet.</td>
+</tr>
+<tr>
+<td><code>COM_ARM_ODID</code></td>
+<td align="right"><code>0</code></td>
+<td>Do not require Open Drone ID hardware.</td>
+</tr>
+<tr>
+<td><code>BAT1_SOURCE</code></td>
+<td align="right"><code>0</code></td>
+<td>Battery source parameter exists; battery checks are bypassed by <code>CBRK_SUPPLY_CHK</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>If any of these were changed during testing, restore them:</p>
+<pre><code class="language-sh">param set NAV_DLL_ACT 0
+param set COM_ARM_ODID 0
+param set BAT1_SOURCE 0
+param save
+</code></pre>
+<h2 id="applying-defaults-on-a-board-with-saved-flash-parameters">Applying Defaults on a Board With Saved Flash Parameters<a class="headerlink" href="#applying-defaults-on-a-board-with-saved-flash-parameters" title="Permanent link">&para;</a></h2>
+<p><code>rc.board_defaults</code> uses <code>param set-default</code>, not <code>param set</code>. This is intentional: user-saved parameters in flash are preserved across reboot.</p>
+<p>If the board has old saved values and you want the board defaults to take effect again, reset only the affected parameters:</p>
+<pre><code class="language-sh">param reset SYS_AUTOSTART SYS_HITL SYS_HAS_MAG SYS_HAS_BARO SYS_HAS_GPS
+param reset EKF2_GPS_CTRL EKF2_HGT_REF EKF2_BARO_CTRL EKF2_MAG_TYPE EKF2_EV_CTRL
+param reset EKF2_REQ_EPH EKF2_REQ_EPV EKF2_REQ_HDRIFT EKF2_REQ_VDRIFT EKF2_DELAY_MAX
+param reset COM_ARM_WO_GPS COM_ARM_MAG_STR CBRK_SUPPLY_CHK CBRK_IO_SAFETY COM_RC_IN_MODE COM_DISARM_PRFLT
+param reset SYS_USB_AUTO USB_MAV_MODE
+param save
+reboot
+</code></pre>
+<p>Use <code>param reset_all</code> only if you intentionally want to wipe all saved parameters.</p>
+<h2 id="jmavsim-hitl-command">jMAVSim HITL Command<a class="headerlink" href="#jmavsim-hitl-command" title="Permanent link">&para;</a></h2>
+<p>Connect CN13 User USB to the simulator PC. Do not use CN1 ST-LINK for HITL traffic.</p>
+<p>From the PX4 repository root:</p>
+<pre><code class="language-sh">./Tools/simulation/jmavsim/jmavsim_run.sh \
+    -q -s -d /dev/ttyACM1 -b 921600 -r 250
+</code></pre>
+<p>Replace <code>/dev/ttyACM1</code> with the device assigned to CN13 on your host. The <code>-q</code> option forwards MAVLink to QGroundControl over UDP, and <code>-s</code> enables SDK forwarding.</p>
+<h2 id="arming-workflow">Arming Workflow<a class="headerlink" href="#arming-workflow" title="Permanent link">&para;</a></h2>
+<p>Because <code>COM_RC_IN_MODE=4</code> disables manual stick input, do not arm in Manual, Stabilized, Altitude, or Position mode. Those modes require manual control.</p>
+<p>Use Hold mode in QGroundControl, or use NSH:</p>
+<pre><code class="language-sh">commander mode auto:loiter
+commander check
+commander arm
+</code></pre>
+<p>To make the simulated vehicle take off:</p>
+<pre><code class="language-sh">commander takeoff
+</code></pre>
+<h2 id="runtime-checks">Runtime Checks<a class="headerlink" href="#runtime-checks" title="Permanent link">&para;</a></h2>
+<p>After jMAVSim is running, these checks should update with fresh timestamps:</p>
+<pre><code class="language-sh">mavlink status
+pwm_out_sim status
+listener sensor_accel 1
+listener sensor_gyro 1
+listener vehicle_gps_position 1
+listener vehicle_air_data 1
+listener estimator_status_flags 1
+listener failsafe_flags 1
+commander check
+</code></pre>
+<p>Expected health state before arming:</p>
+<ul>
+<li><code>sensor_accel</code> and <code>sensor_gyro</code> have <code>SIMULATION</code> device IDs.</li>
+<li><code>vehicle_gps_position</code> has <code>fix_type: 3</code> and valid velocity.</li>
+<li><code>vehicle_air_data</code> is published from a simulated barometer.</li>
+<li><code>estimator_status_flags</code> has attitude, yaw, GPS position, and height alignment.</li>
+<li><code>commander check</code> reports <code>Preflight check: OK</code> after switching to <code>auto:loiter</code>.</li>
+</ul>
+<h2 id="qgroundcontrol-notes">QGroundControl Notes<a class="headerlink" href="#qgroundcontrol-notes" title="Permanent link">&para;</a></h2>
+<p>QGroundControl can configure the same parameters from <strong>Vehicle Setup &gt; Parameters</strong>.</p>
+<p>Use these QGC settings for normal HITL operation:</p>
+<table>
+<thead>
+<tr>
+<th>QGC action</th>
+<th>PX4 effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Set <code>COM_DISARM_PRFLT=-1</code></td>
+<td>Prevents auto-disarm while waiting for simulator takeoff.</td>
+</tr>
+<tr>
+<td>Select Hold mode before arming</td>
+<td>Maps to PX4 <code>auto:loiter</code>, which does not require manual stick input.</td>
+</tr>
+<tr>
+<td>Use the Arm button</td>
+<td>Sends MAVLink arm command to <code>commander</code>.</td>
+</tr>
+<tr>
+<td>Use Takeoff</td>
+<td>Sends MAVLink takeoff command to <code>navigator</code>/<code>commander</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>If QGC reports a missing parameter such as <code>BAT1_SOURCE</code>, verify from NSH:</p>
+<pre><code class="language-sh">param show -a BAT1_SOURCE
+</code></pre>
+<p>If the parameter is present on NSH, the issue is a QGC parameter-cache or parameter-download problem, not a missing firmware parameter.</p>
+    </main>
+  </div>
+  <footer class="footer">
+    Generated from <code>boards/st/nucleo-h753zi/docs/hitl_configuration.md</code>.
+  </footer>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

@@ -89,15 +89,12 @@ __EXPORT int board_app_initialize(uintptr_t arg) {
 	}
 
 #if defined(FLASH_BASED_PARAMS)
-	/* Last two 128 KB sectors of Bank 2: sectors 14 and 15 */
+	/* Parameters in the last 128 KB flash sector: sector 15. */
 	static sector_descriptor_t params_sector_map[] = {
-	    {14, 128 * 1024, 0x081C0000},
-	    {15, 128 * 1024, 0x081E0000},
-	    {0, 0, 0},
+		{15, 128 * 1024, 0x081E0000},
+		{0, 0, 0},
 	};
-	// paramfs is not a file system but use the flash memory for parameter
-	// storage thus it's not visiable via filesystem api. no not shown by
-	// ls command.
+	// paramfs uses raw flash for storage, so it is not visible via ls.
 	int result = parameter_flashfs_init(params_sector_map, NULL, 0);
 
 	if (result != OK) {

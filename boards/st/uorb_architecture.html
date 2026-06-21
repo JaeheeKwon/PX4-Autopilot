@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>uORB Middleware Architecture Deep Dive</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+.header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.header-inner {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1.5rem;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+h1 { max-width: 920px; margin: 0; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.08; letter-spacing: 0; }
+.lede { max-width: 920px; margin: 1rem 0 0; color: var(--muted); font-size: 1.04rem; }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] { border-color: var(--accent); background: #dbece7; color: var(--accent-dark); }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 { margin: 0 0 0.75rem; font-size: 0.88rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+.toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+h2 { margin-top: 2rem; padding-top: 0.3rem; border-top: 1px solid var(--line); font-size: 1.65rem; line-height: 1.2; letter-spacing: 0; }
+h2:first-child { border-top: 0; }
+h3 { margin-top: 1.4rem; font-size: 1.15rem; line-height: 1.25; letter-spacing: 0; }
+h4 { margin-top: 1.1rem; font-size: 1rem; letter-spacing: 0; }
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { padding: 0.58rem 0.7rem; border: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-alt); text-align: left; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface-alt);
+  color: #344044;
+}
+.admonition {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+}
+.admonition-title { margin: 0 0 0.35rem; font-weight: 700; color: var(--accent-dark); }
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  overflow-x: auto;
+}
+.footer {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+}
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>uORB Middleware Architecture Deep Dive</h1>
+      <p class="lede">This document is a deep-dive analysis of the PX4 uORB middleware implementation. It complements the user-facing uORB Messaging guide by explaining the runtime object model, message-generation path, buffering semantics...</p>
+    </div>
+  </header>
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="index.html">Middleware</a><a href="flight_controller_software_architecture.html">PX4 Flight Controller Software Architecture</a><a href="uorb_architecture.html" aria-current="page">uORB Middleware Architecture Deep Dive</a><a href="nucleo-h753zi/README.html">ST Nucleo-H753ZI PX4 Board Support</a><a href="nucleo-h753zi/docs/hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a><a href="nucleo-h753zi/docs/hils_ros2_setup.html">HILS, ROS2, and uORB Communication Setup</a>
+  </nav>
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <div class="toc">
+<ul>
+<li><a href="#architectural-role">Architectural Role</a></li>
+<li><a href="#high-level-structure">High-Level Structure</a></li>
+<li><a href="#build-time-topic-generation">Build-Time Topic Generation</a><ul>
+<li><a href="#topic-name-derivation">Topic Name Derivation</a></li>
+<li><a href="#generated-metadata">Generated Metadata</a></li>
+<li><a href="#layout-and-padding">Layout and Padding</a></li>
+<li><a href="#queue-length">Queue Length</a></li>
+</ul>
+</li>
+<li><a href="#runtime-object-model">Runtime Object Model</a></li>
+<li><a href="#publish-path">Publish Path</a><ul>
+<li><a href="#advertisement">Advertisement</a></li>
+<li><a href="#first-allocation-and-interrupt-context">First Allocation and Interrupt Context</a></li>
+<li><a href="#atomic-update">Atomic Update</a></li>
+</ul>
+</li>
+<li><a href="#subscribe-and-copy-path">Subscribe and Copy Path</a><ul>
+<li><a href="#generation-counters">Generation Counters</a></li>
+<li><a href="#latest-value-topics">Latest-Value Topics</a></li>
+<li><a href="#queued-topics">Queued Topics</a></li>
+</ul>
+</li>
+<li><a href="#notification-mechanisms">Notification Mechanisms</a><ul>
+<li><a href="#poll">Poll</a></li>
+<li><a href="#periodic-checks">Periodic Checks</a></li>
+<li><a href="#callback-work-items">Callback Work Items</a></li>
+</ul>
+</li>
+<li><a href="#subscription-intervals">Subscription Intervals</a></li>
+<li><a href="#multi-topic-and-multi-instance-semantics">Multi-Topic and Multi-Instance Semantics</a><ul>
+<li><a href="#multi-topic-message-definition">Multi-Topic Message Definition</a></li>
+<li><a href="#multi-instance-topic">Multi-Instance Topic</a></li>
+</ul>
+</li>
+<li><a href="#topic-creation-and-late-binding">Topic Creation and Late Binding</a></li>
+<li><a href="#c-api-vs-c-api">C API vs C++ API</a></li>
+<li><a href="#platform-integration">Platform Integration</a></li>
+<li><a href="#remote-and-bridge-hooks">Remote and Bridge Hooks</a></li>
+<li><a href="#diagnostics-and-introspection">Diagnostics and Introspection</a></li>
+<li><a href="#performance-model">Performance Model</a></li>
+<li><a href="#design-analysis">Design Analysis</a><ul>
+<li><a href="#strengths">Strengths</a></li>
+<li><a href="#tradeoffs">Tradeoffs</a></li>
+<li><a href="#why-this-fits-px4">Why This Fits PX4</a></li>
+</ul>
+</li>
+<li><a href="#failure-modes-and-debug-strategy">Failure Modes and Debug Strategy</a><ul>
+<li><a href="#unknown-topic">Unknown Topic</a></li>
+<li><a href="#topic-exists-but-is-not-advertised">Topic Exists but Is Not Advertised</a></li>
+<li><a href="#wrong-buffer-size-or-metadata-mismatch">Wrong Buffer Size or Metadata Mismatch</a></li>
+<li><a href="#queue-overrun">Queue Overrun</a></li>
+<li><a href="#callback-not-firing">Callback Not Firing</a></li>
+<li><a href="#interrupt-publish-fails">Interrupt Publish Fails</a></li>
+<li><a href="#multiple-publishers-on-one-topic">Multiple Publishers on One Topic</a></li>
+</ul>
+</li>
+<li><a href="#extension-guidance">Extension Guidance</a></li>
+<li><a href="#mental-model">Mental Model</a></li>
+</ul>
+</div>
+
+    </aside>
+    <main>
+      <h1 id="uorb-middleware-architecture-deep-dive">uORB Middleware Architecture Deep Dive<a class="headerlink" href="#uorb-middleware-architecture-deep-dive" title="Permanent link">&para;</a></h1>
+<p>This document is a deep-dive analysis of the PX4 uORB middleware implementation. It complements the user-facing <a href="../middleware/uorb.html">uORB Messaging</a> guide by explaining the runtime object model, message-generation path, buffering semantics, scheduling hooks, diagnostics, and design tradeoffs.</p>
+<p>The implementation discussed here lives primarily in <a href="https://github.com/PX4/PX4-Autopilot/tree/main/platforms/common/uORB"><code>platforms/common/uORB</code></a>, with generated message code produced from <a href="https://github.com/PX4/PX4-Autopilot/tree/main/msg"><code>msg</code></a> by tools in <a href="https://github.com/PX4/PX4-Autopilot/tree/main/Tools/msg"><code>Tools/msg</code></a>.</p>
+<h2 id="architectural-role">Architectural Role<a class="headerlink" href="#architectural-role" title="Permanent link">&para;</a></h2>
+<p>uORB is PX4's internal publish/subscribe middleware. It is not a general network middleware and it is not a DDS replacement. It is a low-latency, typed, in-process message bus that lets independently scheduled PX4 modules exchange state without direct dependencies on each other.</p>
+<p>Its core responsibilities are:</p>
+<ul>
+<li>Provide a topic abstraction for sensor samples, state estimates, commands, setpoints, actuator demands, diagnostics, and status.</li>
+<li>Decouple producers and consumers in time and ownership: publishers do not wait for subscribers, and subscribers can join after publishers exist.</li>
+<li>Provide per-topic metadata generated from <code>.msg</code> files.</li>
+<li>Provide efficient latest-value delivery by default, with bounded ring buffers for selected command-like or bursty topics.</li>
+<li>Integrate with PX4's POSIX-like file-descriptor model so topics can be polled, listened to, and inspected from shell commands.</li>
+<li>Provide C and C++ APIs for modules, drivers, and system commands.</li>
+</ul>
+<p>The result is a middleware layer that is intentionally simple: typed shared-memory copies, generation counters, optional small queues, and notification hooks.</p>
+<h2 id="high-level-structure">High-Level Structure<a class="headerlink" href="#high-level-structure" title="Permanent link">&para;</a></h2>
+<p>At runtime, uORB has four main layers:</p>
+<div class="mermaid">
+flowchart TD
+    generated["Generated topic metadata and structs"]
+    api["C API and C++ convenience wrappers"]
+    manager["uORB::Manager singleton"]
+    device_master["DeviceMaster and per-topic DeviceNode objects"]
+    runtime["Topic buffers<br/>generation counters<br/>callbacks<br/>poll notification"]
+
+    generated --> api --> manager --> device_master --> runtime
+</div>
+<p>Important files:</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Public C API and metadata definitions</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/uORB.h"><code>platforms/common/uORB/uORB.h</code></a></td>
+</tr>
+<tr>
+<td>C API forwarding and shell-facing commands</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/uORB.cpp"><code>platforms/common/uORB/uORB.cpp</code></a></td>
+</tr>
+<tr>
+<td>Singleton manager</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/uORBManager.hpp"><code>platforms/common/uORB/uORBManager.hpp</code></a>, <a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/uORBManager.cpp"><code>uORBManager.cpp</code></a></td>
+</tr>
+<tr>
+<td>Topic registry</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/uORBDeviceMaster.hpp"><code>platforms/common/uORB/uORBDeviceMaster.hpp</code></a>, <a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/uORBDeviceMaster.cpp"><code>uORBDeviceMaster.cpp</code></a></td>
+</tr>
+<tr>
+<td>Per-topic runtime object</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/uORBDeviceNode.hpp"><code>platforms/common/uORB/uORBDeviceNode.hpp</code></a>, <a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/uORBDeviceNode.cpp"><code>uORBDeviceNode.cpp</code></a></td>
+</tr>
+<tr>
+<td>C++ publication wrappers</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/Publication.hpp"><code>Publication.hpp</code></a>, <a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/PublicationMulti.hpp"><code>PublicationMulti.hpp</code></a></td>
+</tr>
+<tr>
+<td>C++ subscription wrappers</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/Subscription.hpp"><code>Subscription.hpp</code></a>, <a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/SubscriptionInterval.hpp"><code>SubscriptionInterval.hpp</code></a>, <a href="https://github.com/PX4/PX4-Autopilot/blob/main/platforms/common/uORB/SubscriptionCallback.hpp"><code>SubscriptionCallback.hpp</code></a></td>
+</tr>
+<tr>
+<td>Message generator</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/Tools/msg/px_generate_uorb_topic_files.py"><code>Tools/msg/px_generate_uorb_topic_files.py</code></a></td>
+</tr>
+<tr>
+<td>Runtime command</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/blob/main/src/systemcmds/uorb/uorb.cpp"><code>src/systemcmds/uorb/uorb.cpp</code></a></td>
+</tr>
+<tr>
+<td>Topic listener</td>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/src/systemcmds/topic_listener"><code>src/systemcmds/topic_listener</code></a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="build-time-topic-generation">Build-Time Topic Generation<a class="headerlink" href="#build-time-topic-generation" title="Permanent link">&para;</a></h2>
+<p>uORB topics start as <code>.msg</code> files listed in <a href="https://github.com/PX4/PX4-Autopilot/blob/main/msg/CMakeLists.txt"><code>msg/CMakeLists.txt</code></a>. The generator enforces two important contract rules:</p>
+<ul>
+<li>Every topic message must include a <code>uint64 timestamp</code> field.</li>
+<li>The <code>timestamp</code> field must have exactly the <code>uint64</code> type.</li>
+</ul>
+<p>The generator then creates:</p>
+<ul>
+<li>A C/C++ struct for each message type.</li>
+<li>One or more <code>ORB_DECLARE()</code> declarations for the topic names.</li>
+<li>One <code>ORB_DEFINE()</code> definition per generated topic.</li>
+<li>A generated <code>ORB_ID</code> enum covering all topics.</li>
+<li>An <code>orb_metadata</code> record for each topic.</li>
+<li>Field-format metadata used by logging, printing, and message introspection.</li>
+<li>Optional IDL and JSON representations for bridge and tooling use.</li>
+</ul>
+<h3 id="topic-name-derivation">Topic Name Derivation<a class="headerlink" href="#topic-name-derivation" title="Permanent link">&para;</a></h3>
+<p>If a <code>.msg</code> file has no explicit topic list, the topic name is the snake_case form of the file name. For example:</p>
+<pre><code class="language-text">VehicleLocalPosition.msg -&gt; vehicle_local_position
+</code></pre>
+<p>A message can define several topic names with the same wire/layout structure by using a <code># TOPICS</code> line:</p>
+<pre><code class="language-text"># TOPICS actuator_outputs actuator_outputs_sim actuator_outputs_debug
+</code></pre>
+<p>This is different from multi-instance topics. Multi-topic messages create different topic IDs with the same struct. Multi-instance topics create several runtime instances of the same topic ID.</p>
+<h3 id="generated-metadata">Generated Metadata<a class="headerlink" href="#generated-metadata" title="Permanent link">&para;</a></h3>
+<p>The central metadata structure is:</p>
+<pre><code class="language-cpp">struct orb_metadata {
+    const char *o_name;
+    const uint16_t o_size;
+    const uint16_t o_size_no_padding;
+    uint32_t message_hash;
+    orb_id_size_t o_id;
+    uint8_t o_queue;
+};
+</code></pre>
+<p>The metadata gives uORB enough information to:</p>
+<ul>
+<li>Validate publish/copy sizes.</li>
+<li>Allocate topic buffers.</li>
+<li>Print and log messages without hand-written topic code.</li>
+<li>Map <code>ORB_ID(topic_name)</code> to a stable generated metadata object.</li>
+<li>Preserve a message hash for compatibility-sensitive tooling.</li>
+<li>Know the default queue depth for the topic.</li>
+</ul>
+<p>The generated C++ source performs a <code>static_assert</code> that the generated enum index and topic metadata agree. This catches mismatches between generated topic lists and topic definitions at build time.</p>
+<h3 id="layout-and-padding">Layout and Padding<a class="headerlink" href="#layout-and-padding" title="Permanent link">&para;</a></h3>
+<p>The generated C struct is sorted by field size to reduce padding. Nested messages are padded to an 8-byte alignment, and padding fields are generated where needed. The metadata stores both full struct size and size without final padding. The latter is important for logging and external format descriptions, where trailing padding is not semantic data.</p>
+<h3 id="queue-length">Queue Length<a class="headerlink" href="#queue-length" title="Permanent link">&para;</a></h3>
+<p>By default, a uORB topic has queue length 1. A <code>.msg</code> file can define:</p>
+<pre><code class="language-text">uint8 ORB_QUEUE_LENGTH = 4
+</code></pre>
+<p>The generator stores that value in <code>orb_metadata::o_queue</code>. Queue length is a per-topic property, not a subscriber property.</p>
+<h2 id="runtime-object-model">Runtime Object Model<a class="headerlink" href="#runtime-object-model" title="Permanent link">&para;</a></h2>
+<p>The runtime object model has three key classes:</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uORB::Manager</code></td>
+<td>Singleton facade implementing advertise, publish, subscribe, copy, check, interval, and bridge hooks.</td>
+</tr>
+<tr>
+<td><code>uORB::DeviceMaster</code></td>
+<td>Registry of all created topic nodes. It owns the list of <code>DeviceNode</code> objects and the per-instance topic-existence bitsets.</td>
+</tr>
+<tr>
+<td><code>uORB::DeviceNode</code></td>
+<td>Runtime object for one topic instance. It owns the data buffer, generation counter, subscriber count, callback list, advertised flag, and poll notification state.</td>
+</tr>
+</tbody>
+</table>
+<p>The manager is initialized by <code>uorb_start()</code>. On normal PX4 startup, <code>uorb start</code> runs early because most modules depend on it.</p>
+<p>Each topic instance has a path like:</p>
+<pre><code class="language-text">/obj/&lt;topic_name&gt;&lt;instance&gt;
+</code></pre>
+<p>For instance:</p>
+<pre><code class="language-text">/obj/sensor_accel0
+/obj/sensor_accel1
+</code></pre>
+<p>The path is generated by <code>uORB::Utils::node_mkpath()</code>. Instance index is encoded as the final path character, and <code>ORB_MULTI_MAX_INSTANCES</code> is constrained to 10 or fewer. On constrained-memory builds it is 4; otherwise it is 10.</p>
+<p><code>DeviceNode</code> inherits from PX4's character-device abstraction (<code>cdev::CDev</code>). This gives uORB a file-descriptor-compatible interface for <code>open</code>, <code>read</code>, <code>write</code>, <code>ioctl</code>, and <code>poll</code>, while still exposing faster internal C++ wrappers for most PX4 modules.</p>
+<h2 id="publish-path">Publish Path<a class="headerlink" href="#publish-path" title="Permanent link">&para;</a></h2>
+<p>The normal publish path is:</p>
+<div class="mermaid">
+flowchart TD
+    publish["Publication&lt;T&gt;::publish()"]
+    advertise["orb_advertise()<br/>if needed"]
+    manager_publish["uORB::Manager::orb_publish()"]
+    node_publish["uORB::DeviceNode::publish()"]
+    node_write["uORB::DeviceNode::write()"]
+    notify["Copy into topic buffer<br/>increment generation<br/>call callbacks<br/>poll_notify(POLLIN)"]
+
+    publish --> advertise --> manager_publish --> node_publish --> node_write --> notify
+</div>
+<h3 id="advertisement">Advertisement<a class="headerlink" href="#advertisement" title="Permanent link">&para;</a></h3>
+<p>Publishing requires an advertised topic. <code>orb_advertise()</code> creates or opens the relevant <code>DeviceNode</code>, marks it advertised, returns a publisher handle, and optionally performs an initial publish.</p>
+<p>The publisher handle is effectively a <code>DeviceNode *</code>. It can be reused for later publishes and does not need to be a file descriptor. That matters because some publishers need to publish from contexts where a file descriptor is not convenient.</p>
+<h3 id="first-allocation-and-interrupt-context">First Allocation and Interrupt Context<a class="headerlink" href="#first-allocation-and-interrupt-context" title="Permanent link">&para;</a></h3>
+<p><code>DeviceNode::write()</code> lazily allocates the topic buffer on first publish:</p>
+<pre><code class="language-text">buffer_size = metadata.o_size * metadata.o_queue
+</code></pre>
+<p>On NuttX, allocation is only attempted outside interrupt context. This is why a topic that will later be published from interrupt context must be advertised and published at least once from normal task context first. After allocation, later publishes are fixed-size copies into an existing buffer.</p>
+<h3 id="atomic-update">Atomic Update<a class="headerlink" href="#atomic-update" title="Permanent link">&para;</a></h3>
+<p>The write path uses a short atomic section:</p>
+<ol>
+<li>Increment the topic generation counter.</li>
+<li>Copy the message into the slot selected by <code>generation % queue_size</code>.</li>
+<li>Invoke registered callbacks.</li>
+<li>Mark the data valid.</li>
+<li>Notify poll waiters.</li>
+</ol>
+<p>Publishers do not wait for subscribers to consume data. The publisher cost is bounded by the fixed-size copy, callback scheduling, and poll notification.</p>
+<h2 id="subscribe-and-copy-path">Subscribe and Copy Path<a class="headerlink" href="#subscribe-and-copy-path" title="Permanent link">&para;</a></h2>
+<p>There are two main subscription styles:</p>
+<ul>
+<li>The C API, which returns a file descriptor from <code>orb_subscribe()</code> or <code>orb_subscribe_multi()</code>.</li>
+<li>C++ wrappers such as <code>uORB::Subscription</code>, <code>uORB::SubscriptionData&lt;T&gt;</code>, <code>uORB::SubscriptionInterval</code>, and <code>uORB::SubscriptionCallbackWorkItem</code>.</li>
+</ul>
+<p>The normal C++ copy path is:</p>
+<div class="mermaid">
+flowchart TD
+    update["Subscription::update(dst)"]
+    subscribe["Ensure subscribed to DeviceNode"]
+    manager_copy["Manager::orb_data_copy()<br/>only_if_updated=true"]
+    node_copy["DeviceNode::copy(dst, last_generation)"]
+    result["Copy latest or queued sample<br/>update subscriber generation"]
+
+    update --> subscribe --> manager_copy --> node_copy --> result
+</div>
+<p><code>Subscription::copy()</code> copies even if there is no new update. <code>Subscription::update()</code> only copies when the subscription has unseen data.</p>
+<h3 id="generation-counters">Generation Counters<a class="headerlink" href="#generation-counters" title="Permanent link">&para;</a></h3>
+<p>Each <code>DeviceNode</code> has a monotonically increasing <code>_generation</code> counter. Each subscription tracks its own <code>_last_generation</code>.</p>
+<p>This is the core of uORB update detection:</p>
+<pre><code class="language-text">updates_available = node_generation - subscriber_last_generation
+</code></pre>
+<p>Unsigned arithmetic makes wraparound tolerable. The source comments note that wraparound occurs after roughly 49 days at 1 kHz publication rate.</p>
+<h3 id="latest-value-topics">Latest-Value Topics<a class="headerlink" href="#latest-value-topics" title="Permanent link">&para;</a></h3>
+<p>For queue length 1, a copy is simple:</p>
+<pre><code class="language-text">atomic:
+  memcpy(dst, node_data, message_size)
+  subscriber_generation = node_generation
+</code></pre>
+<p>This is ideal for state-like data where only the latest value matters: attitude, local position, battery status, control mode, estimator status, and most setpoints.</p>
+<h3 id="queued-topics">Queued Topics<a class="headerlink" href="#queued-topics" title="Permanent link">&para;</a></h3>
+<p>For queue length greater than 1, the node buffer is a ring:</p>
+<pre><code class="language-text">slot = generation % queue_size
+</code></pre>
+<p>The subscriber generation points to the next sample it wants to read. If the subscriber is too far behind, <code>DeviceNode::copy()</code> advances it to the oldest still-buffered sample. That prevents reading overwritten data, but it also means old samples can be skipped when readers cannot keep up.</p>
+<p>This is appropriate for topics such as command streams where short bursts matter more than pure latest-value semantics.</p>
+<h2 id="notification-mechanisms">Notification Mechanisms<a class="headerlink" href="#notification-mechanisms" title="Permanent link">&para;</a></h2>
+<p>uORB provides three practical notification mechanisms.</p>
+<h3 id="poll">Poll<a class="headerlink" href="#poll" title="Permanent link">&para;</a></h3>
+<p>The C API can be used with <code>poll()</code> because subscriptions are file-descriptor compatible. <code>DeviceNode::poll_state()</code> checks whether the subscription has unseen data, and <code>poll_notify(POLLIN)</code> wakes waiters on publish.</p>
+<p>The <code>listener</code> command uses this path to block until topic data arrives.</p>
+<h3 id="periodic-checks">Periodic Checks<a class="headerlink" href="#periodic-checks" title="Permanent link">&para;</a></h3>
+<p>Modules can call:</p>
+<pre><code class="language-cpp">if (_subscription.updated()) {
+    _subscription.copy(&amp;msg);
+}
+</code></pre>
+<p>This is common in loops that already run for another reason.</p>
+<h3 id="callback-work-items">Callback Work Items<a class="headerlink" href="#callback-work-items" title="Permanent link">&para;</a></h3>
+<p><code>uORB::SubscriptionCallbackWorkItem</code> registers a callback on the <code>DeviceNode</code>. On publish, the callback checks whether the subscription is updated and schedules a <code>px4::WorkItem</code>.</p>
+<p>The callback itself should stay small. The normal pattern is:</p>
+<div class="mermaid">
+flowchart LR
+    publish_event["Publish happens"]
+    callback["DeviceNode calls callback"]
+    schedule["Callback schedules WorkItem"]
+    work["WorkItem copies topic<br/>and does real work"]
+
+    publish_event --> callback --> schedule --> work
+</div>
+<p>This pattern is used throughout PX4 for low-latency reactive modules without dedicating one blocking thread per module.</p>
+<h2 id="subscription-intervals">Subscription Intervals<a class="headerlink" href="#subscription-intervals" title="Permanent link">&para;</a></h2>
+<p><code>SubscriptionInterval</code> adds rate limiting at the subscriber side. It does not slow the publisher and does not change the topic queue. It only controls how often a particular subscriber reports an update.</p>
+<p>The interval logic:</p>
+<ul>
+<li>If enough time has elapsed since the subscriber's last copy, <code>updated()</code> can return true.</li>
+<li>After a successful copy, <code>_last_update</code> is advanced while bounded to avoid long-term drift.</li>
+<li>Poll notification also respects whether the subscription appears updated to that subscriber.</li>
+</ul>
+<p>This is useful for consumers that observe high-rate topics but only need lower-rate updates.</p>
+<h2 id="multi-topic-and-multi-instance-semantics">Multi-Topic and Multi-Instance Semantics<a class="headerlink" href="#multi-topic-and-multi-instance-semantics" title="Permanent link">&para;</a></h2>
+<p>uORB has two distinct multiplicity mechanisms.</p>
+<h3 id="multi-topic-message-definition">Multi-Topic Message Definition<a class="headerlink" href="#multi-topic-message-definition" title="Permanent link">&para;</a></h3>
+<p>A single <code>.msg</code> file can define several topics with the same struct:</p>
+<pre><code class="language-text"># TOPICS actuator_outputs actuator_outputs_sim actuator_outputs_debug
+</code></pre>
+<p>These are separate topic IDs. They share layout, but semantically they are distinct streams.</p>
+<h3 id="multi-instance-topic">Multi-Instance Topic<a class="headerlink" href="#multi-instance-topic" title="Permanent link">&para;</a></h3>
+<p>One topic ID can have several runtime instances:</p>
+<pre><code class="language-text">sensor_accel instance 0
+sensor_accel instance 1
+sensor_accel instance 2
+</code></pre>
+<p>This is used for multiple sensors, multiple estimator instances, multiple batteries, and similar replicated producers.</p>
+<p><code>orb_advertise_multi()</code> chooses an available instance. <code>orb_subscribe_multi()</code> subscribes to a specified instance. <code>SubscriptionMultiArray&lt;T&gt;</code> creates an array of subscriptions across instances.</p>
+<p>The limit is <code>ORB_MULTI_MAX_INSTANCES</code>. Because the instance is encoded as a single path suffix, the limit must stay 10 or below.</p>
+<h2 id="topic-creation-and-late-binding">Topic Creation and Late Binding<a class="headerlink" href="#topic-creation-and-late-binding" title="Permanent link">&para;</a></h2>
+<p>uORB intentionally allows some late binding:</p>
+<ul>
+<li>A C API subscription can create a node before it is advertised.</li>
+<li>A topic can exist but not yet be advertised.</li>
+<li><code>orb_exists()</code> checks whether a topic instance exists and has been advertised.</li>
+<li>C++ <code>Subscription</code> objects retry subscription when used, so a module can hold a subscription object even if the publisher is not ready yet.</li>
+<li>Callback registration has a fallback path that uses <code>orb_subscribe_multi()</code> to force topic creation before registering the callback.</li>
+</ul>
+<p>This behavior lets startup order be flexible. For example, a controller can start before a sensor publisher and later begin receiving data when the sensor is advertised.</p>
+<h2 id="c-api-vs-c-api">C API vs C++ API<a class="headerlink" href="#c-api-vs-c-api" title="Permanent link">&para;</a></h2>
+<p>The C API is the lowest common denominator:</p>
+<table>
+<thead>
+<tr>
+<th>C API</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>orb_advertise()</code></td>
+<td>Create/advertise topic instance 0.</td>
+</tr>
+<tr>
+<td><code>orb_advertise_multi()</code></td>
+<td>Create/advertise a multi-instance topic and return the chosen instance.</td>
+</tr>
+<tr>
+<td><code>orb_publish()</code></td>
+<td>Publish fixed-size data through an advertiser handle.</td>
+</tr>
+<tr>
+<td><code>orb_subscribe()</code></td>
+<td>Subscribe to instance 0 and return a file descriptor.</td>
+</tr>
+<tr>
+<td><code>orb_subscribe_multi()</code></td>
+<td>Subscribe to a specific instance.</td>
+</tr>
+<tr>
+<td><code>orb_copy()</code></td>
+<td>Copy topic data into a caller-owned struct.</td>
+</tr>
+<tr>
+<td><code>orb_check()</code></td>
+<td>Check for unseen updates on a subscription.</td>
+</tr>
+<tr>
+<td><code>orb_set_interval()</code></td>
+<td>Rate-limit update visibility for one subscription.</td>
+</tr>
+<tr>
+<td><code>orb_exists()</code></td>
+<td>Check whether a topic instance is advertised.</td>
+</tr>
+<tr>
+<td><code>orb_group_count()</code></td>
+<td>Count advertised instances.</td>
+</tr>
+</tbody>
+</table>
+<p>Most PX4 modules use the C++ wrappers because they reduce boilerplate and integrate better with work queues:</p>
+<table>
+<thead>
+<tr>
+<th>C++ wrapper</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uORB::Publication&lt;T&gt;</code></td>
+<td>Publish typed messages.</td>
+</tr>
+<tr>
+<td><code>uORB::PublicationData&lt;T&gt;</code></td>
+<td>Store an embedded message and publish it with <code>update()</code>.</td>
+</tr>
+<tr>
+<td><code>uORB::PublicationMulti&lt;T&gt;</code></td>
+<td>Publish a multi-instance topic.</td>
+</tr>
+<tr>
+<td><code>uORB::Subscription</code></td>
+<td>Lightweight untyped subscription wrapper.</td>
+</tr>
+<tr>
+<td><code>uORB::SubscriptionData&lt;T&gt;</code></td>
+<td>Subscription with embedded last-copied data.</td>
+</tr>
+<tr>
+<td><code>uORB::SubscriptionInterval</code></td>
+<td>Subscription with subscriber-side update throttling.</td>
+</tr>
+<tr>
+<td><code>uORB::SubscriptionCallbackWorkItem</code></td>
+<td>Schedule a work item when a topic updates.</td>
+</tr>
+<tr>
+<td><code>uORB::SubscriptionBlocking&lt;T&gt;</code></td>
+<td>Block on a topic update using a condition variable.</td>
+</tr>
+<tr>
+<td><code>uORB::SubscriptionMultiArray&lt;T&gt;</code></td>
+<td>Manage subscriptions to all instances of a topic.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="platform-integration">Platform Integration<a class="headerlink" href="#platform-integration" title="Permanent link">&para;</a></h2>
+<p>uORB is in <code>platforms/common</code> because the higher-level semantics are shared across NuttX, POSIX, and other PX4 targets.</p>
+<p>On NuttX, the platform integration has two notable cases:</p>
+<ul>
+<li>Flat builds can call manager functions directly.</li>
+<li>Protected/kernel-style builds use <code>boardctl()</code> and uORB-specific IOCTLs to cross the user/kernel boundary for manager operations.</li>
+</ul>
+<p>The same high-level API remains visible to modules, but the implementation path differs depending on build configuration.</p>
+<p>The implementation uses PX4's POSIX abstraction layer (<code>px4_open</code>, <code>px4_close</code>, <code>px4_read</code>, <code>px4_ioctl</code>, <code>poll</code>) so module code can remain portable across PX4-supported runtimes.</p>
+<h2 id="remote-and-bridge-hooks">Remote and Bridge Hooks<a class="headerlink" href="#remote-and-bridge-hooks" title="Permanent link">&para;</a></h2>
+<p>The core uORB middleware is local, but it has optional hooks for remote forwarding:</p>
+<ul>
+<li><code>CONFIG_ORB_COMMUNICATOR</code> enables a <code>uORBCommunicator::IChannel</code>.</li>
+<li>Remote topic advertisements can mark local nodes as advertised.</li>
+<li>Local topic advertisements and subscriptions can be forwarded to a remote side.</li>
+<li>Received remote messages are written into the local <code>DeviceNode</code>.</li>
+</ul>
+<p>This is separate from application-level bridge modules such as:</p>
+<ul>
+<li><code>mavlink</code></li>
+<li><code>uxrce_dds_client</code></li>
+<li><code>zenoh</code></li>
+<li><code>muorb</code></li>
+<li>Cyphal publisher/subscriber helpers</li>
+</ul>
+<p>Those modules convert between uORB and an external protocol. The uORB core remains the local typed bus.</p>
+<h2 id="diagnostics-and-introspection">Diagnostics and Introspection<a class="headerlink" href="#diagnostics-and-introspection" title="Permanent link">&para;</a></h2>
+<p>Useful operational commands:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it uses</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uorb status</code></td>
+<td><code>DeviceMaster::printStatistics()</code></td>
+<td>Print created/advertised topic nodes, instance, subscriber count, queue size, message size, and path.</td>
+</tr>
+<tr>
+<td><code>uorb top</code></td>
+<td><code>DeviceMaster::showTop()</code></td>
+<td>Monitor publication rates and aggregate throughput.</td>
+</tr>
+<tr>
+<td><code>uorb top -a</code></td>
+<td><code>showTop()</code> with all topics</td>
+<td>Show inactive topics too.</td>
+</tr>
+<tr>
+<td><code>uorb top -1</code></td>
+<td>one-shot top</td>
+<td>Print once and exit.</td>
+</tr>
+<tr>
+<td><code>listener &lt;topic&gt;</code></td>
+<td><code>orb_exists</code>, <code>orb_subscribe</code>, <code>poll</code>, <code>orb_copy</code></td>
+<td>Print topic values.</td>
+</tr>
+<tr>
+<td><code>listener &lt;topic&gt; -i &lt;n&gt;</code></td>
+<td>multi-instance subscribe</td>
+<td>Inspect a specific instance.</td>
+</tr>
+<tr>
+<td><code>listener &lt;topic&gt; -r &lt;hz&gt;</code></td>
+<td>subscription interval</td>
+<td>Print at a controlled rate.</td>
+</tr>
+</tbody>
+</table>
+<p>For structural analysis, the <a href="../middleware/uorb_graph.html">uORB Publication/Subscription Graph</a> extracts publication and subscription relationships from source code and renders module-topic relationships.</p>
+<h2 id="performance-model">Performance Model<a class="headerlink" href="#performance-model" title="Permanent link">&para;</a></h2>
+<p>uORB is optimized for the common PX4 case:</p>
+<ul>
+<li>Many topics are small fixed-size structs.</li>
+<li>Most consumers only need the latest value.</li>
+<li>Publishers must not block on subscribers.</li>
+<li>High-rate paths should avoid dynamic allocation after startup.</li>
+<li>Work queues should wake from topic updates without polling loops.</li>
+</ul>
+<p>The main publish cost is:</p>
+<pre><code class="language-text">fixed-size memcpy + generation update + callback scheduling + poll notification
+</code></pre>
+<p>The main subscriber cost is:</p>
+<pre><code class="language-text">generation check + fixed-size memcpy when updated
+</code></pre>
+<p>Memory use per advertised topic instance is approximately:</p>
+<pre><code class="language-text">sizeof(DeviceNode) + (message_size * queue_length) + callback/subscriber bookkeeping
+</code></pre>
+<p>Because queue length is per topic, queueing a large high-rate topic has a direct RAM cost. This is why most topics stay at queue length 1.</p>
+<h2 id="design-analysis">Design Analysis<a class="headerlink" href="#design-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="strengths">Strengths<a class="headerlink" href="#strengths" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Low coupling:</strong> Modules depend on topic contracts, not each other.</li>
+<li><strong>Low latency:</strong> A publish is a bounded local memory operation.</li>
+<li><strong>Small runtime model:</strong> There is no dynamic type discovery protocol inside the flight controller; topic metadata is generated at build time.</li>
+<li><strong>Deterministic memory shape after initialization:</strong> Once topic buffers are allocated, publishing avoids per-message allocation.</li>
+<li><strong>Multiple integration styles:</strong> Polling, callback work items, blocking waits, and periodic checks all use the same underlying generation counters.</li>
+<li><strong>Good debug surface:</strong> <code>listener</code>, <code>uorb top</code>, message printing, logging metadata, and generated docs all come from the same schema source.</li>
+</ul>
+<h3 id="tradeoffs">Tradeoffs<a class="headerlink" href="#tradeoffs" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Bounded history only:</strong> uORB is not a durable event log. Queue length 1 overwrites old data; larger queues are still finite.</li>
+<li><strong>No ownership arbitration by default:</strong> Multiple publishers can publish the same topic. uORB makes each publication atomic, but it does not decide which publisher is authoritative.</li>
+<li><strong>No semantic QoS negotiation:</strong> Queue depth, timing, and compatibility are static topic-level or subscriber-side choices.</li>
+<li><strong>Schema changes are high impact:</strong> Because generated structs are used in firmware, logging, and bridges, message changes must be treated as API changes.</li>
+<li><strong>Callback work must stay minimal:</strong> Callbacks happen on the publish path. Heavy work should be deferred to scheduled work items.</li>
+<li><strong>Late subscribers may miss history:</strong> A subscriber can see the latest value or the queued window, not arbitrary earlier samples.</li>
+</ul>
+<h3 id="why-this-fits-px4">Why This Fits PX4<a class="headerlink" href="#why-this-fits-px4" title="Permanent link">&para;</a></h3>
+<p>PX4's flight stack is dominated by state streams and setpoint streams where "latest value wins" is usually correct. Estimators, controllers, and managers need typed, low-latency data without depending on each other's classes. uORB gives PX4 that with minimal runtime machinery.</p>
+<p>For external ecosystems such as ROS 2, PX4 uses bridge modules that translate selected uORB topics into middleware-specific concepts. That keeps the flight controller's internal bus simple while still allowing richer offboard integration.</p>
+<h2 id="failure-modes-and-debug-strategy">Failure Modes and Debug Strategy<a class="headerlink" href="#failure-modes-and-debug-strategy" title="Permanent link">&para;</a></h2>
+<h3 id="unknown-topic">Unknown Topic<a class="headerlink" href="#unknown-topic" title="Permanent link">&para;</a></h3>
+<p>If a topic has no generated metadata, <code>orb_advertise()</code> and <code>orb_subscribe()</code> fail with <code>ENOENT</code>. Check that the <code>.msg</code> file is listed in <code>msg/CMakeLists.txt</code> and that generated headers are included correctly.</p>
+<h3 id="topic-exists-but-is-not-advertised">Topic Exists but Is Not Advertised<a class="headerlink" href="#topic-exists-but-is-not-advertised" title="Permanent link">&para;</a></h3>
+<p>A subscription can exist before a publisher starts. <code>updated()</code> remains false and <code>copy()</code> fails until the topic is advertised and data is published. Use:</p>
+<pre><code class="language-sh">uorb status
+listener &lt;topic&gt;
+</code></pre>
+<p>to distinguish "not generated", "node exists", and "advertised with data".</p>
+<h3 id="wrong-buffer-size-or-metadata-mismatch">Wrong Buffer Size or Metadata Mismatch<a class="headerlink" href="#wrong-buffer-size-or-metadata-mismatch" title="Permanent link">&para;</a></h3>
+<p><code>DeviceNode::read()</code> and <code>write()</code> check the message size. <code>DeviceNode::publish()</code> also checks that the publisher handle's topic ID matches the metadata passed to <code>orb_publish()</code>. A mismatch is a programming error, not a runtime negotiation failure.</p>
+<h3 id="queue-overrun">Queue Overrun<a class="headerlink" href="#queue-overrun" title="Permanent link">&para;</a></h3>
+<p>If a queued subscriber falls behind, the copy logic advances it to the oldest still-buffered sample. This avoids stale overwritten reads, but skipped samples are possible. Increase <code>ORB_QUEUE_LENGTH</code> only when the topic semantics require it and the RAM cost is acceptable.</p>
+<h3 id="callback-not-firing">Callback Not Firing<a class="headerlink" href="#callback-not-firing" title="Permanent link">&para;</a></h3>
+<p>Check that:</p>
+<ul>
+<li>The topic is advertised or callback registration forced topic creation.</li>
+<li>The callback is still registered.</li>
+<li>The subscription interval is not filtering updates.</li>
+<li>The publisher is publishing the expected instance.</li>
+<li>The work item is not blocked or starved by other work on the same queue.</li>
+</ul>
+<h3 id="interrupt-publish-fails">Interrupt Publish Fails<a class="headerlink" href="#interrupt-publish-fails" title="Permanent link">&para;</a></h3>
+<p>If a topic is published from interrupt context before its buffer is allocated, allocation cannot happen there. Advertise and publish once from normal task context before interrupt-time publishing.</p>
+<h3 id="multiple-publishers-on-one-topic">Multiple Publishers on One Topic<a class="headerlink" href="#multiple-publishers-on-one-topic" title="Permanent link">&para;</a></h3>
+<p>uORB permits multiple publishers for a topic. If the topic is meant to have one authoritative owner, enforce that convention at the module level or use publisher rules in replay/testing builds. Do not rely on uORB to arbitrate ownership.</p>
+<h2 id="extension-guidance">Extension Guidance<a class="headerlink" href="#extension-guidance" title="Permanent link">&para;</a></h2>
+<p>When adding or changing a uORB topic:</p>
+<ol>
+<li>Use a <code>.msg</code> file in <code>msg</code> or <code>msg/versioned</code>.</li>
+<li>Add the file to <code>msg/CMakeLists.txt</code>.</li>
+<li>Include <code>uint64 timestamp</code>.</li>
+<li>Use SI units and document units in field comments.</li>
+<li>Prefer queue length 1 unless the topic is command-like or bursty.</li>
+<li>Use <code># TOPICS</code> only when separate semantic streams share the same layout.</li>
+<li>Use multi-instance publication when the same semantic stream has multiple physical or logical sources.</li>
+<li>Treat versioned messages as external API and follow the versioning workflow.</li>
+<li>Update bridge topic lists such as <code>dds_topics.yaml</code> only when the topic should be exposed externally.</li>
+<li>Use <code>listener</code>, <code>uorb top</code>, and logs to validate runtime behavior.</li>
+</ol>
+<p>When consuming a topic:</p>
+<ul>
+<li>Use <code>SubscriptionCallbackWorkItem</code> for reactive work-queue modules.</li>
+<li>Use <code>SubscriptionInterval</code> when a high-rate topic only needs lower-rate observation.</li>
+<li>Use <code>SubscriptionMultiArray</code> when all instances matter.</li>
+<li>Check validity fields inside the message; uORB only transports data and does not interpret semantic validity.</li>
+<li>Be explicit about which module owns the resulting behavior if several subscribers react to the same command topic.</li>
+</ul>
+<h2 id="mental-model">Mental Model<a class="headerlink" href="#mental-model" title="Permanent link">&para;</a></h2>
+<p>The simplest accurate model is:</p>
+<div class="mermaid">
+flowchart TD
+    schema["Generated schema"]
+    metadata["Metadata and typed struct"]
+    node["DeviceNode per topic instance"]
+    buffer["Fixed-size buffer<br/>generation counter"]
+    publishers["Publishers copy into buffer"]
+    subscribers["Subscribers compare generations<br/>and copy out"]
+    wakeups["poll/callback mechanisms<br/>wake work when generations advance"]
+
+    schema --> metadata --> node --> buffer --> publishers --> subscribers --> wakeups
+</div>
+<p>Everything else in uORB is there to make that model practical inside PX4: generated topic IDs, file-descriptor compatibility, multi-instance paths, bounded queues, subscriber intervals, shell diagnostics, optional bridge hooks, and C++ wrappers for module code.</p>
+    </main>
+  </div>
+  <footer class="footer">
+    Generated from <code>boards/st/uorb_architecture.md</code>.
+  </footer>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

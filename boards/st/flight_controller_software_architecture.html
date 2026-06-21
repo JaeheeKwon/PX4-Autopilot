@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Flight Controller Software Architecture</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+.header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.header-inner {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1.5rem;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+h1 { max-width: 920px; margin: 0; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.08; letter-spacing: 0; }
+.lede { max-width: 920px; margin: 1rem 0 0; color: var(--muted); font-size: 1.04rem; }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] { border-color: var(--accent); background: #dbece7; color: var(--accent-dark); }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 { margin: 0 0 0.75rem; font-size: 0.88rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+.toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+h2 { margin-top: 2rem; padding-top: 0.3rem; border-top: 1px solid var(--line); font-size: 1.65rem; line-height: 1.2; letter-spacing: 0; }
+h2:first-child { border-top: 0; }
+h3 { margin-top: 1.4rem; font-size: 1.15rem; line-height: 1.25; letter-spacing: 0; }
+h4 { margin-top: 1.1rem; font-size: 1rem; letter-spacing: 0; }
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { padding: 0.58rem 0.7rem; border: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-alt); text-align: left; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface-alt);
+  color: #344044;
+}
+.admonition {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+}
+.admonition-title { margin: 0 0 0.35rem; font-weight: 700; color: var(--accent-dark); }
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  overflow-x: auto;
+}
+.footer {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+}
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>PX4 Flight Controller Software Architecture</h1>
+      <p class="lede">This document describes the PX4 flight controller software architecture as it is organized in this repository, with NuttX treated as one platform component. It focuses on the PX4 modules in src/modules, the data they...</p>
+    </div>
+  </header>
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="index.html">Middleware</a><a href="flight_controller_software_architecture.html" aria-current="page">PX4 Flight Controller Software Architecture</a><a href="uorb_architecture.html">uORB Middleware Architecture Deep Dive</a><a href="nucleo-h753zi/README.html">ST Nucleo-H753ZI PX4 Board Support</a><a href="nucleo-h753zi/docs/hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a><a href="nucleo-h753zi/docs/hils_ros2_setup.html">HILS, ROS2, and uORB Communication Setup</a>
+  </nav>
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <div class="toc">
+<ul>
+<li><a href="#scope">Scope</a></li>
+<li><a href="#component-view">Component View</a></li>
+<li><a href="#nuttx-platform-boundary">NuttX Platform Boundary</a></li>
+<li><a href="#runtime-model">Runtime Model</a></li>
+<li><a href="#uorb-data-bus">uORB Data Bus</a></li>
+<li><a href="#core-data-flow">Core Data Flow</a></li>
+<li><a href="#key-data-types">Key Data Types</a></li>
+<li><a href="#module-groups-in-srcmodules">Module Groups in src/modules</a><ul>
+<li><a href="#system-state-and-safety">System State and Safety</a></li>
+<li><a href="#sensor-processing-and-vehicle-state">Sensor Processing and Vehicle State</a></li>
+<li><a href="#manual-control-and-rc-input">Manual Control and RC Input</a></li>
+<li><a href="#mission-and-mode-management">Mission and Mode Management</a></li>
+<li><a href="#controllers">Controllers</a></li>
+<li><a href="#control-allocation-and-actuation">Control Allocation and Actuation</a></li>
+<li><a href="#communications-and-external-interfaces">Communications and External Interfaces</a></li>
+<li><a href="#persistence-logging-and-replay">Persistence, Logging, and Replay</a></li>
+<li><a href="#power-payload-and-vehicle-specific-support">Power, Payload, and Vehicle-Specific Support</a></li>
+</ul>
+</li>
+<li><a href="#data-ownership-rules">Data Ownership Rules</a></li>
+<li><a href="#data-timing">Data Timing</a></li>
+<li><a href="#typical-multicopter-control-path">Typical Multicopter Control Path</a></li>
+<li><a href="#typical-fixed-wing-control-path">Typical Fixed-Wing Control Path</a></li>
+<li><a href="#vtol-control-path">VTOL Control Path</a></li>
+<li><a href="#external-data-paths">External Data Paths</a></li>
+<li><a href="#practical-debugging-map">Practical Debugging Map</a></li>
+<li><a href="#source-map">Source Map</a></li>
+</ul>
+</div>
+
+    </aside>
+    <main>
+      <h1 id="px4-flight-controller-software-architecture">PX4 Flight Controller Software Architecture<a class="headerlink" href="#px4-flight-controller-software-architecture" title="Permanent link">&para;</a></h1>
+<p>This document describes the PX4 flight controller software architecture as it is organized in this repository, with NuttX treated as one platform component. It focuses on the PX4 modules in <a href="https://github.com/PX4/PX4-Autopilot/tree/main/src/modules"><code>src/modules</code></a>, the data they exchange, and the runtime shape of the flight-control pipeline.</p>
+<p>For the broader system view, see <a href="../concept/px4_systems_architecture.html">PX4 System Architecture</a>. For the existing high-level flight-stack overview, see <a href="../concept/architecture.html">PX4 Flight Stack Architecture</a>.</p>
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
+<p>This page treats NuttX as the board platform layer. It does not describe NuttX internals, device-driver implementation details, scheduler internals, or board bring-up beyond the interface that PX4 uses.</p>
+<p>The architecture discussed here is the flight-controller firmware running on an embedded board:</p>
+<ul>
+<li>NuttX provides the platform services: task/thread scheduling, work queues, timers, device files, storage, and board I/O.</li>
+<li>PX4 provides the application framework, uORB publish/subscribe middleware, parameters, logging, startup scripts, drivers, estimators, mode managers, controllers, and communications bridges.</li>
+<li>Modules in <code>src/modules</code> are independently startable PX4 components. They share one address space on NuttX and communicate primarily through uORB topics.</li>
+</ul>
+<h2 id="component-view">Component View<a class="headerlink" href="#component-view" title="Permanent link">&para;</a></h2>
+<p>At a high level, PX4 is a reactive data-flow system:</p>
+<div class="mermaid">
+flowchart TD
+    drivers["Sensors and input drivers"]
+    sensor_pipeline["Sensor processing and validation"]
+    estimator["State estimation"]
+    commander["commander / mode state"]
+    setpoints["Mission and mode setpoint generation"]
+    controllers["Vehicle controllers"]
+    allocator["Control allocation"]
+    outputs["Actuator output drivers"]
+    actuators["Motors, servos, payload outputs"]
+
+    drivers --> sensor_pipeline --> estimator
+    estimator --> commander
+    estimator --> setpoints
+    commander --> controllers
+    setpoints --> controllers
+    controllers --> allocator --> outputs --> actuators
+</div>
+<p>Side-channel modules such as <code>mavlink</code>, <code>uxrce_dds_client</code>, <code>logger</code>, <code>dataman</code>, <code>events</code>, and <code>load_mon</code> observe or command this path without owning the inner control loops.</p>
+<h2 id="nuttx-platform-boundary">NuttX Platform Boundary<a class="headerlink" href="#nuttx-platform-boundary" title="Permanent link">&para;</a></h2>
+<p>NuttX is the runtime platform for most embedded PX4 flight controllers. PX4 depends on it for:</p>
+<ul>
+<li>Starting PX4 commands as tasks.</li>
+<li>Running work queues for cooperative scheduled modules.</li>
+<li>Providing device and storage interfaces used by board drivers and logging.</li>
+<li>Providing a shell environment for the PX4 startup scripts and runtime commands.</li>
+</ul>
+<p>PX4 modules are built into firmware according to board configuration files such as <a href="https://github.com/PX4/PX4-Autopilot/blob/main/boards/px4/fmu-v6x/default.px4board"><code>boards/px4/fmu-v6x/default.px4board</code></a>. These files select modules and drivers with <code>CONFIG_MODULES_*</code>, <code>CONFIG_DRIVERS_*</code>, and <code>CONFIG_SYSTEMCMDS_*</code> options.</p>
+<p>Startup is controlled by shell scripts under <a href="https://github.com/PX4/PX4-Autopilot/tree/main/ROMFS/px4fmu_common/init.d"><code>ROMFS/px4fmu_common/init.d</code></a>. The main NuttX startup script is <a href="https://github.com/PX4/PX4-Autopilot/blob/main/ROMFS/px4fmu_common/init.d/rcS"><code>rcS</code></a>. It loads parameters, applies board and airframe configuration, starts the core services, starts drivers, and starts selected modules.</p>
+<h2 id="runtime-model">Runtime Model<a class="headerlink" href="#runtime-model" title="Permanent link">&para;</a></h2>
+<p>Each module is a PX4 command with a common shape:</p>
+<ul>
+<li>It is declared by a local <code>CMakeLists.txt</code> using <code>px4_add_module()</code>.</li>
+<li>It usually supports <code>start</code>, <code>stop</code>, and <code>status</code>.</li>
+<li>It may run as a dedicated task or as a work item on a shared work queue.</li>
+<li>It usually derives from common PX4 helpers such as <code>ModuleBase</code>, <code>ModuleParams</code>, <code>ScheduledWorkItem</code>, or <code>WorkItem</code>.</li>
+<li>It reads parameters through the PX4 parameter system and receives <code>parameter_update</code> when values change.</li>
+<li>It exchanges runtime data with other modules through uORB topics.</li>
+</ul>
+<p>Dedicated tasks are useful for blocking I/O or long-running loops. Work-queue modules are useful for high-rate, low-latency processing that can run cooperatively without blocking.</p>
+<h2 id="uorb-data-bus">uORB Data Bus<a class="headerlink" href="#uorb-data-bus" title="Permanent link">&para;</a></h2>
+<p>uORB is PX4's internal publish/subscribe data bus. Message definitions live in <a href="https://github.com/PX4/PX4-Autopilot/tree/main/msg"><code>msg</code></a> and <a href="https://github.com/PX4/PX4-Autopilot/tree/main/msg/versioned"><code>msg/versioned</code></a>, and the build generates C/C++ topic headers from them.</p>
+<p>Most topics are "latest-value" streams. A subscriber typically only needs the newest value, for example the current attitude or the current vehicle status. Some command-like topics use an explicit queue length so short bursts are not dropped.</p>
+<p>Common uORB patterns:</p>
+<ul>
+<li><code>uORB::Publication&lt;T&gt;</code> publishes one topic instance.</li>
+<li><code>uORB::PublicationMulti&lt;T&gt;</code> publishes one of several instances of the same topic type, often used for multiple sensors or estimators.</li>
+<li><code>uORB::Subscription</code> reads a topic.</li>
+<li><code>uORB::SubscriptionCallbackWorkItem</code> wakes a work item when a topic updates.</li>
+<li>Multi-topic message definitions use the same struct for several topic names, for example <code>vehicle_control_mode</code> and <code>config_control_setpoints</code>.</li>
+</ul>
+<p>Every normal message includes a <code>timestamp</code> in microseconds since system start. Sensor-derived and estimator-derived topics often also include <code>timestamp_sample</code>, which records when the original physical sample was taken.</p>
+<h2 id="core-data-flow">Core Data Flow<a class="headerlink" href="#core-data-flow" title="Permanent link">&para;</a></h2>
+<p>The main flight-control data flow is:</p>
+<ol>
+<li>Drivers publish raw or normalized sensor topics such as <code>sensor_accel</code>, <code>sensor_gyro</code>, <code>sensor_mag</code>, <code>sensor_baro</code>, <code>sensor_gps</code>, <code>distance_sensor</code>, <code>input_rc</code>, and battery or power topics.</li>
+<li><code>sensors</code> validates and combines selected sensor data into topics such as <code>sensor_combined</code>, <code>sensor_selection</code>, <code>vehicle_imu</code>, <code>vehicle_acceleration</code>, <code>vehicle_angular_velocity</code>, <code>vehicle_magnetometer</code>, <code>vehicle_air_data</code>, and <code>vehicle_gps_position</code>.</li>
+<li><code>ekf2</code> consumes the validated sensor streams and publishes vehicle state, including <code>vehicle_attitude</code>, <code>vehicle_local_position</code>, <code>vehicle_global_position</code>, <code>vehicle_odometry</code>, <code>wind</code>, estimator status, estimator innovations, and sensor bias topics.</li>
+<li><code>commander</code> owns arming state, flight mode state, safety state, and failsafe state. It publishes <code>vehicle_status</code>, <code>vehicle_control_mode</code>, <code>actuator_armed</code>, and command acknowledgements.</li>
+<li><code>navigator</code>, <code>flight_mode_manager</code>, and <code>fw_mode_manager</code> generate mission and mode setpoints such as <code>position_setpoint_triplet</code>, <code>trajectory_setpoint</code>, fixed-wing lateral and longitudinal setpoints, constraints, and mode-completion signals.</li>
+<li>Vehicle controllers consume state and setpoints and generate lower-level setpoints:
+   - Multicopter position control publishes <code>vehicle_attitude_setpoint</code> and <code>vehicle_local_position_setpoint</code>.
+   - Multicopter attitude control publishes <code>vehicle_rates_setpoint</code>.
+   - Multicopter rate control publishes <code>vehicle_torque_setpoint</code> and <code>vehicle_thrust_setpoint</code>.
+   - Fixed-wing control modules publish attitude, rate, torque, and thrust setpoints appropriate for fixed-wing control.</li>
+<li><code>vtol_att_control</code> selects and blends multicopter and fixed-wing virtual control paths during VTOL transitions.</li>
+<li><code>control_allocator</code> maps vehicle torque/thrust setpoints to actuator-level topics, mainly <code>actuator_motors</code>, <code>actuator_servos</code>, and <code>actuator_servos_trim</code>.</li>
+<li>Output drivers such as PWM, DShot, UAVCAN/DroneCAN, or simulator outputs consume actuator topics and drive hardware or simulated actuators.</li>
+<li><code>logger</code>, <code>mavlink</code>, <code>uxrce_dds_client</code>, and <code>zenoh</code> observe or bridge selected topics for logs, ground stations, companion computers, ROS 2, or other middleware.</li>
+</ol>
+<h2 id="key-data-types">Key Data Types<a class="headerlink" href="#key-data-types" title="Permanent link">&para;</a></h2>
+<p>The most important data contracts are uORB messages:</p>
+<table>
+<thead>
+<tr>
+<th>Topic or message</th>
+<th>Owner or main publisher</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sensor_combined</code></td>
+<td><code>sensors</code></td>
+<td>Combined gyro and accelerometer data in SI units.</td>
+</tr>
+<tr>
+<td><code>vehicle_imu</code></td>
+<td>sensor pipeline</td>
+<td>IMU delta-angle and delta-velocity data for estimators and high-rate consumers.</td>
+</tr>
+<tr>
+<td><code>vehicle_angular_velocity</code></td>
+<td>sensor pipeline</td>
+<td>Bias-corrected body angular rate used by rate controllers.</td>
+</tr>
+<tr>
+<td><code>vehicle_acceleration</code></td>
+<td>sensor pipeline</td>
+<td>Bias-corrected body acceleration.</td>
+</tr>
+<tr>
+<td><code>vehicle_attitude</code></td>
+<td><code>ekf2</code></td>
+<td>Estimated attitude quaternion from body FRD to earth NED.</td>
+</tr>
+<tr>
+<td><code>vehicle_local_position</code></td>
+<td><code>ekf2</code></td>
+<td>Estimated local NED position, velocity, acceleration, validity flags, and reset counters.</td>
+</tr>
+<tr>
+<td><code>vehicle_global_position</code></td>
+<td><code>ekf2</code></td>
+<td>Estimated WGS84 global position.</td>
+</tr>
+<tr>
+<td><code>vehicle_status</code></td>
+<td><code>commander</code></td>
+<td>Arming state, navigation state, failsafe flags, vehicle type, and system identity.</td>
+</tr>
+<tr>
+<td><code>vehicle_control_mode</code></td>
+<td><code>commander</code></td>
+<td>Which control loops are currently enabled: manual, auto, offboard, position, velocity, attitude, rates, allocation, and termination.</td>
+</tr>
+<tr>
+<td><code>vehicle_command</code></td>
+<td>MAVLink, commander, navigator, manual control, other modules</td>
+<td>Command bus for arm, mode changes, mission actions, calibration, actuator tests, and other actions.</td>
+</tr>
+<tr>
+<td><code>vehicle_command_ack</code></td>
+<td>command handlers</td>
+<td>Result of command processing.</td>
+</tr>
+<tr>
+<td><code>manual_control_setpoint</code></td>
+<td><code>manual_control</code></td>
+<td>Normalized pilot stick and manual control data.</td>
+</tr>
+<tr>
+<td><code>offboard_control_mode</code></td>
+<td>MAVLink or companion bridges</td>
+<td>Declares what offboard setpoint dimensions are controlled.</td>
+</tr>
+<tr>
+<td><code>position_setpoint_triplet</code></td>
+<td><code>navigator</code></td>
+<td>Previous, current, and next mission/navigation position setpoints.</td>
+</tr>
+<tr>
+<td><code>trajectory_setpoint</code></td>
+<td><code>flight_mode_manager</code> and offboard sources</td>
+<td>Local NED position, velocity, acceleration, yaw, and yaw-rate setpoint for position control.</td>
+</tr>
+<tr>
+<td><code>vehicle_attitude_setpoint</code></td>
+<td>position or fixed-wing controllers</td>
+<td>Desired attitude and thrust setpoint.</td>
+</tr>
+<tr>
+<td><code>vehicle_rates_setpoint</code></td>
+<td>attitude controllers</td>
+<td>Desired body angular rates.</td>
+</tr>
+<tr>
+<td><code>vehicle_torque_setpoint</code></td>
+<td>rate controllers</td>
+<td>Normalized torque demand for control allocation.</td>
+</tr>
+<tr>
+<td><code>vehicle_thrust_setpoint</code></td>
+<td>rate or position controllers</td>
+<td>Normalized thrust demand for control allocation.</td>
+</tr>
+<tr>
+<td><code>actuator_motors</code></td>
+<td><code>control_allocator</code></td>
+<td>Normalized motor commands consumed by ESC/output drivers.</td>
+</tr>
+<tr>
+<td><code>actuator_servos</code></td>
+<td><code>control_allocator</code></td>
+<td>Normalized servo commands consumed by output drivers.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="module-groups-in-srcmodules">Module Groups in <code>src/modules</code><a class="headerlink" href="#module-groups-in-srcmodules" title="Permanent link">&para;</a></h2>
+<h3 id="system-state-and-safety">System State and Safety<a class="headerlink" href="#system-state-and-safety" title="Permanent link">&para;</a></h3>
+<p><code>commander</code> is the central state-machine module. It handles arming and disarming, mode switching, health and arming checks, home position handling, calibration commands, safety switch state, and failsafe behavior. It subscribes to command, manual-control, telemetry, power, land-detector, offboard, mission, and VTOL status topics. It publishes <code>vehicle_status</code>, <code>vehicle_control_mode</code>, <code>actuator_armed</code>, <code>vehicle_command_ack</code>, and selected internal <code>vehicle_command</code> messages.</p>
+<p><code>land_detector</code> determines whether the vehicle is landed, maybe landed, freefalling, or in ground contact. The result is consumed by <code>commander</code>, estimators, and controllers so arming logic, takeoff logic, landing behavior, and controller integrators can react correctly.</p>
+<p><code>events</code> publishes user-visible events, LEDs, and status display updates. It is part of the operator-facing status path rather than the core control loop.</p>
+<p><code>load_mon</code>, <code>task_watchdog</code>, <code>time_persistor</code>, and <code>hardfault_stream</code> provide platform health monitoring, watchdog support, persistent time handling, and fault-log streaming.</p>
+<h3 id="sensor-processing-and-vehicle-state">Sensor Processing and Vehicle State<a class="headerlink" href="#sensor-processing-and-vehicle-state" title="Permanent link">&para;</a></h3>
+<p><code>sensors</code> is the main sensor aggregation and validation module. It consumes lower-level driver topics and publishes selected, calibrated, and synchronized sensor topics for estimators and controllers. It also maintains sensor selection and sensor health data.</p>
+<p><code>ekf2</code> is the primary attitude and position estimator. It consumes IMU, magnetometer, barometer, GNSS, airspeed, optical-flow, distance-sensor, external-vision, and auxiliary aiding topics. It publishes estimated attitude, local/global position, odometry, wind, estimator status, innovations, biases, and aiding-source diagnostics.</p>
+<p><code>airspeed_selector</code> validates and selects airspeed estimates from one or more airspeed sources. It publishes <code>airspeed_validated</code> and wind-estimation diagnostics used by fixed-wing estimation and control.</p>
+<p><code>attitude_estimator_q</code> and <code>local_position_estimator</code> are alternative estimator modules. They are not the normal primary path on current full PX4 builds where <code>ekf2</code> is enabled.</p>
+<p><code>mag_bias_estimator</code>, <code>gyro_calibration</code>, <code>gyro_fft</code>, <code>temperature_compensation</code>, and <code>mc_hover_thrust_estimator</code> are supporting estimation, calibration, or compensation modules. They improve sensor interpretation or controller feed-forward but do not replace the main state estimator.</p>
+<h3 id="manual-control-and-rc-input">Manual Control and RC Input<a class="headerlink" href="#manual-control-and-rc-input" title="Permanent link">&para;</a></h3>
+<p><code>manual_control</code> normalizes and selects manual input sources and publishes <code>manual_control_setpoint</code>. It can also publish action requests and vehicle commands for switch/button gestures such as mode changes, arming, landing gear, or other pilot actions.</p>
+<p><code>rc_update</code> updates RC-related calibration and mapping data from <code>input_rc</code>, parameters, and manual-control configuration. It feeds the manual-control path rather than directly owning flight modes.</p>
+<h3 id="mission-and-mode-management">Mission and Mode Management<a class="headerlink" href="#mission-and-mode-management" title="Permanent link">&para;</a></h3>
+<p><code>navigator</code> owns autonomous navigation behaviors such as missions, loiter, return-to-launch, takeoff, landing, geofence checks, and some traffic or safety navigation decisions. It consumes vehicle position, vehicle status, home position, mission data, vehicle commands, and telemetry state. It publishes <code>position_setpoint_triplet</code>, <code>mission_result</code>, <code>geofence_result</code>, <code>navigator_status</code>, <code>vehicle_roi</code>, <code>mode_completed</code>, and command acknowledgements.</p>
+<p><code>flight_mode_manager</code> owns multicopter flight tasks. It selects a <code>FlightTask</code> based on the active navigation state and publishes <code>trajectory_setpoint</code>, <code>vehicle_constraints</code>, and landing-gear commands. The actual tasks live below <code>src/modules/flight_mode_manager/tasks</code>.</p>
+<p><code>fw_mode_manager</code> owns fixed-wing mode-specific setpoint generation. It produces fixed-wing lateral and longitudinal setpoints and controller configuration topics for the fixed-wing control chain.</p>
+<h3 id="controllers">Controllers<a class="headerlink" href="#controllers" title="Permanent link">&para;</a></h3>
+<p><code>mc_pos_control</code> is the multicopter position controller. It consumes <code>trajectory_setpoint</code>, local position, vehicle constraints, hover-thrust estimates, land-detected state, and control mode. It publishes <code>vehicle_attitude_setpoint</code>, <code>vehicle_local_position_setpoint</code>, and takeoff status.</p>
+<p><code>mc_att_control</code> is the multicopter attitude controller. It consumes attitude setpoints, estimated attitude, manual inputs, land-detected state, control mode, vehicle status, and hover-thrust estimates. It publishes <code>vehicle_rates_setpoint</code>.</p>
+<p><code>mc_rate_control</code> is the multicopter body-rate controller. It consumes angular velocity, rates setpoints, control mode, battery status, allocator status, and vehicle status. It publishes <code>vehicle_torque_setpoint</code>, <code>vehicle_thrust_setpoint</code>, <code>actuator_controls_status</code>, and rate-controller status.</p>
+<p><code>fw_lateral_longitudinal_control</code> computes fixed-wing attitude and throttle setpoints from lateral and longitudinal guidance setpoints, local position, air data, airspeed, wind, and vehicle status. It publishes <code>vehicle_attitude_setpoint</code>, TECS status, flight-phase estimation, and fixed-wing lateral status.</p>
+<p><code>fw_att_control</code> is the fixed-wing attitude controller. It turns fixed-wing attitude setpoints and estimated attitude into rate setpoints and lower-level control demands.</p>
+<p><code>fw_rate_control</code> is the fixed-wing rate controller. It closes the fixed-wing body-rate loop and publishes torque/thrust setpoints for allocation.</p>
+<p><code>vtol_att_control</code> manages VTOL-specific control selection and transitions. It bridges multicopter and fixed-wing virtual setpoint topics and publishes the active VTOL vehicle status.</p>
+<p>Specialized controller modules include <code>airship_att_control</code>, <code>uuv_att_control</code>, <code>uuv_pos_control</code>, <code>spacecraft</code>, <code>rover_ackermann</code>, <code>rover_differential</code>, and <code>rover_mecanum</code>. They follow the same uORB pattern but implement control pipelines for other vehicle types.</p>
+<h3 id="control-allocation-and-actuation">Control Allocation and Actuation<a class="headerlink" href="#control-allocation-and-actuation" title="Permanent link">&para;</a></h3>
+<p><code>control_allocator</code> maps abstract torque and thrust setpoints into concrete motor and servo commands. It consumes <code>vehicle_torque_setpoint</code>, <code>vehicle_thrust_setpoint</code>, vehicle status, control mode, failure-detector status, and allocator parameters. It publishes <code>actuator_motors</code>, <code>actuator_servos</code>, <code>actuator_servos_trim</code>, and <code>control_allocator_status</code>.</p>
+<p>Output drivers are mostly under <code>src/drivers</code>, not <code>src/modules</code>. They consume actuator topics and map them to board outputs such as PWM, DShot, DroneCAN/UAVCAN ESCs, or simulation outputs. The allocator therefore separates vehicle-control laws from hardware output mapping.</p>
+<p><code>px4iofirmware</code> is firmware for the PX4IO co-processor on boards that use one. It is closely related to actuation and safety I/O, but it is not a normal high-level flight-control module.</p>
+<h3 id="communications-and-external-interfaces">Communications and External Interfaces<a class="headerlink" href="#communications-and-external-interfaces" title="Permanent link">&para;</a></h3>
+<p><code>mavlink</code> bridges uORB to MAVLink links for ground stations, telemetry radios, companion computers, cameras, gimbals, and other MAVLink components. It converts incoming MAVLink commands and setpoints into uORB topics such as <code>vehicle_command</code>, mission updates, offboard setpoints, and manual-control inputs. It also streams selected uORB state topics back out as MAVLink messages.</p>
+<p><code>uxrce_dds_client</code> exposes selected uORB topics through the uXRCE-DDS bridge for ROS 2 and DDS-based companion applications. The set of bridged topics is configured by <a href="https://github.com/PX4/PX4-Autopilot/blob/main/src/modules/uxrce_dds_client/dds_topics.yaml"><code>src/modules/uxrce_dds_client/dds_topics.yaml</code></a>.</p>
+<p><code>zenoh</code> is another bridge module for publishing and subscribing PX4 data over Zenoh.</p>
+<p><code>muorb</code> supports multi-uORB routing for systems that need uORB messages across processing domains.</p>
+<h3 id="persistence-logging-and-replay">Persistence, Logging, and Replay<a class="headerlink" href="#persistence-logging-and-replay" title="Permanent link">&para;</a></h3>
+<p><code>dataman</code> is a small persistent database used for missions, geofences, mission state, and related structured data. On NuttX it can use board or SD-card storage depending on board configuration.</p>
+<p><code>logger</code> records selected uORB topics, performance data, parameters, and metadata to ULog files. It observes the system and is not in the control loop, but it is critical for flight review and debugging.</p>
+<p><code>replay</code> replays logged uORB data into selected modules, especially estimator replay. It is a development and debugging module.</p>
+<h3 id="power-payload-and-vehicle-specific-support">Power, Payload, and Vehicle-Specific Support<a class="headerlink" href="#power-payload-and-vehicle-specific-support" title="Permanent link">&para;</a></h3>
+<p><code>battery_status</code> converts ADC or smart-battery data into <code>battery_status</code> topics and battery warnings. <code>esc_battery</code> estimates battery information from ESC telemetry. <code>internal_combustion_engine_control</code> supports combustion-engine control/status data.</p>
+<p><code>gimbal</code>, <code>camera_feedback</code>, and <code>payload_deliverer</code> implement payload-related control paths and publish or consume camera, gimbal, gripper, and payload topics.</p>
+<p><code>landing_target_estimator</code> and <code>vision_target_estimator</code> process target and vision information for precision landing or target estimation.</p>
+<p>Simulation modules under <code>src/modules/simulation</code> replace real hardware or external simulators with simulated sensor and actuator data for SITL, HIL, or simulation-in-hardware workflows. They keep the same uORB interfaces as the real system where possible.</p>
+<h2 id="data-ownership-rules">Data Ownership Rules<a class="headerlink" href="#data-ownership-rules" title="Permanent link">&para;</a></h2>
+<p>PX4 has many publishers and subscribers, but the architecture remains understandable if each topic is treated as a contract with a small number of owners:</p>
+<ul>
+<li>Drivers own raw hardware observations.</li>
+<li><code>sensors</code> owns selected and validated sensor streams.</li>
+<li><code>ekf2</code> owns estimated vehicle state.</li>
+<li><code>commander</code> owns arming, mode, and safety state.</li>
+<li><code>navigator</code> owns mission/navigation setpoint triplets and mission results.</li>
+<li>Mode managers own mode-specific setpoints.</li>
+<li>Controllers own progressively lower-level control setpoints.</li>
+<li><code>control_allocator</code> owns actuator-level setpoints.</li>
+<li>Output drivers own physical output timing and protocol details.</li>
+<li>Bridges own protocol conversion, not internal state authority.</li>
+</ul>
+<p>This ownership matters because most modules should not directly call into each other. A module changes system behavior by publishing a topic or by handling a topic it subscribes to.</p>
+<h2 id="data-timing">Data Timing<a class="headerlink" href="#data-timing" title="Permanent link">&para;</a></h2>
+<p>PX4 separates sample time from publication time:</p>
+<ul>
+<li><code>timestamp</code> records when the message was published or updated in PX4 time.</li>
+<li><code>timestamp_sample</code> records when the physical or logical sample used to compute the message was taken.</li>
+</ul>
+<p>Controllers usually run when their triggering input updates. For example, rate control is driven from angular-rate updates, while position control is driven from local-position updates. This keeps latency low and avoids unnecessary polling.</p>
+<p>Different loops run at different rates:</p>
+<ul>
+<li>IMU and angular-rate paths are high-rate.</li>
+<li>Attitude and rate control are high-rate.</li>
+<li>Position control and estimation run at moderate rates.</li>
+<li>Mission navigation, health monitoring, telemetry, and logging run at lower or configured rates.</li>
+</ul>
+<p>The <code>uorb top</code> command can inspect topic update rates at runtime.</p>
+<h2 id="typical-multicopter-control-path">Typical Multicopter Control Path<a class="headerlink" href="#typical-multicopter-control-path" title="Permanent link">&para;</a></h2>
+<p>The multicopter path is the clearest example of the layered architecture:</p>
+<div class="mermaid">
+flowchart TD
+    sensor_drivers["sensor drivers"] --> sensors["sensors"]
+    sensors --> ekf2["ekf2"]
+    ekf2 --> state["vehicle_attitude<br/>vehicle_local_position"]
+
+    commander["commander"] --> status["vehicle_status<br/>vehicle_control_mode<br/>actuator_armed"]
+    input_sources["manual_control<br/>mavlink<br/>navigator"] --> input_topics["manual_control_setpoint<br/>vehicle_command<br/>position_setpoint_triplet"]
+
+    state --> fmm["flight_mode_manager"]
+    status --> fmm
+    input_topics --> fmm
+    fmm --> trajectory["trajectory_setpoint<br/>vehicle_constraints"]
+    trajectory --> pos["mc_pos_control"]
+    state --> pos
+    pos --> attitude_sp["vehicle_attitude_setpoint"]
+    attitude_sp --> att["mc_att_control"]
+    state --> att
+    att --> rates_sp["vehicle_rates_setpoint"]
+    rates_sp --> rate["mc_rate_control"]
+    state --> rate
+    rate --> torque_thrust["vehicle_torque_setpoint<br/>vehicle_thrust_setpoint"]
+    torque_thrust --> allocator["control_allocator"]
+    allocator --> actuator_topics["actuator_motors<br/>actuator_servos"]
+    actuator_topics --> output_drivers["output drivers"]
+    output_drivers --> physical_outputs["ESCs<br/>motors<br/>servos"]
+</div>
+<p>Manual modes, autonomous modes, and offboard modes differ mainly in which module publishes the setpoints and which <code>vehicle_control_mode</code> flags are enabled. The lower control pipeline remains largely the same.</p>
+<h2 id="typical-fixed-wing-control-path">Typical Fixed-Wing Control Path<a class="headerlink" href="#typical-fixed-wing-control-path" title="Permanent link">&para;</a></h2>
+<p>The fixed-wing path shares the same state-estimation and system-state modules, but the guidance and controller chain differs:</p>
+<div class="mermaid">
+flowchart TD
+    ekf2_fw["ekf2"] --> fw_state["vehicle_attitude<br/>vehicle_local_position<br/>vehicle_global_position<br/>wind"]
+    commander_fw["commander"] --> fw_status["vehicle_status<br/>vehicle_control_mode"]
+    nav_fw["navigator<br/>fw_mode_manager"] --> fw_setpoints["position_setpoint_triplet<br/>fixed_wing_lateral_setpoint<br/>fixed_wing_longitudinal_setpoint"]
+
+    fw_state --> latlon["fw_lateral_longitudinal_control"]
+    fw_status --> latlon
+    fw_setpoints --> latlon
+    latlon --> fw_att_sp["vehicle_attitude_setpoint"]
+    fw_att_sp --> fw_att["fw_att_control"]
+    fw_state --> fw_att
+    fw_att --> fw_rates_sp["vehicle_rates_setpoint"]
+    fw_rates_sp --> fw_rate["fw_rate_control"]
+    fw_state --> fw_rate
+    fw_rate --> fw_torque_thrust["vehicle_torque_setpoint<br/>vehicle_thrust_setpoint"]
+    fw_torque_thrust --> allocator_fw["control_allocator"]
+    allocator_fw --> fw_actuators["actuator_motors<br/>actuator_servos"]
+</div>
+<p><code>airspeed_selector</code> and air-data topics are more central in fixed-wing control than in multicopter control because airspeed affects lift, throttle, and longitudinal control.</p>
+<h2 id="vtol-control-path">VTOL Control Path<a class="headerlink" href="#vtol-control-path" title="Permanent link">&para;</a></h2>
+<p>VTOL vehicles include both multicopter and fixed-wing control paths. During transitions, <code>vtol_att_control</code> uses VTOL state, transition state, airspeed, attitude, and virtual setpoint topics to choose or blend the active control path. The allocator still receives abstract thrust and torque demands, then produces actuator-level outputs for the configured geometry.</p>
+<h2 id="external-data-paths">External Data Paths<a class="headerlink" href="#external-data-paths" title="Permanent link">&para;</a></h2>
+<p>MAVLink, DDS, and Zenoh bridge external systems to uORB:</p>
+<ul>
+<li>Ground stations use MAVLink for commands, mission upload/download, telemetry, parameters, log streaming, and status.</li>
+<li>Companion computers may use MAVLink, uXRCE-DDS/ROS 2, or Zenoh to send offboard setpoints, receive state, or command payloads.</li>
+<li>External systems generally do not call controllers directly. They publish commands or setpoints into uORB through a bridge, and PX4's normal mode, safety, and control logic decides whether those inputs are accepted.</li>
+</ul>
+<p>This is why offboard control uses topics such as <code>offboard_control_mode</code>, <code>trajectory_setpoint</code>, <code>vehicle_command</code>, and command acknowledgements rather than bypassing <code>commander</code> and the controllers.</p>
+<h2 id="practical-debugging-map">Practical Debugging Map<a class="headerlink" href="#practical-debugging-map" title="Permanent link">&para;</a></h2>
+<p>Useful runtime commands on a NuttX target:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>top</code></td>
+<td>Show running tasks. Work-queue items show through their work-queue task, not as separate tasks.</td>
+</tr>
+<tr>
+<td><code>work_queue status</code></td>
+<td>Show active scheduled work items.</td>
+</tr>
+<tr>
+<td><code>uorb top</code></td>
+<td>Show topic publication rates, subscriber counts, lost messages, and queue size.</td>
+</tr>
+<tr>
+<td><code>listener &lt;topic&gt; [count]</code></td>
+<td>Print current topic data.</td>
+</tr>
+<tr>
+<td><code>&lt;module&gt; status</code></td>
+<td>Print module-specific status.</td>
+</tr>
+<tr>
+<td><code>param show &lt;name&gt;</code></td>
+<td>Inspect parameter values that influence module behavior.</td>
+</tr>
+</tbody>
+</table>
+<p>When debugging a control issue, walk the data path in order:</p>
+<ol>
+<li>Check raw and validated sensor topics.</li>
+<li>Check estimator outputs and estimator status.</li>
+<li>Check <code>vehicle_status</code>, <code>vehicle_control_mode</code>, and <code>vehicle_land_detected</code>.</li>
+<li>Check setpoint topics from navigator or mode managers.</li>
+<li>Check controller outputs.</li>
+<li>Check <code>control_allocator_status</code>, <code>actuator_motors</code>, and <code>actuator_servos</code>.</li>
+<li>Check output-driver status and hardware wiring/configuration.</li>
+</ol>
+<h2 id="source-map">Source Map<a class="headerlink" href="#source-map" title="Permanent link">&para;</a></h2>
+<p>Important source locations:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/src/modules"><code>src/modules</code></a></td>
+<td>Flight-stack, system, communication, logging, and support modules.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/src/drivers"><code>src/drivers</code></a></td>
+<td>Hardware and protocol drivers.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/src/lib"><code>src/lib</code></a></td>
+<td>Shared control, math, mixer, parameter, and utility libraries.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/msg"><code>msg</code></a></td>
+<td>uORB message definitions.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/msg/versioned"><code>msg/versioned</code></a></td>
+<td>Versioned uORB messages used by bridges and compatibility-sensitive APIs.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/ROMFS/px4fmu_common/init.d"><code>ROMFS/px4fmu_common/init.d</code></a></td>
+<td>NuttX startup and airframe scripts.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/boards"><code>boards</code></a></td>
+<td>Board build configuration, including selected NuttX modules and drivers.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/PX4/PX4-Autopilot/tree/main/platforms/nuttx"><code>platforms/nuttx</code></a></td>
+<td>NuttX platform integration.</td>
+</tr>
+</tbody>
+</table>
+    </main>
+  </div>
+  <footer class="footer">
+    Generated from <code>boards/st/flight_controller_software_architecture.md</code>.
+  </footer>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

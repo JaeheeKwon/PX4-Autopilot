@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ST Nucleo-H753ZI PX4 Board Support</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+.header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.header-inner {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1.5rem;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+h1 { max-width: 920px; margin: 0; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.08; letter-spacing: 0; }
+.lede { max-width: 920px; margin: 1rem 0 0; color: var(--muted); font-size: 1.04rem; }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] { border-color: var(--accent); background: #dbece7; color: var(--accent-dark); }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 { margin: 0 0 0.75rem; font-size: 0.88rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+.toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+h2 { margin-top: 2rem; padding-top: 0.3rem; border-top: 1px solid var(--line); font-size: 1.65rem; line-height: 1.2; letter-spacing: 0; }
+h2:first-child { border-top: 0; }
+h3 { margin-top: 1.4rem; font-size: 1.15rem; line-height: 1.25; letter-spacing: 0; }
+h4 { margin-top: 1.1rem; font-size: 1rem; letter-spacing: 0; }
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { padding: 0.58rem 0.7rem; border: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-alt); text-align: left; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface-alt);
+  color: #344044;
+}
+.admonition {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+}
+.admonition-title { margin: 0 0 0.35rem; font-weight: 700; color: var(--accent-dark); }
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  overflow-x: auto;
+}
+.footer {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+}
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>ST Nucleo-H753ZI PX4 Board Support</h1>
+      <p class="lede">Minimal PX4 board support for the ST Nucleo-H753ZI development board. The board has no real sensors, so it is configured for Hardware-In-the-Loop Simulation (HILS) by default.</p>
+    </div>
+  </header>
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="../index.html">Middleware</a><a href="../flight_controller_software_architecture.html">PX4 Flight Controller Software Architecture</a><a href="../uorb_architecture.html">uORB Middleware Architecture Deep Dive</a><a href="README.html" aria-current="page">ST Nucleo-H753ZI PX4 Board Support</a><a href="docs/hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a><a href="docs/hils_ros2_setup.html">HILS, ROS2, and uORB Communication Setup</a>
+  </nav>
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <div class="toc">
+<ul>
+<li><a href="#hardware">Hardware</a><ul>
+<li><a href="#leds">LEDs</a></li>
+<li><a href="#serial-ports">Serial Ports</a></li>
+<li><a href="#shell-prompts">Shell Prompts</a></li>
+<li><a href="#other-peripherals">Other Peripherals</a></li>
+</ul>
+</li>
+<li><a href="#build-targets">Build Targets</a></li>
+<li><a href="#flashing">Flashing</a><ul>
+<li><a href="#step-1-flash-the-bootloader-once">Step 1 — Flash the bootloader (once)</a></li>
+<li><a href="#step-2-flash-firmware-via-usb">Step 2 — Flash firmware via USB</a></li>
+</ul>
+</li>
+<li><a href="#hils-setup-hardware-in-the-loop-simulation">HILS Setup (Hardware-In-the-Loop Simulation)</a><ul>
+<li><a href="#what-happens-at-boot-with-sys_hitl1">What happens at boot with SYS_HITL=1</a></li>
+<li><a href="#modules-included-in-defaultpx4board">Modules included in default.px4board</a></li>
+<li><a href="#mavlink-hil-message-flow">MAVLink HIL message flow</a></li>
+<li><a href="#compatible-simulators">Compatible Simulators</a></li>
+<li><a href="#what-you-can-test-with-hils">What You Can Test with HILS</a></li>
+<li><a href="#hil-mode-comparison">HIL Mode Comparison</a></li>
+<li><a href="#qgroundcontrol-hil-mode">QGroundControl HIL mode</a></li>
+</ul>
+</li>
+<li><a href="#additional-communication-interfaces">Additional Communication Interfaces</a><ul>
+<li><a href="#1-os-app-profiling-tracing">1 — OS / App Profiling &amp; Tracing</a></li>
+<li><a href="#2-ros2-connection-uxrce-dds">2 — ROS2 Connection (uXRCE-DDS)</a></li>
+<li><a href="#3-uorb-pubsub-for-hils">3 — uORB pub/sub for HILS</a></li>
+<li><a href="#interface-summary">Interface Summary</a></li>
+</ul>
+</li>
+<li><a href="#parameter-defaults-rcboard_defaults">Parameter Defaults (rc.board_defaults)</a></li>
+<li><a href="#key-implementation-notes">Key Implementation Notes</a><ul>
+<li><a href="#active-high-leds-srcledc">Active-HIGH LEDs (src/led.c)</a></li>
+<li><a href="#clock-configuration-nuttx-configincludeboardh">Clock configuration (nuttx-config/include/board.h)</a></li>
+<li><a href="#flash-parameter-storage-srcboard_configh">Flash parameter storage (src/board_config.h)</a></li>
+<li><a href="#bootloader-compatibility-srchw_configh">Bootloader compatibility (src/hw_config.h)</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+    </aside>
+    <main>
+      <h1 id="st-nucleo-h753zi-px4-board-support">ST Nucleo-H753ZI PX4 Board Support<a class="headerlink" href="#st-nucleo-h753zi-px4-board-support" title="Permanent link">&para;</a></h1>
+<p>Minimal PX4 board support for the <a href="https://www.st.com/en/evaluation-tools/nucleo-h753zi.html">ST Nucleo-H753ZI</a> development board. The board has no real sensors, so it is configured for <strong>Hardware-In-the-Loop Simulation (HILS)</strong> by default.</p>
+<h2 id="hardware">Hardware<a class="headerlink" href="#hardware" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCU</td>
+<td>STM32H753ZI (Cortex-M7)</td>
+</tr>
+<tr>
+<td>Clock</td>
+<td>400 MHz (8 MHz HSE from ST-LINK MCO → PLL M=2/N=200/P=2)</td>
+</tr>
+<tr>
+<td>Flash</td>
+<td>2 MB (app at <code>0x08020000</code>, bootloader at <code>0x08000000</code>)</td>
+</tr>
+<tr>
+<td>SRAM</td>
+<td>1 MB</td>
+</tr>
+<tr>
+<td>Package</td>
+<td>144-pin LQFP</td>
+</tr>
+<tr>
+<td>Console</td>
+<td>USART3 on PD8/PD9 (ST-LINK virtual COM, 57600 baud)</td>
+</tr>
+<tr>
+<td>USB</td>
+<td>OTG-FS on PA11/PA12, VBUS sense on PA9</td>
+</tr>
+</tbody>
+</table>
+<h3 id="leds">LEDs<a class="headerlink" href="#leds" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Pin</th>
+<th>Color</th>
+<th>Polarity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LD1</td>
+<td>PB0</td>
+<td>Green</td>
+<td>Active <strong>HIGH</strong> (pushpull)</td>
+</tr>
+<tr>
+<td>LD2</td>
+<td>PE1</td>
+<td>Blue</td>
+<td>Active <strong>HIGH</strong> (pushpull)</td>
+</tr>
+<tr>
+<td>LD3</td>
+<td>PB14</td>
+<td>Red</td>
+<td>Active <strong>HIGH</strong> (pushpull)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Most PX4 boards use active-LOW open-drain LEDs. The Nucleo LEDs are active-HIGH pushpull — <code>led.c</code> writes <code>state</code> directly without inversion.</p>
+</blockquote>
+<h3 id="serial-ports">Serial Ports<a class="headerlink" href="#serial-ports" title="Permanent link">&para;</a></h3>
+<p>The STM32H7 NuttX driver assigns <code>/dev/ttySx</code> in numeric USART order (with <code>CONFIG_STM32H7_SERIAL_DISABLE_REORDERING=y</code>). Only the two UARTs below are enabled.</p>
+<table>
+<thead>
+<tr>
+<th>NuttX device</th>
+<th>USART</th>
+<th>Pins</th>
+<th>Connector</th>
+<th>Baud</th>
+<th>PX4 role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/dev/ttyS0</code></td>
+<td>USART3</td>
+<td>PD8 (TX) / PD9 (RX)</td>
+<td><strong>CN1 — ST-LINK virtual COM</strong></td>
+<td>57 600</td>
+<td>NSH console / <code>CONSOLE</code></td>
+</tr>
+<tr>
+<td><code>/dev/ttyS1</code></td>
+<td>USART6</td>
+<td>PG14 (TX) / PG9 (RX)</td>
+<td><strong>CN10 — Arduino header</strong></td>
+<td>57 600</td>
+<td><code>TEL1</code> (MAVLink telemetry)</td>
+</tr>
+<tr>
+<td><code>/dev/ttyACM0</code></td>
+<td>USB OTG-FS</td>
+<td>PA11 (DM) / PA12 (DP)</td>
+<td><strong>CN13 — User USB</strong></td>
+<td>USB bulk</td>
+<td>MAVLink / HIL (auto-started by <code>cdcacm_autostart</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>For HILS:</strong> connect your simulator PC to <strong>CN13 (User USB)</strong>. The board appears as <code>/dev/ttyACM0</code> on Linux. <code>cdcacm_autostart</code> detects the USB connection and starts <code>mavlink</code> on that device automatically. CN1 (ST-LINK) stays free as the NSH debug console.</p>
+<p><strong>TEL1 (<code>/dev/ttyS1</code>)</strong> is available on the Arduino CN10 header (pins D0/D1) for a second MAVLink link or RC input if needed.</p>
+<h3 id="shell-prompts">Shell Prompts<a class="headerlink" href="#shell-prompts" title="Permanent link">&para;</a></h3>
+<p>Two shell prompts are visible depending on how you connect — both run the same NuttX Shell (NSH) binary:</p>
+<table>
+<thead>
+<tr>
+<th>Prompt</th>
+<th>How to reach it</th>
+<th>Transport</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nsh&gt;</code></td>
+<td>USART3 → ST-LINK → CN1 (USB serial)</td>
+<td>Direct serial; available from first boot, before PX4 starts</td>
+</tr>
+<tr>
+<td><code>psh&gt;</code></td>
+<td>QGroundControl MAVLink Console → CN13 → <code>mavlink</code> module</td>
+<td>NSH spawned inside the <code>mavlink</code> module via pipes; QGC labels it <code>psh&gt;</code> (PX4 SHell)</td>
+</tr>
+</tbody>
+</table>
+<p><code>nsh&gt;</code> is always available — even during boot, before the PX4 application initialises. Use it for low-level debugging and boot-time diagnostics.</p>
+<p><code>psh&gt;</code> only appears once the <code>mavlink</code> module is running and QGC has connected via CN13. It shares the USB link with MAVLink telemetry. Use it for in-flight PX4 commands without a separate serial adapter.</p>
+<p>In the HILS setup both are active simultaneously: <code>nsh&gt;</code> on CN1 and <code>psh&gt;</code> inside QGC connected to CN13.</p>
+<h3 id="other-peripherals">Other Peripherals<a class="headerlink" href="#other-peripherals" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Bus</th>
+<th>Pins</th>
+<th>Connector</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SPI3</td>
+<td>PB3/PB4/PB5 (SCK/MISO/MOSI)</td>
+<td>Arduino shield CN7 (D3/D12/D11)</td>
+</tr>
+<tr>
+<td>I2C1</td>
+<td>PB8/PB9 (SCL/SDA)</td>
+<td>Arduino shield CN7 (D15/D14)</td>
+</tr>
+</tbody>
+</table>
+<p>No external sensors are wired by default.</p>
+<hr />
+<h2 id="build-targets">Build Targets<a class="headerlink" href="#build-targets" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash"># Application firmware
+make st_nucleo-h753zi_default
+
+# Bootloader
+make st_nucleo-h753zi_bootloader
+</code></pre>
+<hr />
+<h2 id="flashing">Flashing<a class="headerlink" href="#flashing" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-flash-the-bootloader-once">Step 1 — Flash the bootloader (once)<a class="headerlink" href="#step-1-flash-the-bootloader-once" title="Permanent link">&para;</a></h3>
+<p>The firmware is linked at <code>0x08020000</code>, so the PX4 bootloader must occupy the first 128 KB sector (<code>0x08000000</code>).</p>
+<pre><code class="language-bash"># Via OpenOCD (ST-LINK on-board)
+openocd -f interface/stlink.cfg -f target/stm32h7x.cfg \
+  -c &quot;program build/st_nucleo-h753zi_bootloader/st_nucleo-h753zi_bootloader.bin \
+      0x08000000 verify reset exit&quot;
+</code></pre>
+<p>If you keep a pre-built bootloader binary locally, flash that binary at <code>0x08000000</code>.</p>
+<h3 id="step-2-flash-firmware-via-usb">Step 2 — Flash firmware via USB<a class="headerlink" href="#step-2-flash-firmware-via-usb" title="Permanent link">&para;</a></h3>
+<p>After the bootloader is running, update firmware over USB:</p>
+<pre><code class="language-bash">make st_nucleo-h753zi_default upload
+</code></pre>
+<p>The board appears as <code>/dev/ttyACM0</code> (Linux) or <code>COMx</code> (Windows).</p>
+<hr />
+<h2 id="hils-setup-hardware-in-the-loop-simulation">HILS Setup (Hardware-In-the-Loop Simulation)<a class="headerlink" href="#hils-setup-hardware-in-the-loop-simulation" title="Permanent link">&para;</a></h2>
+<p>The board has no real sensors. <code>SYS_HITL=1</code> is set as the default parameter, which activates classical MAVLink HIL mode on every boot.</p>
+<p>For the complete board-specific HITL parameter set, see <a href="docs/hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a>.</p>
+<h3 id="what-happens-at-boot-with-sys_hitl1">What happens at boot with <code>SYS_HITL=1</code><a class="headerlink" href="#what-happens-at-boot-with-sys_hitl1" title="Permanent link">&para;</a></h3>
+<p>The common startup script (<code>rcS</code>) automatically:</p>
+<ol>
+<li>Starts <code>sensors -h</code> — sensor framework in HIL mode (no hardware polling)</li>
+<li>Sets <code>GPS_1_CONFIG=0</code> — disables real GPS driver</li>
+<li>Starts <code>commander -h</code> — commander with relaxed HIL preflight checks</li>
+<li>Starts <code>pwm_out_sim -m hil</code> — virtual actuator output; echoes actuator commands back to the simulator via MAVLink <code>HIL_ACTUATOR_CONTROLS</code></li>
+</ol>
+<h3 id="modules-included-in-defaultpx4board">Modules included in <code>default.px4board</code><a class="headerlink" href="#modules-included-in-defaultpx4board" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ekf2</code></td>
+<td>State estimation (attitude + position) from HIL sensor data</td>
+</tr>
+<tr>
+<td><code>mc_att_control</code></td>
+<td>Multicopter attitude control</td>
+</tr>
+<tr>
+<td><code>mc_rate_control</code></td>
+<td>Multicopter rate control</td>
+</tr>
+<tr>
+<td><code>mc_pos_control</code></td>
+<td>Multicopter position control</td>
+</tr>
+<tr>
+<td><code>mc_hover_thrust_estimator</code></td>
+<td>Hover thrust estimation</td>
+</tr>
+<tr>
+<td><code>control_allocator</code></td>
+<td>Motor mixing</td>
+</tr>
+<tr>
+<td><code>pwm_out_sim</code></td>
+<td>Virtual actuator output for HIL</td>
+</tr>
+<tr>
+<td><code>mavlink</code></td>
+<td>MAVLink over USB CDC-ACM (GCS + HIL messages)</td>
+</tr>
+<tr>
+<td><code>commander</code>, <code>navigator</code>, <code>sensors</code>, …</td>
+<td>Standard flight stack</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mavlink-hil-message-flow">MAVLink HIL message flow<a class="headerlink" href="#mavlink-hil-message-flow" title="Permanent link">&para;</a></h3>
+<div class="mermaid">
+flowchart LR
+    subgraph PC["Simulator PC"]
+        sim["jMAVSim / Gazebo"]
+    end
+
+    subgraph FC["Nucleo-H753ZI"]
+        mavlink["mavlink_receiver"]
+        uorb[("uORB topics")]
+        ekf2["ekf2<br/>state estimate"]
+        controllers["mc_* controllers<br/>actuator setpoints"]
+        pwm["pwm_out_sim"]
+    end
+
+    sim -- "HIL_SENSOR 250 Hz<br/>HIL_GPS 5 Hz<br/>USB MAVLink" --> mavlink
+    mavlink -- "sensor_combined<br/>sensor_gps" --> uorb
+    uorb --> ekf2
+    ekf2 --> controllers
+    controllers --> pwm
+    pwm -- "HIL_ACTUATOR_CONTROLS" --> sim
+</div>
+<h3 id="compatible-simulators">Compatible Simulators<a class="headerlink" href="#compatible-simulators" title="Permanent link">&para;</a></h3>
+<p>Three simulators support classical MAVLink HIL over a serial/USB connection.</p>
+<h4 id="jmavsim-recommended-for-getting-started">jMAVSim (recommended for getting started)<a class="headerlink" href="#jmavsim-recommended-for-getting-started" title="Permanent link">&para;</a></h4>
+<p>Lightweight Java multirotor simulator. Lowest setup overhead.</p>
+<p>Connect a USB cable to <strong>CN13 (User USB)</strong> — <em>not</em> the ST-LINK CN1 port. The board enumerates as <code>/dev/ttyACM0</code> on Linux (or <code>COMx</code> on Windows).</p>
+<pre><code class="language-bash">./Tools/simulation/jmavsim/jmavsim_run.sh \
+    -q -s -d /dev/ttyACM0 -b 921600 -r 250
+</code></pre>
+<p>jMAVSim sends <code>HIL_SENSOR</code> at 250 Hz and <code>HIL_GPS</code> at 5 Hz, and receives <code>HIL_ACTUATOR_CONTROLS</code> to animate the simulated vehicle.</p>
+<h4 id="gazebo-classic">Gazebo Classic<a class="headerlink" href="#gazebo-classic" title="Permanent link">&para;</a></h4>
+<p>Full 3D simulator with physics, wind, and sensor noise models. HITL-specific SDF models are <code>iris_hitl.sdf</code> (quadcopter) and <code>standard_vtol_hitl.sdf</code>.</p>
+<p>In the MAVLink plugin config, set:</p>
+<pre><code class="language-xml">&lt;hil_mode&gt;1&lt;/hil_mode&gt;
+&lt;serialDevice&gt;/dev/ttyACM0&lt;/serialDevice&gt;
+&lt;baudRate&gt;921600&lt;/baudRate&gt;
+</code></pre>
+<p>Gazebo runs at real-time factor 1.0 and sends sensor data at 250 Hz matching the PX4 HIL expectation.</p>
+<h4 id="flightgear">FlightGear<a class="headerlink" href="#flightgear" title="Permanent link">&para;</a></h4>
+<p>Community alternative for fixed-wing and weather simulation. A bridge process connects FlightGear's UDP generic protocol to a serial MAVLink stream aimed at <code>/dev/ttyACM0</code>. Useful for testing fixed-wing aerodynamics at higher fidelity than jMAVSim.</p>
+<hr />
+<h3 id="what-you-can-test-with-hils">What You Can Test with HILS<a class="headerlink" href="#what-you-can-test-with-hils" title="Permanent link">&para;</a></h3>
+<h4 id="control-loops">Control loops<a class="headerlink" href="#control-loops" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Modules exercised</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Attitude stabilization (roll/pitch/yaw hold)</td>
+<td><code>ekf2</code>, <code>mc_att_control</code>, <code>mc_rate_control</code></td>
+</tr>
+<tr>
+<td>Position hold / loiter</td>
+<td><code>ekf2</code>, <code>mc_pos_control</code>, <code>navigator</code></td>
+</tr>
+<tr>
+<td>Velocity tracking</td>
+<td><code>mc_pos_control</code>, <code>control_allocator</code></td>
+</tr>
+<tr>
+<td>Hover thrust estimation</td>
+<td><code>mc_hover_thrust_estimator</code></td>
+</tr>
+<tr>
+<td>Landing detection</td>
+<td><code>land_detector</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="mission-and-navigation">Mission and navigation<a class="headerlink" href="#mission-and-navigation" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Waypoint missions uploaded via QGC — <code>navigator</code> processes them, controllers track each leg</li>
+<li>Return-to-launch (RTL)</li>
+<li>Takeoff and land commands</li>
+</ul>
+<h4 id="estimator-validation">Estimator validation<a class="headerlink" href="#estimator-validation" title="Permanent link">&para;</a></h4>
+<p><code>ekf2</code> runs fully on-hardware processing the simulated <code>HIL_SENSOR</code> and <code>HIL_GPS</code> streams. You can observe the estimator's attitude, velocity, and position outputs against the simulator ground truth to verify EKF tuning parameters behave correctly on the actual MCU at 400 MHz.</p>
+<h4 id="parameter-tuning">Parameter tuning<a class="headerlink" href="#parameter-tuning" title="Permanent link">&para;</a></h4>
+<p>PID gains in <code>mc_att_control</code>, <code>mc_rate_control</code>, and <code>mc_pos_control</code> run on real flight-controller hardware. Tune them against the simulated plant and the same values carry directly to real hardware with real sensors.</p>
+<h4 id="preflight-and-safety-logic">Preflight and safety logic<a class="headerlink" href="#preflight-and-safety-logic" title="Permanent link">&para;</a></h4>
+<p><code>commander -h</code> runs with relaxed preflight checks (no sensor health required), but arming logic, failsafes, and mode transitions all execute normally — useful for validating state machine behaviour.</p>
+<hr />
+<h3 id="hil-mode-comparison">HIL Mode Comparison<a class="headerlink" href="#hil-mode-comparison" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>SYS_HITL=1</code> — Classical MAVLink HIL</th>
+<th><code>SYS_HITL=2</code> — Simulator-In-Hardware (SIH)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Physics engine</td>
+<td>External simulator (Gazebo / jMAVSim)</td>
+<td>Runs on-chip (no PC needed)</td>
+</tr>
+<tr>
+<td>Sensor data source</td>
+<td><code>HIL_SENSOR</code> / <code>HIL_GPS</code> over USB</td>
+<td>Internal uORB — <code>sensor_baro_sim</code>, <code>sensor_gps_sim</code>, etc.</td>
+</tr>
+<tr>
+<td>3D visualisation</td>
+<td>Yes (Gazebo / jMAVSim window)</td>
+<td>Headless by default; pipe state to QGC for basic view</td>
+</tr>
+<tr>
+<td>Vehicle types</td>
+<td>Quadcopter, Standard VTOL (Gazebo)</td>
+<td>Quad, Hex, Fixed-wing, VTOL, Tailsitter, Rover</td>
+</tr>
+<tr>
+<td>External PC required</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>USB link stability matters</td>
+<td>Yes — sensor stream drops cause EKF divergence</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Setup complexity</td>
+<td>Higher</td>
+<td>Lower — set parameter, reboot</td>
+</tr>
+<tr>
+<td>Best for</td>
+<td>Realistic sensor noise, wind, multi-vehicle</td>
+<td>Quick control-loop testing without a PC</td>
+</tr>
+</tbody>
+</table>
+<p>This board defaults to <code>SYS_HITL=1</code>. To try SIH, set <code>SYS_HITL=2</code> and reboot — <code>rcS</code> will start <code>simulator_sih</code> plus the sim sensor drivers instead of waiting for MAVLink sensor messages.</p>
+<h3 id="qgroundcontrol-hil-mode">QGroundControl HIL mode<a class="headerlink" href="#qgroundcontrol-hil-mode" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Open QGroundControl → <strong>Vehicle Setup → Safety</strong></li>
+<li>Set <strong>HITL Enabled</strong> (writes <code>SYS_HITL=1</code>, already the default on this board)</li>
+<li>Connect CN13 (User USB) to the PC running QGC — the MAVLink Console (<code>psh&gt;</code>) and telemetry share the same link</li>
+<li>Launch your simulator (jMAVSim or Gazebo) targeting <code>/dev/ttyACM0</code></li>
+</ol>
+<hr />
+<h2 id="additional-communication-interfaces">Additional Communication Interfaces<a class="headerlink" href="#additional-communication-interfaces" title="Permanent link">&para;</a></h2>
+<p>This section answers whether extra UARTs are needed for profiling, ROS2, and uORB-based HILS. The short answer: <strong>no additional hardware is required</strong> — the two enabled UARTs plus USB OTG-FS cover all use cases.</p>
+<h3 id="1-os-app-profiling-tracing">1 — OS / App Profiling &amp; Tracing<a class="headerlink" href="#1-os-app-profiling-tracing" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Interface</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>top</code>, <code>perf</code>, <code>work_queue</code></td>
+<td>Existing <code>nsh&gt;</code> on USART3/ttyS0</td>
+<td>stdout — no extra port</td>
+</tr>
+<tr>
+<td>SEGGER SystemView (task-switch traces)</td>
+<td><strong>SWD / RTT</strong> — ST-LINK CN1</td>
+<td>RTT is a memory-mapped ring buffer; the debugger reads it over the existing SWD lines, no UART consumed</td>
+</tr>
+<tr>
+<td>Arm ITM / SWO stimulus trace</td>
+<td><strong>PB3 (TRACESWO)</strong> → ST-LINK CN1</td>
+<td>Arduino CN7 D3 pin; ST-Link v3 on the Nucleo captures SWO natively</td>
+</tr>
+</tbody>
+</table>
+<p><strong>SEGGER SystemView</strong> is the most capable option. It hooks into <code>CONFIG_SCHED_INSTRUMENTATION_EXTERNAL</code> (already enabled in the defconfig) and streams task-switch events, IRQ entry/exit, and scheduler notes over RTT at negligible CPU overhead. No UART is needed — connect J-Link or use the on-board ST-Link.</p>
+<p>To enable SystemView, add to <code>nuttx-config/nsh/defconfig</code>:</p>
+<pre><code>CONFIG_SEGGER_RTT=y
+CONFIG_SCHED_INSTRUMENTATION_NOTE=y
+CONFIG_NOTE_SYSVIEW=y
+</code></pre>
+<h3 id="2-ros2-connection-uxrce-dds">2 — ROS2 Connection (uXRCE-DDS)<a class="headerlink" href="#2-ros2-connection-uxrce-dds" title="Permanent link">&para;</a></h3>
+<p>uXRCE-DDS requires a <strong>dedicated serial UART at 921600 baud</strong> — it cannot share a port with MAVLink. In this board's HILS layout MAVLink HIL already occupies <code>ttyACM0</code> (USB). <strong>USART6 → <code>ttyS1</code></strong> (already enabled, Arduino CN10 pins D0/D1) is the natural second port.</p>
+<pre><code>┌─────────────────────┐          USB-UART adapter
+│  Nucleo-H753ZI      │  PG14(TX)──────────────────►  PC
+│  USART6 / ttyS1     │  PG9 (RX)◄──────────────────  running
+│  921600 baud        │                                MicroXRCE-DDS Agent
+└─────────────────────┘
+</code></pre>
+<p><strong>PC side</strong> — install and run the Micro XRCE-DDS Agent:</p>
+<pre><code class="language-bash"># Install (Ubuntu)
+pip install micro-xrce-dds-agent
+
+# Run against the USB-UART adapter
+MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600
+</code></pre>
+<p><strong>Firmware side</strong> — add to <code>default.px4board</code>:</p>
+<pre><code>CONFIG_MODULES_UXRCE_DDS_CLIENT=y
+</code></pre>
+<p>Then start the client at boot by adding to <code>init/rc.board_extras</code> (create if missing):</p>
+<pre><code class="language-sh">uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600
+</code></pre>
+<p><strong>Topics available to ROS2</strong> (defined in <code>src/modules/uxrce_dds_client/dds_topics.yaml</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Direction</th>
+<th>Topic</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PX4 → ROS2</td>
+<td><code>/fmu/out/vehicle_attitude</code></td>
+<td><code>VehicleAttitude</code></td>
+</tr>
+<tr>
+<td>PX4 → ROS2</td>
+<td><code>/fmu/out/vehicle_local_position</code></td>
+<td><code>VehicleLocalPosition</code></td>
+</tr>
+<tr>
+<td>PX4 → ROS2</td>
+<td><code>/fmu/out/vehicle_odometry</code></td>
+<td><code>VehicleOdometry</code></td>
+</tr>
+<tr>
+<td>PX4 → ROS2</td>
+<td><code>/fmu/out/sensor_combined</code></td>
+<td><code>SensorCombined</code></td>
+</tr>
+<tr>
+<td>ROS2 → PX4</td>
+<td><code>/fmu/in/vehicle_attitude_setpoint</code></td>
+<td><code>VehicleAttitudeSetpoint</code></td>
+</tr>
+<tr>
+<td>ROS2 → PX4</td>
+<td><code>/fmu/in/actuator_motors</code></td>
+<td><code>ActuatorMotors</code></td>
+</tr>
+<tr>
+<td>ROS2 → PX4</td>
+<td><code>/fmu/in/distance_sensor</code></td>
+<td><code>DistanceSensor</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="3-uorb-pubsub-for-hils">3 — uORB pub/sub for HILS<a class="headerlink" href="#3-uorb-pubsub-for-hils" title="Permanent link">&para;</a></h3>
+<p>No new interface is needed — the existing HILS paths already cover injection and observation.</p>
+<p><strong>Sensor data injection (simulator → PX4 uORB):</strong>
+MAVLink <code>HIL_SENSOR</code> and <code>HIL_GPS</code> messages arrive on <code>ttyACM0</code> and are converted by <code>mavlink_receiver</code> into uORB publications (<code>sensor_combined</code>, <code>sensor_gps</code>, etc.). This is the only supported path for simulated sensor injection — there is no mechanism to write directly to sensor uORB topics from ROS2.</p>
+<p><strong>State observation (PX4 uORB → ROS2):</strong>
+uXRCE-DDS on <code>ttyS1</code> bridges the EKF2 outputs (<code>vehicle_attitude</code>, <code>vehicle_local_position</code>, <code>vehicle_odometry</code>) and the EKF-processed sensor data (<code>sensor_combined</code>) out to ROS2 topics in real time. This lets ROS2 nodes observe the full estimator state while the HIL simulation runs.</p>
+<p><strong>Combined HILS + ROS2 layout:</strong></p>
+<div class="mermaid">
+flowchart LR
+    sim2["Simulator<br/>(HIL_SENSOR, HIL_GPS)"]
+    recv2["mavlink_receiver"]
+    uorb2[("uORB topics")]
+    ekf22["ekf2"]
+    pwm2["pwm_out_sim"]
+    ros2["ROS 2<br/>/fmu/out/* and /fmu/in/*"]
+    dds2["uxrce_dds_client<br/>USART6 / ttyS1"]
+
+    sim2 -- "USB CN13" --> recv2
+    recv2 --> uorb2
+    uorb2 --> ekf22
+    ekf22 --> uorb2
+    uorb2 --> pwm2
+    pwm2 -- "HIL_ACTUATOR_CONTROLS" --> sim2
+    uorb2 <-- "vehicle_attitude<br/>vehicle_local_position<br/>sensor_combined<br/>actuator_motors" --> dds2
+    dds2 <-- "USB-UART adapter" --> ros2
+</div>
+<h3 id="interface-summary">Interface Summary<a class="headerlink" href="#interface-summary" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Physical interface</th>
+<th>NuttX device</th>
+<th>Extra hardware?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NSH console / perf / top</td>
+<td>USART3 → ST-LINK CN1</td>
+<td><code>ttyS0</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td>SEGGER SystemView traces</td>
+<td>SWD → ST-LINK CN1</td>
+<td>RTT (no ttyS)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Arm ITM / SWO</td>
+<td>PB3 → ST-LINK CN1</td>
+<td>SWO (no ttyS)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>MAVLink HIL (simulator)</td>
+<td>USB OTG-FS → CN13</td>
+<td><code>ttyACM0</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td>ROS2 / uXRCE-DDS</td>
+<td>USART6 → CN10 D0/D1</td>
+<td><code>ttyS1</code></td>
+<td>USB-UART adapter on PC</td>
+</tr>
+<tr>
+<td>QGC / MAVLink console</td>
+<td>USB OTG-FS → CN13</td>
+<td><code>ttyACM0</code></td>
+<td>Shared with HIL</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="parameter-defaults-rcboard_defaults">Parameter Defaults (<code>rc.board_defaults</code>)<a class="headerlink" href="#parameter-defaults-rcboard_defaults" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CBRK_SUPPLY_CHK</code></td>
+<td>894281</td>
+<td>No battery monitoring hardware</td>
+</tr>
+<tr>
+<td><code>SYS_HITL</code></td>
+<td>1</td>
+<td>No real sensors — HILS mode always</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="key-implementation-notes">Key Implementation Notes<a class="headerlink" href="#key-implementation-notes" title="Permanent link">&para;</a></h2>
+<h3 id="active-high-leds-srcledc">Active-HIGH LEDs (<code>src/led.c</code>)<a class="headerlink" href="#active-high-leds-srcledc" title="Permanent link">&para;</a></h3>
+<pre><code class="language-c">// Active HIGH: write state directly — no !state inversion
+static void phy_set_led(int led, bool state)
+{
+    stm32_gpiowrite(g_ledmap[led], state);
+}
+</code></pre>
+<p>PX4 LED constants: <code>LED_BLUE=0</code>, <code>LED_RED=1</code>, <code>LED_GREEN=3</code> (index 2 unused). <code>g_ledmap[]</code> is size 4 with a zero guard at index 2.</p>
+<h3 id="clock-configuration-nuttx-configincludeboardh">Clock configuration (<code>nuttx-config/include/board.h</code>)<a class="headerlink" href="#clock-configuration-nuttx-configincludeboardh" title="Permanent link">&para;</a></h3>
+<p>HSE is the 8 MHz MCO output from the ST-LINK chip (not a crystal). The <code>STM32_BOARD_USEHSE_BYPASS</code> macro is <strong>not</strong> used; <code>STM32_BOARD_USEHSE</code> is used instead.</p>
+<pre><code>PLL1: HSE(8 MHz) / PLLM(2) * PLLN(200) / PLLP(2) = 400 MHz SYSCLK
+HCLK = SYSCLK / 2 = 200 MHz
+PCLK1/2/3/4 = HCLK / 2 = 100 MHz
+</code></pre>
+<h3 id="flash-parameter-storage-srcboard_configh">Flash parameter storage (<code>src/board_config.h</code>)<a class="headerlink" href="#flash-parameter-storage-srcboard_configh" title="Permanent link">&para;</a></h3>
+<p>No external FRAM/EEPROM. Parameters are stored in the last 128 KB sector of internal flash Bank 2:</p>
+<table>
+<thead>
+<tr>
+<th>Sector</th>
+<th>Address</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15</td>
+<td><code>0x081E0000</code></td>
+<td>128 KB</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bootloader-compatibility-srchw_configh">Bootloader compatibility (<code>src/hw_config.h</code>)<a class="headerlink" href="#bootloader-compatibility-srchw_configh" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BOARD_TYPE</code></td>
+<td>1210</td>
+<td>Matches <code>firmware.prototype</code> <code>board_id</code></td>
+</tr>
+<tr>
+<td><code>BOARD_LED_ON</code></td>
+<td>1</td>
+<td>Active-HIGH (most boards use 0)</td>
+</tr>
+<tr>
+<td><code>BOARD_LED_OFF</code></td>
+<td>0</td>
+<td></td>
+</tr>
+<tr>
+<td><code>APP_LOAD_ADDRESS</code></td>
+<td><code>0x08020000</code></td>
+<td>Must match firmware linker script</td>
+</tr>
+<tr>
+<td><code>OSC_FREQ</code></td>
+<td>8</td>
+<td>8 MHz HSE</td>
+</tr>
+</tbody>
+</table>
+    </main>
+  </div>
+  <footer class="footer">
+    Generated from <code>boards/st/nucleo-h753zi/README.md</code>.
+  </footer>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

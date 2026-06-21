@@ -2,73 +2,48 @@
 
 Step-by-step guide for Hardware-In-the-Loop Simulation (HILS) with the ST Nucleo-H753ZI, including ROS2 integration via uXRCE-DDS and uORB pub/sub verification.
 
+For the board defaults and HITL parameter table, see [Nucleo-H753ZI HITL Configuration and Parameters](hitl_configuration.md).
+
 ---
 
 ## System Architecture
 
-```plantuml
-@startuml
-skinparam defaultFontSize 12
-skinparam componentStyle rectangle
-skinparam linetype ortho
+```mermaid
+flowchart LR
+    subgraph PC["Linux PC"]
+        SIM["jMAVSim<br/>(physics engine)"]
+        QGC["QGroundControl<br/>(GCS + console)"]
+        AGENT["Micro XRCE-DDS<br/>Agent"]
+        ROS2["ROS 2 Node<br/>(px4_ros_com)"]
+    end
 
-title Nucleo-H753ZI HILS + ROS2 Data Flow
+    subgraph FC["Nucleo-H753ZI<br/>STM32H753 @ 400 MHz"]
+        MAVLINK["mavlink<br/>(USB ttyACM0)"]
+        RECV["mavlink_receiver"]
+        UORB[("uORB bus")]
+        EKF2["ekf2<br/>(attitude + position)"]
+        CTRL["mc_att_control<br/>mc_rate_control<br/>mc_pos_control"]
+        PWM["pwm_out_sim"]
+        DDS["uxrce_dds_client<br/>(USART6 ttyS1)"]
+    end
 
-together {
-    node "Linux PC" {
-        component "jMAVSim\n(physics engine)" as SIM
-        component "QGroundControl\n(GCS + console)" as QGC
-        component "Micro XRCE-DDS\nAgent" as AGENT
-        component "ROS2 Node\n(px4_ros_com)" as ROS2
-    }
-}
-
-node "Nucleo-H753ZI  STM32H753 @ 400 MHz" {
-    together {
-        component "mavlink\n(ttyACM0)" as MAVLINK
-        component "mavlink_receiver" as RECV
-    }
-    together {
-        component "ekf2\n(attitude + position)" as EKF2
-        component "mc_att_control\nmc_rate_control\nmc_pos_control" as CTRL
-    }
-    together {
-        component "pwm_out_sim" as PWM
-        component "uORB bus" as UORB
-    }
-    component "uxrce_dds_client\n(ttyS1 921600)" as DDS
-}
-
-' HIL sensor stream (PC → board)
-SIM -down-> MAVLINK : HIL_SENSOR 250 Hz\nHIL_GPS 5 Hz\n(USB CN13)
-QGC -down-> MAVLINK : GCS commands\n(USB CN13)
-
-' MAVLink receiver decodes to uORB
-MAVLINK -right-> RECV
-RECV -down-> UORB : sensor_combined\nsensor_gps\nvehicle_command
-
-' Flight stack reads uORB
-UORB -down-> EKF2 : sensor data
-EKF2 -right-> UORB : vehicle_attitude\nvehicle_local_position
-UORB -down-> CTRL : estimated state
-CTRL -right-> UORB : actuator setpoints
-
-' Actuator output back to simulator
-UORB -up-> PWM : actuator_outputs
-PWM -up-> MAVLINK : HIL_ACTUATOR_CONTROLS
-MAVLINK -up-> SIM : HIL_ACTUATOR_CONTROLS\n(USB CN13)
-
-' uXRCE-DDS bridge
-UORB -right-> DDS : vehicle_attitude\nvehicle_local_position\nsensor_combined
-DDS -right-> AGENT : USART6 / ttyS1\nUSB-UART adapter
-AGENT -right-> ROS2 : /fmu/out/vehicle_attitude\n/fmu/out/vehicle_local_position\n/fmu/out/sensor_combined
-
-' ROS2 → PX4 inbound
-ROS2 -down-> AGENT : /fmu/in/actuator_motors\n/fmu/in/trajectory_setpoint
-AGENT -left-> DDS : USART6 / ttyS1
-DDS -left-> UORB : actuator_motors\nvehicle_attitude_setpoint
-
-@enduml
+    SIM -- "HIL_SENSOR 250 Hz<br/>HIL_GPS 5 Hz<br/>USB CN13" --> MAVLINK
+    QGC -- "GCS commands<br/>USB CN13" --> MAVLINK
+    MAVLINK --> RECV
+    RECV -- "sensor_combined<br/>sensor_gps<br/>vehicle_command" --> UORB
+    UORB -- "sensor data" --> EKF2
+    EKF2 -- "vehicle_attitude<br/>vehicle_local_position" --> UORB
+    UORB -- "estimated state" --> CTRL
+    CTRL -- "actuator setpoints" --> UORB
+    UORB -- "actuator_outputs" --> PWM
+    PWM -- "HIL_ACTUATOR_CONTROLS" --> MAVLINK
+    MAVLINK -- "HIL_ACTUATOR_CONTROLS<br/>USB CN13" --> SIM
+    UORB -- "vehicle_attitude<br/>vehicle_local_position<br/>sensor_combined" --> DDS
+    DDS -- "USART6 / ttyS1<br/>USB-UART adapter" --> AGENT
+    AGENT -- "/fmu/out/vehicle_attitude<br/>/fmu/out/vehicle_local_position<br/>/fmu/out/sensor_combined" --> ROS2
+    ROS2 -- "/fmu/in/actuator_motors<br/>/fmu/in/trajectory_setpoint" --> AGENT
+    AGENT --> DDS
+    DDS -- "actuator_motors<br/>vehicle_attitude_setpoint" --> UORB
 ```
 
 ---
@@ -164,8 +139,8 @@ ant
 Run targeting the Nucleo's USB port:
 
 ```bash
-java -jar out/production/jmavsim_run.jar \
-     -serial /dev/ttyACM1:921600 -no-nohup
+./Tools/simulation/jmavsim/jmavsim_run.sh \
+    -q -s -d /dev/ttyACM1 -b 921600 -r 250
 ```
 
 jMAVSim sends `HIL_SENSOR` at 250 Hz and `HIL_GPS` at 5 Hz. In the `nsh>` console:
@@ -403,14 +378,25 @@ nsh> listener actuator_motors
 
 With jMAVSim running on CN13 and the XRCE-DDS agent on the USB-UART adapter, all three systems run simultaneously:
 
-```
-jMAVSim ──USB(CN13)──► HIL_SENSOR → mavlink_receiver
-                                   → uORB: sensor_combined
-                                   → ekf2
-                                   → uORB: vehicle_attitude ──USART6──► ROS2
-                       pwm_out_sim ◄── controller output
-                           │
-                           └── HIL_ACTUATOR_CONTROLS ──► jMAVSim
+```mermaid
+flowchart LR
+    JMAV["jMAVSim"]
+    RECV2["mavlink_receiver"]
+    UORB2[("uORB<br/>sensor_combined")]
+    EKF22["ekf2"]
+    ATT["uORB<br/>vehicle_attitude"]
+    DDS2["uxrce_dds_client"]
+    ROS22["ROS 2"]
+    PWM2["pwm_out_sim"]
+
+    JMAV -- "HIL_SENSOR<br/>USB CN13" --> RECV2
+    RECV2 --> UORB2
+    UORB2 --> EKF22
+    EKF22 --> ATT
+    ATT -- "USART6" --> DDS2
+    DDS2 --> ROS22
+    ATT --> PWM2
+    PWM2 -- "HIL_ACTUATOR_CONTROLS" --> JMAV
 ```
 
 Monitor all three streams at once:

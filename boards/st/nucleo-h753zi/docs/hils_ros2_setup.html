@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HILS, ROS2, and uORB Communication Setup</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+.header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.header-inner {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1.5rem;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+h1 { max-width: 920px; margin: 0; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.08; letter-spacing: 0; }
+.lede { max-width: 920px; margin: 1rem 0 0; color: var(--muted); font-size: 1.04rem; }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] { border-color: var(--accent); background: #dbece7; color: var(--accent-dark); }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 { margin: 0 0 0.75rem; font-size: 0.88rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+.toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+h2 { margin-top: 2rem; padding-top: 0.3rem; border-top: 1px solid var(--line); font-size: 1.65rem; line-height: 1.2; letter-spacing: 0; }
+h2:first-child { border-top: 0; }
+h3 { margin-top: 1.4rem; font-size: 1.15rem; line-height: 1.25; letter-spacing: 0; }
+h4 { margin-top: 1.1rem; font-size: 1rem; letter-spacing: 0; }
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { padding: 0.58rem 0.7rem; border: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-alt); text-align: left; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface-alt);
+  color: #344044;
+}
+.admonition {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+}
+.admonition-title { margin: 0 0 0.35rem; font-weight: 700; color: var(--accent-dark); }
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  overflow-x: auto;
+}
+.footer {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+}
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>HILS, ROS2, and uORB Communication Setup</h1>
+      <p class="lede">Step-by-step guide for Hardware-In-the-Loop Simulation (HILS) with the ST Nucleo-H753ZI, including ROS2 integration via uXRCE-DDS and uORB pub/sub verification.</p>
+    </div>
+  </header>
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="../../index.html">Middleware</a><a href="../../flight_controller_software_architecture.html">PX4 Flight Controller Software Architecture</a><a href="../../uorb_architecture.html">uORB Middleware Architecture Deep Dive</a><a href="../README.html">ST Nucleo-H753ZI PX4 Board Support</a><a href="hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a><a href="hils_ros2_setup.html" aria-current="page">HILS, ROS2, and uORB Communication Setup</a>
+  </nav>
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <div class="toc">
+<ul>
+<li><a href="#system-architecture">System Architecture</a></li>
+<li><a href="#physical-connections">Physical Connections</a></li>
+<li><a href="#part-1-classical-hil-simulation">Part 1 — Classical HIL Simulation</a><ul>
+<li><a href="#11-firmware-configuration">1.1 Firmware configuration</a></li>
+<li><a href="#12-verify-boot-state">1.2 Verify boot state</a></li>
+<li><a href="#13-connect-jmavsim">1.3 Connect jMAVSim</a></li>
+<li><a href="#14-connect-qgroundcontrol">1.4 Connect QGroundControl</a></li>
+<li><a href="#15-arm-and-fly-jmavsim">1.5 Arm and fly (jMAVSim)</a></li>
+</ul>
+</li>
+<li><a href="#part-2-ros2-via-uxrce-dds">Part 2 — ROS2 via uXRCE-DDS</a><ul>
+<li><a href="#21-firmware-enable-the-uxrce-dds-client">2.1 Firmware: enable the uXRCE-DDS client</a></li>
+<li><a href="#22-firmware-start-the-client-at-boot">2.2 Firmware: start the client at boot</a></li>
+<li><a href="#23-pc-side-install-ros2-and-the-micro-xrce-dds-agent">2.3 PC side: install ROS2 and the Micro XRCE-DDS Agent</a></li>
+<li><a href="#24-pc-side-install-px4_msgs-and-px4_ros_com">2.4 PC side: install px4_msgs and px4_ros_com</a></li>
+<li><a href="#25-run-the-micro-xrce-dds-agent">2.5 Run the Micro XRCE-DDS Agent</a></li>
+</ul>
+</li>
+<li><a href="#part-3-testing-uorb-ros2-communications">Part 3 — Testing uORB ↔ ROS2 Communications</a><ul>
+<li><a href="#31-list-available-topics">3.1 List available topics</a></li>
+<li><a href="#32-test-px4-ros2-outbound-uorb-topics">3.2 Test PX4 → ROS2 (outbound uORB topics)</a></li>
+<li><a href="#33-test-ros2-px4-inbound-uorb-topics">3.3 Test ROS2 → PX4 (inbound uORB topics)</a></li>
+<li><a href="#34-verify-end-to-end-round-trip-hil-ros2-simultaneously">3.4 Verify end-to-end round-trip (HIL + ROS2 simultaneously)</a></li>
+<li><a href="#35-uorb-diagnostics-on-the-board">3.5 uORB diagnostics on the board</a></li>
+</ul>
+</li>
+<li><a href="#part-4-troubleshooting">Part 4 — Troubleshooting</a><ul>
+<li><a href="#no-fmuout-topics-on-ros2">No /fmu/out/... topics on ROS2</a></li>
+<li><a href="#hil_sensor-not-received-by-board">HIL_SENSOR not received by board</a></li>
+<li><a href="#ekf2-diverges-attitude-invalid">EKF2 diverges / attitude invalid</a></li>
+<li><a href="#uxrce-dds-client-restarts-repeatedly">uXRCE-DDS client restarts repeatedly</a></li>
+<li><a href="#usb-port-numbering">USB port numbering</a></li>
+</ul>
+</li>
+<li><a href="#reference-port-summary">Reference: Port Summary</a></li>
+</ul>
+</div>
+
+    </aside>
+    <main>
+      <h1 id="hils-ros2-and-uorb-communication-setup">HILS, ROS2, and uORB Communication Setup<a class="headerlink" href="#hils-ros2-and-uorb-communication-setup" title="Permanent link">&para;</a></h1>
+<p>Step-by-step guide for Hardware-In-the-Loop Simulation (HILS) with the ST Nucleo-H753ZI, including ROS2 integration via uXRCE-DDS and uORB pub/sub verification.</p>
+<p>For the board defaults and HITL parameter table, see <a href="hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a>.</p>
+<hr />
+<h2 id="system-architecture">System Architecture<a class="headerlink" href="#system-architecture" title="Permanent link">&para;</a></h2>
+<div class="mermaid">
+flowchart LR
+    subgraph PC["Linux PC"]
+        SIM["jMAVSim<br/>(physics engine)"]
+        QGC["QGroundControl<br/>(GCS + console)"]
+        AGENT["Micro XRCE-DDS<br/>Agent"]
+        ROS2["ROS 2 Node<br/>(px4_ros_com)"]
+    end
+
+    subgraph FC["Nucleo-H753ZI<br/>STM32H753 @ 400 MHz"]
+        MAVLINK["mavlink<br/>(USB ttyACM0)"]
+        RECV["mavlink_receiver"]
+        UORB[("uORB bus")]
+        EKF2["ekf2<br/>(attitude + position)"]
+        CTRL["mc_att_control<br/>mc_rate_control<br/>mc_pos_control"]
+        PWM["pwm_out_sim"]
+        DDS["uxrce_dds_client<br/>(USART6 ttyS1)"]
+    end
+
+    SIM -- "HIL_SENSOR 250 Hz<br/>HIL_GPS 5 Hz<br/>USB CN13" --> MAVLINK
+    QGC -- "GCS commands<br/>USB CN13" --> MAVLINK
+    MAVLINK --> RECV
+    RECV -- "sensor_combined<br/>sensor_gps<br/>vehicle_command" --> UORB
+    UORB -- "sensor data" --> EKF2
+    EKF2 -- "vehicle_attitude<br/>vehicle_local_position" --> UORB
+    UORB -- "estimated state" --> CTRL
+    CTRL -- "actuator setpoints" --> UORB
+    UORB -- "actuator_outputs" --> PWM
+    PWM -- "HIL_ACTUATOR_CONTROLS" --> MAVLINK
+    MAVLINK -- "HIL_ACTUATOR_CONTROLS<br/>USB CN13" --> SIM
+    UORB -- "vehicle_attitude<br/>vehicle_local_position<br/>sensor_combined" --> DDS
+    DDS -- "USART6 / ttyS1<br/>USB-UART adapter" --> AGENT
+    AGENT -- "/fmu/out/vehicle_attitude<br/>/fmu/out/vehicle_local_position<br/>/fmu/out/sensor_combined" --> ROS2
+    ROS2 -- "/fmu/in/actuator_motors<br/>/fmu/in/trajectory_setpoint" --> AGENT
+    AGENT --> DDS
+    DDS -- "actuator_motors<br/>vehicle_attitude_setpoint" --> UORB
+</div>
+<hr />
+<h2 id="physical-connections">Physical Connections<a class="headerlink" href="#physical-connections" title="Permanent link">&para;</a></h2>
+<pre><code>┌──────────────────────────────────────────────────────────┐
+│  Nucleo-H753ZI                                           │
+│                                                          │
+│  CN1 (ST-LINK USB)  ──── USB ──────────────────────────► Linux PC /dev/ttyACM0 (or ttyACM1)
+│    USART3/ttyS0           NSH console (57600 baud)       │
+│                                                          │
+│  CN13 (User USB)    ──── USB ──────────────────────────► Linux PC /dev/ttyACM0 (or ttyACM1)
+│    USB-OTG / ttyACM0      MAVLink + HIL sensor stream    │
+│                                                          │
+│  CN10 Arduino D0 (PG9  RX) ─┐                           │
+│  CN10 Arduino D1 (PG14 TX) ─┤── USB-UART adapter ─────► Linux PC /dev/ttyUSB0
+│  GND                       ─┘   USART6/ttyS1 921600      Micro XRCE-DDS Agent
+└──────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Required hardware:</strong>
+- ST Nucleo-H753ZI with PX4 bootloader + application flashed
+- Two USB cables (one for CN1, one for CN13)
+- USB-to-UART adapter (3.3 V logic: e.g. CP2102, FT232, CH340) for ROS2/uXRCE-DDS</p>
+<p><strong>CN10 Arduino header pin assignments for USART6:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Arduino label</th>
+<th>Nucleo pin</th>
+<th>USART6 signal</th>
+<th>Connect to adapter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D0</td>
+<td>PG9</td>
+<td>RX</td>
+<td>adapter TX</td>
+</tr>
+<tr>
+<td>D1</td>
+<td>PG14</td>
+<td>TX</td>
+<td>adapter RX</td>
+</tr>
+<tr>
+<td>GND</td>
+<td>GND</td>
+<td>GND</td>
+<td>adapter GND</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-1-classical-hil-simulation">Part 1 — Classical HIL Simulation<a class="headerlink" href="#part-1-classical-hil-simulation" title="Permanent link">&para;</a></h2>
+<h3 id="11-firmware-configuration">1.1 Firmware configuration<a class="headerlink" href="#11-firmware-configuration" title="Permanent link">&para;</a></h3>
+<p>The board defaults to <code>SYS_HITL=1</code>. Verify or set it:</p>
+<pre><code class="language-bash"># On nsh&gt; (CN1 serial console, 57600 baud)
+param set SYS_HITL 1
+param save
+reboot
+</code></pre>
+<p>After reboot with <code>SYS_HITL=1</code>, the startup script automatically:
+- Starts <code>sensors -h</code> (sensor framework in HIL mode, no hardware polling)
+- Starts <code>commander -h</code> (relaxed preflight checks)
+- Starts <code>pwm_out_sim -m hil</code> (virtual actuators)
+- Starts <code>mavlink</code> on <code>/dev/ttyACM0</code> for HIL + GCS traffic</p>
+<h3 id="12-verify-boot-state">1.2 Verify boot state<a class="headerlink" href="#12-verify-boot-state" title="Permanent link">&para;</a></h3>
+<p>Connect to the NSH console (CN1):</p>
+<pre><code class="language-bash">picocom -b 57600 /dev/ttyACM0   # adjust port as seen on your PC for ST-Link
+</code></pre>
+<p>At the <code>nsh&gt;</code> prompt:</p>
+<pre><code>nsh&gt; mavlink status
+instance #0:
+  device: /dev/ttyACM0
+  baudrate: 0 (USB)
+  mode: Normal
+  ...
+</code></pre>
+<pre><code>nsh&gt; pwm_out_sim status
+Running, mode: HIL
+</code></pre>
+<h3 id="13-connect-jmavsim">1.3 Connect jMAVSim<a class="headerlink" href="#13-connect-jmavsim" title="Permanent link">&para;</a></h3>
+<p>Connect <strong>CN13 (User USB)</strong> to the Linux PC. The board enumerates as a CDC-ACM port (typically <code>/dev/ttyACM0</code> or <code>/dev/ttyACM1</code> — check <code>dmesg | tail</code> after plugging in).</p>
+<p>Build jMAVSim (requires Java 11+):</p>
+<pre><code class="language-bash">git clone https://github.com/PX4/jMAVSim.git
+cd jMAVSim
+ant
+</code></pre>
+<p>Run targeting the Nucleo's USB port:</p>
+<pre><code class="language-bash">./Tools/simulation/jmavsim/jmavsim_run.sh \
+    -q -s -d /dev/ttyACM1 -b 921600 -r 250
+</code></pre>
+<p>jMAVSim sends <code>HIL_SENSOR</code> at 250 Hz and <code>HIL_GPS</code> at 5 Hz. In the <code>nsh&gt;</code> console:</p>
+<pre><code>nsh&gt; listener sensor_combined
+</code></pre>
+<p>You should see sensor values updating at 250 Hz from the simulator.</p>
+<h3 id="14-connect-qgroundcontrol">1.4 Connect QGroundControl<a class="headerlink" href="#14-connect-qgroundcontrol" title="Permanent link">&para;</a></h3>
+<p>Open QGC and connect to the same USB port the board is on. QGC auto-detects the MAVLink heartbeat. Navigate to <strong>Analyze Tools → MAVLink Console</strong> to get the <code>psh&gt;</code> prompt while the HIL simulation is running.</p>
+<h3 id="15-arm-and-fly-jmavsim">1.5 Arm and fly (jMAVSim)<a class="headerlink" href="#15-arm-and-fly-jmavsim" title="Permanent link">&para;</a></h3>
+<p>From QGC or MAVLink Console:</p>
+<pre><code>psh&gt; commander arm
+psh&gt; commander takeoff
+</code></pre>
+<p>Or from the jMAVSim GUI press <strong>T</strong> to take off.</p>
+<p>Observe EKF output:</p>
+<pre><code>nsh&gt; listener vehicle_local_position
+nsh&gt; listener vehicle_attitude
+</code></pre>
+<hr />
+<h2 id="part-2-ros2-via-uxrce-dds">Part 2 — ROS2 via uXRCE-DDS<a class="headerlink" href="#part-2-ros2-via-uxrce-dds" title="Permanent link">&para;</a></h2>
+<h3 id="21-firmware-enable-the-uxrce-dds-client">2.1 Firmware: enable the uXRCE-DDS client<a class="headerlink" href="#21-firmware-enable-the-uxrce-dds-client" title="Permanent link">&para;</a></h3>
+<p>Add to <code>boards/st/nucleo-h753zi/default.px4board</code>:</p>
+<pre><code>CONFIG_MODULES_UXRCE_DDS_CLIENT=y
+</code></pre>
+<p>Rebuild and flash:</p>
+<pre><code class="language-bash">make st_nucleo-h753zi_default
+make st_nucleo-h753zi_default upload
+</code></pre>
+<h3 id="22-firmware-start-the-client-at-boot">2.2 Firmware: start the client at boot<a class="headerlink" href="#22-firmware-start-the-client-at-boot" title="Permanent link">&para;</a></h3>
+<p>Create <code>boards/st/nucleo-h753zi/init/rc.board_extras</code> (if it does not exist):</p>
+<pre><code class="language-sh">#!/bin/sh
+# Start uXRCE-DDS client on USART6/ttyS1 at 921600 baud
+uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600
+</code></pre>
+<p>Rebuild and flash again after adding this file.</p>
+<p>Verify the client is running after boot:</p>
+<pre><code>nsh&gt; uxrce_dds_client status
+Running
+  Transport: serial
+  Device: /dev/ttyS1
+  Baudrate: 921600
+</code></pre>
+<h3 id="23-pc-side-install-ros2-and-the-micro-xrce-dds-agent">2.3 PC side: install ROS2 and the Micro XRCE-DDS Agent<a class="headerlink" href="#23-pc-side-install-ros2-and-the-micro-xrce-dds-agent" title="Permanent link">&para;</a></h3>
+<p>Tested on Ubuntu 22.04 with ROS2 Humble.</p>
+<pre><code class="language-bash"># Install ROS2 Humble (if not already installed)
+# https://docs.ros.org/en/humble/Installation.html
+
+# Install Micro XRCE-DDS Agent
+sudo apt install ros-humble-micro-ros-agent
+# or from source:
+pip install micro-xrce-dds-agent
+</code></pre>
+<h3 id="24-pc-side-install-px4_msgs-and-px4_ros_com">2.4 PC side: install px4_msgs and px4_ros_com<a class="headerlink" href="#24-pc-side-install-px4_msgs-and-px4_ros_com" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">mkdir -p ~/ros2_px4_ws/src
+cd ~/ros2_px4_ws/src
+
+git clone https://github.com/PX4/px4_msgs.git
+git clone https://github.com/PX4/px4_ros_com.git
+
+cd ~/ros2_px4_ws
+source /opt/ros/humble/setup.bash
+colcon build
+source install/setup.bash
+</code></pre>
+<h3 id="25-run-the-micro-xrce-dds-agent">2.5 Run the Micro XRCE-DDS Agent<a class="headerlink" href="#25-run-the-micro-xrce-dds-agent" title="Permanent link">&para;</a></h3>
+<p>Connect the USB-UART adapter (USART6/CN10) to the Linux PC. Identify the port:</p>
+<pre><code class="language-bash">dmesg | grep ttyUSB
+# example: [ 1234.5] usb 1-3: cp210x converter now attached to ttyUSB0
+</code></pre>
+<p>Start the agent:</p>
+<pre><code class="language-bash">MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600
+</code></pre>
+<p>Expected output when the board connects:</p>
+<pre><code>[1234567] Serial agent initialization... OK
+[1234568] Create session: 0x01 (client_key: 0x00000001)
+[1234569] Create publisher id: 1, participant id: 1
+[1234570] Create subscriber id: 2, participant id: 1
+...
+</code></pre>
+<hr />
+<h2 id="part-3-testing-uorb-ros2-communications">Part 3 — Testing uORB ↔ ROS2 Communications<a class="headerlink" href="#part-3-testing-uorb-ros2-communications" title="Permanent link">&para;</a></h2>
+<p>All tests assume the agent is running and the board is connected.</p>
+<h3 id="31-list-available-topics">3.1 List available topics<a class="headerlink" href="#31-list-available-topics" title="Permanent link">&para;</a></h3>
+<p>On the Linux PC:</p>
+<pre><code class="language-bash">source ~/ros2_px4_ws/install/setup.bash
+ros2 topic list
+</code></pre>
+<p>Expected output includes:</p>
+<pre><code>/fmu/out/vehicle_attitude
+/fmu/out/vehicle_local_position
+/fmu/out/vehicle_odometry
+/fmu/out/sensor_combined
+/fmu/out/vehicle_status
+/fmu/in/vehicle_attitude_setpoint
+/fmu/in/actuator_motors
+/fmu/in/offboard_control_mode
+/fmu/in/trajectory_setpoint
+</code></pre>
+<h3 id="32-test-px4-ros2-outbound-uorb-topics">3.2 Test PX4 → ROS2 (outbound uORB topics)<a class="headerlink" href="#32-test-px4-ros2-outbound-uorb-topics" title="Permanent link">&para;</a></h3>
+<p><strong>Vehicle attitude</strong> (quaternion from EKF2):</p>
+<pre><code class="language-bash">ros2 topic echo /fmu/out/vehicle_attitude
+</code></pre>
+<p>Expected with HIL running and vehicle armed:</p>
+<pre><code class="language-yaml">---
+timestamp: 1234567890
+q: [0.9998, 0.001, 0.002, 0.003]
+delta_q_reset: [1.0, 0.0, 0.0, 0.0]
+quat_reset_counter: 0
+---
+</code></pre>
+<p><strong>Local position</strong> (NED frame, metres):</p>
+<pre><code class="language-bash">ros2 topic echo /fmu/out/vehicle_local_position
+</code></pre>
+<p><strong>Check publish rate</strong> (should be ~50 Hz for attitude, ~10 Hz for position):</p>
+<pre><code class="language-bash">ros2 topic hz /fmu/out/vehicle_attitude
+ros2 topic hz /fmu/out/vehicle_local_position
+</code></pre>
+<p><strong>Sensor data</strong> (raw IMU from HIL_SENSOR — confirms the HIL stream is flowing):</p>
+<pre><code class="language-bash">ros2 topic echo /fmu/out/sensor_combined
+</code></pre>
+<h3 id="33-test-ros2-px4-inbound-uorb-topics">3.3 Test ROS2 → PX4 (inbound uORB topics)<a class="headerlink" href="#33-test-ros2-px4-inbound-uorb-topics" title="Permanent link">&para;</a></h3>
+<p><strong>Prerequisite:</strong> put the vehicle in Offboard mode.</p>
+<p>From <code>nsh&gt;</code> or QGC MAVLink Console:</p>
+<pre><code>psh&gt; commander mode offboard
+</code></pre>
+<p><strong>Send an attitude setpoint:</strong></p>
+<pre><code class="language-bash">ros2 topic pub --once /fmu/in/vehicle_attitude_setpoint \
+  px4_msgs/msg/VehicleAttitudeSetpoint \
+  &quot;{timestamp: 0, roll_body: 0.0, pitch_body: 0.1, yaw_body: 0.0,
+    thrust_body: [0.0, 0.0, -0.5]}&quot;
+</code></pre>
+<p>Verify on the board:</p>
+<pre><code>nsh&gt; listener vehicle_attitude_setpoint
+</code></pre>
+<p><strong>Send motor commands directly:</strong></p>
+<pre><code class="language-bash">ros2 topic pub /fmu/in/actuator_motors \
+  px4_msgs/msg/ActuatorMotors \
+  &quot;{timestamp: 0, control: [0.5, 0.5, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0,
+                             0.0, 0.0, 0.0, 0.0]}&quot; --rate 50
+</code></pre>
+<p>Verify on the board:</p>
+<pre><code>nsh&gt; listener actuator_motors
+</code></pre>
+<h3 id="34-verify-end-to-end-round-trip-hil-ros2-simultaneously">3.4 Verify end-to-end round-trip (HIL + ROS2 simultaneously)<a class="headerlink" href="#34-verify-end-to-end-round-trip-hil-ros2-simultaneously" title="Permanent link">&para;</a></h3>
+<p>With jMAVSim running on CN13 and the XRCE-DDS agent on the USB-UART adapter, all three systems run simultaneously:</p>
+<div class="mermaid">
+flowchart LR
+    JMAV["jMAVSim"]
+    RECV2["mavlink_receiver"]
+    UORB2[("uORB<br/>sensor_combined")]
+    EKF22["ekf2"]
+    ATT["uORB<br/>vehicle_attitude"]
+    DDS2["uxrce_dds_client"]
+    ROS22["ROS 2"]
+    PWM2["pwm_out_sim"]
+
+    JMAV -- "HIL_SENSOR<br/>USB CN13" --> RECV2
+    RECV2 --> UORB2
+    UORB2 --> EKF22
+    EKF22 --> ATT
+    ATT -- "USART6" --> DDS2
+    DDS2 --> ROS22
+    ATT --> PWM2
+    PWM2 -- "HIL_ACTUATOR_CONTROLS" --> JMAV
+</div>
+<p>Monitor all three streams at once:</p>
+<p><strong>Terminal 1 — board NSH console:</strong></p>
+<pre><code>nsh&gt; listener vehicle_attitude -r 10
+</code></pre>
+<p><strong>Terminal 2 — ROS2 topic:</strong></p>
+<pre><code class="language-bash">ros2 topic hz /fmu/out/vehicle_attitude
+</code></pre>
+<p><strong>Terminal 3 — jMAVSim window</strong> (observe the vehicle responding to EKF-computed attitude)</p>
+<p>If all three show consistent, updating data, the full HIL + uORB + ROS2 chain is working.</p>
+<h3 id="35-uorb-diagnostics-on-the-board">3.5 uORB diagnostics on the board<a class="headerlink" href="#35-uorb-diagnostics-on-the-board" title="Permanent link">&para;</a></h3>
+<p>Check which uORB topics are active and their publish rates:</p>
+<pre><code>nsh&gt; uorb top
+</code></pre>
+<p>Check a specific topic's publish count and subscriber list:</p>
+<pre><code>nsh&gt; uorb status -t vehicle_attitude
+</code></pre>
+<p>Check the uXRCE-DDS client's internal counters (shows how many messages have been bridged):</p>
+<pre><code>nsh&gt; uxrce_dds_client status
+</code></pre>
+<hr />
+<h2 id="part-4-troubleshooting">Part 4 — Troubleshooting<a class="headerlink" href="#part-4-troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="no-fmuout-topics-on-ros2">No <code>/fmu/out/...</code> topics on ROS2<a class="headerlink" href="#no-fmuout-topics-on-ros2" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Confirm the agent sees the board: agent log should show <code>Create session</code>.</li>
+<li>Confirm client is running: <code>nsh&gt; uxrce_dds_client status</code> shows <code>Running</code>.</li>
+<li>Check the baud rate matches on both sides (921600 on board and agent).</li>
+<li>Verify wiring: TX of board (PG14) → RX of adapter; RX of board (PG9) → TX of adapter.</li>
+</ol>
+<h3 id="hil_sensor-not-received-by-board"><code>HIL_SENSOR</code> not received by board<a class="headerlink" href="#hil_sensor-not-received-by-board" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Confirm <code>SYS_HITL=1</code> and the mavlink module is running: <code>nsh&gt; mavlink status</code>.</li>
+<li>Confirm jMAVSim is connected to the correct port (<code>/dev/ttyACM?</code> for CN13, not CN1).</li>
+<li>Check <code>nsh&gt; listener sensor_combined</code> for updating values.</li>
+</ol>
+<h3 id="ekf2-diverges-attitude-invalid">EKF2 diverges / attitude invalid<a class="headerlink" href="#ekf2-diverges-attitude-invalid" title="Permanent link">&para;</a></h3>
+<ol>
+<li>jMAVSim must be in physical contact with the board via the same time base. Restarting jMAVSim without rebooting the board causes a timestamp discontinuity — reboot both.</li>
+<li><code>HIL_SENSOR</code> must arrive at ≥ 100 Hz. Check <code>ros2 topic hz /fmu/out/sensor_combined</code> — if it drops below 100 Hz, the USB link is bottlenecked.</li>
+</ol>
+<h3 id="uxrce-dds-client-restarts-repeatedly">uXRCE-DDS client restarts repeatedly<a class="headerlink" href="#uxrce-dds-client-restarts-repeatedly" title="Permanent link">&para;</a></h3>
+<p>USART6 is not shared with any other module, but verify no other module is using <code>ttyS1</code>:</p>
+<pre><code>nsh&gt; mavlink status    # should show ttyACM0, not ttyS1
+nsh&gt; ps               # look for any task holding ttyS1
+</code></pre>
+<h3 id="usb-port-numbering">USB port numbering<a class="headerlink" href="#usb-port-numbering" title="Permanent link">&para;</a></h3>
+<p>After plugging in both CN1 and CN13, the OS assigns port numbers in plug order. Run <code>dmesg | grep tty</code> after each plug to confirm which port is which. Typically:
+- CN1 (ST-Link) → <code>/dev/ttyACM0</code> (virtual COM for USART3 console)
+- CN13 (User USB) → <code>/dev/ttyACM1</code> (PX4 MAVLink / upload)</p>
+<hr />
+<h2 id="reference-port-summary">Reference: Port Summary<a class="headerlink" href="#reference-port-summary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Port</th>
+<th>Physical</th>
+<th>Linux device</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NSH console</td>
+<td>USART3 → CN1 (ST-Link)</td>
+<td><code>/dev/ttyACM0</code> (or ttyACM1)</td>
+<td>Debug shell, 57600 baud</td>
+</tr>
+<tr>
+<td>MAVLink / HIL</td>
+<td>USB OTG-FS → CN13</td>
+<td><code>/dev/ttyACM0</code> (or ttyACM1)</td>
+<td>jMAVSim, QGC, firmware upload</td>
+</tr>
+<tr>
+<td>ROS2 / DDS</td>
+<td>USART6 → CN10 D0/D1 → USB-UART</td>
+<td><code>/dev/ttyUSB0</code></td>
+<td>Micro XRCE-DDS Agent, 921600 baud</td>
+</tr>
+</tbody>
+</table>
+    </main>
+  </div>
+  <footer class="footer">
+    Generated from <code>boards/st/nucleo-h753zi/docs/hils_ros2_setup.md</code>.
+  </footer>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

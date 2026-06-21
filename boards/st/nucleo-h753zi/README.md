@@ -89,7 +89,7 @@ openocd -f interface/stlink.cfg -f target/stm32h7x.cfg \
       0x08000000 verify reset exit"
 ```
 
-A pre-built binary is also stored at `extras/st_nucleo-h753zi_bootloader.bin`.
+If you keep a pre-built bootloader binary locally, flash that binary at `0x08000000`.
 
 ### Step 2 — Flash firmware via USB
 
@@ -106,6 +106,8 @@ The board appears as `/dev/ttyACM0` (Linux) or `COMx` (Windows).
 ## HILS Setup (Hardware-In-the-Loop Simulation)
 
 The board has no real sensors. `SYS_HITL=1` is set as the default parameter, which activates classical MAVLink HIL mode on every boot.
+
+For the complete board-specific HITL parameter set, see [Nucleo-H753ZI HITL Configuration and Parameters](docs/hitl_configuration.md).
 
 ### What happens at boot with `SYS_HITL=1`
 
@@ -132,16 +134,26 @@ The common startup script (`rcS`) automatically:
 
 ### MAVLink HIL message flow
 
-```
-Simulator (PC)                          Nucleo-H753ZI
-─────────────────────────────────────   ──────────────────────────────
-                    USB (MAVLink)
-  HIL_SENSOR       ──────────────────►  mavlink_receiver
-  HIL_GPS          ──────────────────►    publishes sensor_combined,
-                                          sensor_gps, …
-                                        ekf2 → state estimate
-                                        mc_*  → actuator setpoints
-  HIL_ACTUATOR_CONTROLS  ◄────────────  pwm_out_sim
+```mermaid
+flowchart LR
+    subgraph PC["Simulator PC"]
+        sim["jMAVSim / Gazebo"]
+    end
+
+    subgraph FC["Nucleo-H753ZI"]
+        mavlink["mavlink_receiver"]
+        uorb[("uORB topics")]
+        ekf2["ekf2<br/>state estimate"]
+        controllers["mc_* controllers<br/>actuator setpoints"]
+        pwm["pwm_out_sim"]
+    end
+
+    sim -- "HIL_SENSOR 250 Hz<br/>HIL_GPS 5 Hz<br/>USB MAVLink" --> mavlink
+    mavlink -- "sensor_combined<br/>sensor_gps" --> uorb
+    uorb --> ekf2
+    ekf2 --> controllers
+    controllers --> pwm
+    pwm -- "HIL_ACTUATOR_CONTROLS" --> sim
 ```
 
 ### Compatible Simulators
@@ -155,8 +167,8 @@ Lightweight Java multirotor simulator. Lowest setup overhead.
 Connect a USB cable to **CN13 (User USB)** — _not_ the ST-LINK CN1 port. The board enumerates as `/dev/ttyACM0` on Linux (or `COMx` on Windows).
 
 ```bash
-java -jar out/production/jmavsim_run.jar \
-     -serial /dev/ttyACM0:921600 -no-nohup
+./Tools/simulation/jmavsim/jmavsim_run.sh \
+    -q -s -d /dev/ttyACM0 -b 921600 -r 250
 ```
 
 jMAVSim sends `HIL_SENSOR` at 250 Hz and `HIL_GPS` at 5 Hz, and receives `HIL_ACTUATOR_CONTROLS` to animate the simulated vehicle.
@@ -312,14 +324,24 @@ uXRCE-DDS on `ttyS1` bridges the EKF2 outputs (`vehicle_attitude`, `vehicle_loca
 
 **Combined HILS + ROS2 layout:**
 
-```
-Simulator (PC)          Nucleo-H753ZI               ROS2 (PC)
-────────────────   USB   ──────────────   USART6   ───────────
-HIL_SENSOR       ──────► mavlink_receiver  ├───────► /fmu/out/vehicle_attitude
-HIL_GPS          ──────►   → uORB topics   ├───────► /fmu/out/vehicle_local_position
-                         ekf2              └───────► /fmu/out/sensor_combined
-HIL_ACTUATOR_CONTROLS ◄─ pwm_out_sim
-                                          ◄───────── /fmu/in/actuator_motors
+```mermaid
+flowchart LR
+    sim2["Simulator<br/>(HIL_SENSOR, HIL_GPS)"]
+    recv2["mavlink_receiver"]
+    uorb2[("uORB topics")]
+    ekf22["ekf2"]
+    pwm2["pwm_out_sim"]
+    ros2["ROS 2<br/>/fmu/out/* and /fmu/in/*"]
+    dds2["uxrce_dds_client<br/>USART6 / ttyS1"]
+
+    sim2 -- "USB CN13" --> recv2
+    recv2 --> uorb2
+    uorb2 --> ekf22
+    ekf22 --> uorb2
+    uorb2 --> pwm2
+    pwm2 -- "HIL_ACTUATOR_CONTROLS" --> sim2
+    uorb2 <-- "vehicle_attitude<br/>vehicle_local_position<br/>sensor_combined<br/>actuator_motors" --> dds2
+    dds2 <-- "USB-UART adapter" --> ros2
 ```
 
 ### Interface Summary
@@ -370,11 +392,10 @@ PCLK1/2/3/4 = HCLK / 2 = 100 MHz
 
 ### Flash parameter storage (`src/board_config.h`)
 
-No external FRAM/EEPROM. Parameters are stored in the last two 128 KB sectors of internal flash Bank 2:
+No external FRAM/EEPROM. Parameters are stored in the last 128 KB sector of internal flash Bank 2:
 
 | Sector | Address | Size |
 |---|---|---|
-| 14 | `0x081C0000` | 128 KB |
 | 15 | `0x081E0000` | 128 KB |
 
 ### Bootloader compatibility (`src/hw_config.h`)
