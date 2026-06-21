@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nucleo-H753ZI Board Review Findings and Action Plan</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #5d6975;
+      --line: #d7dde4;
+      --surface: #f7f9fb;
+      --accent: #1c6b5a;
+      --warn: #9a5b00;
+      --danger: #9b2c2c;
+      --ok: #1f6f3f;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      line-height: 1.5;
+      background: white;
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 40px 24px 64px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 32px 0 12px;
+      font-size: 22px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #eef2f5;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.95em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--surface);
+      font-weight: 650;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0 8px 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 5px 0;
+    }
+
+    .summary {
+      margin-top: 20px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 8px;
+    }
+
+    .finding {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      border: 1px solid var(--line);
+      background: white;
+    }
+
+    .medium {
+      color: var(--warn);
+      border-color: #e5bd76;
+      background: #fff7e8;
+    }
+
+    .low {
+      color: var(--accent);
+      border-color: #8fc8ba;
+      background: #eef8f5;
+    }
+
+    .note {
+      color: var(--muted);
+    }
+
+    .done {
+      color: var(--ok);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Nucleo-H753ZI Board Review Findings and Action Plan</h1>
+    <p class="note">Scope: <code>boards/st/nucleo-h753zi</code>, no-sensor/no-SD HITL setup, internal flash parameter storage.</p>
+
+    <section class="summary">
+      <h2>Executive Summary</h2>
+      <p>The current flashfs-based board layout is internally consistent: the app image is capped before sector 15, the bootloader protects the reserved sector, and parameters are initialized from the last 128 KiB flash sector. The remaining improvements are mostly documentation accuracy, dependency trimming, and deciding whether a LittleFS parameter store is worth reserving more flash.</p>
+      <p>The main design warning is that stock LittleFS is not a good fit for exactly one 128 KiB STM32H7 erase sector. LittleFS allocates metadata as block pairs, so a one-sector device has no usable second erase block. A reliable LittleFS conversion should reserve the last two 128 KiB sectors.</p>
+    </section>
+
+    <h2>Findings</h2>
+
+    <article class="finding">
+      <h3>1. HITL documentation can cause USB serial contention</h3>
+      <div class="meta">
+        <span class="badge medium">Severity: Medium</span>
+        <span class="badge">Area: Documentation / HITL workflow</span>
+      </div>
+      <p><strong>Evidence:</strong> <code>README.md</code> and <code>docs/hils_ros2_setup.md</code> imply QGroundControl and jMAVSim can both connect directly to the same board USB serial device.</p>
+      <p><strong>Impact:</strong> jMAVSim should own the board's <code>/dev/ttyACM*</code> link during classical MAVLink HITL. QGC should normally connect over UDP through jMAVSim. If both processes try to open the same serial device, one process may fail to connect or may hang during shutdown.</p>
+      <p><strong>Action plan:</strong></p>
+      <ol>
+        <li>Update the jMAVSim section to state that jMAVSim owns <code>/dev/ttyACM*</code>.</li>
+        <li>Update the QGC section to say QGC connects via UDP while jMAVSim is running with <code>-q</code>.</li>
+        <li>Add a short troubleshooting note: if jMAVSim or QGC will not close, check for a stuck serial owner with <code>lsof /dev/ttyACM*</code> and terminate that process.</li>
+      </ol>
+    </article>
+
+    <article class="finding">
+      <h3>2. LittleFS is enabled but the active parameter backend is flashfs</h3>
+      <div class="meta">
+        <span class="badge medium">Severity: Medium</span>
+        <span class="badge">Area: Storage configuration</span>
+      </div>
+      <p><strong>Evidence:</strong> <code>src/init.c</code> calls <code>parameter_flashfs_init()</code>, while <code>default.px4board</code> enables <code>CONFIG_SYSTEMCMDS_MKLITTLEFS</code> and the NuttX defconfig enables <code>CONFIG_FS_LITTLEFS</code>.</p>
+      <p><strong>Impact:</strong> If the board remains on flashfs, LittleFS adds build and dependency surface without being used. If the board moves to LittleFS, the board must mount a LittleFS volume before <code>rcS</code> runs <code>param select</code> and <code>param load-or-init</code>.</p>
+      <p><strong>Action plan:</strong></p>
+      <ol>
+        <li>If staying on flashfs, remove LittleFS and <code>mklittlefs</code> from this board configuration.</li>
+        <li>If switching to LittleFS, add <code>CONFIG_BOARD_ROOT_PATH="/fs/flash"</code> and <code>CONFIG_BOARD_PARAM_FILE="/fs/flash/params"</code>.</li>
+        <li>Mount the reserved flash partition as LittleFS in <code>board_app_initialize()</code> before <code>px4_platform_configure()</code>.</li>
+        <li>Keep <code>CONFIG_SYSTEMCMDS_BSONDUMP=y</code> for parameter-store diagnostics.</li>
+      </ol>
+    </article>
+
+    <article class="finding">
+      <h3>3. One-sector LittleFS is not reliable with stock NuttX LittleFS</h3>
+      <div class="meta">
+        <span class="badge medium">Severity: Medium</span>
+        <span class="badge">Area: Storage design</span>
+      </div>
+      <p><strong>Evidence:</strong> STM32H7 internal flash erase sectors are 128 KiB. NuttX LittleFS maps LittleFS blocks to MTD erase blocks. LittleFS directory metadata allocation uses a pair of blocks, so a one-block filesystem is expected to fail formatting or quickly fail writes.</p>
+      <p><strong>Impact:</strong> Replacing flashfs with LittleFS while keeping only sector 15 reserved is likely to fail at mount/format time or be fragile under writes.</p>
+      <p><strong>Action plan:</strong></p>
+      <ol>
+        <li>Use flashfs if the hard requirement is exactly one 128 KiB flash sector.</li>
+        <li>Use LittleFS only if the board can reserve the last two sectors, sectors 14 and 15.</li>
+        <li>When reserving two sectors, reduce app flash from 1792 KiB to 1664 KiB and update the bootloader reservation from one sector to two sectors.</li>
+      </ol>
+    </article>
+
+    <article class="finding">
+      <h3>4. Physical GPS and RC modules are probably unused in HITL-only mode</h3>
+      <div class="meta">
+        <span class="badge low">Severity: Low</span>
+        <span class="badge">Area: Firmware size / startup surface</span>
+      </div>
+      <p><strong>Evidence:</strong> <code>CONFIG_DRIVERS_GPS</code>, <code>CONFIG_DRIVERS_RC_INPUT</code>, and <code>CONFIG_MODULES_RC_UPDATE</code> are enabled, while the board has no physical sensors and defaults to <code>COM_RC_IN_MODE=4</code>.</p>
+      <p><strong>Impact:</strong> These modules consume flash and add runtime surface. HIL GPS enters through MAVLink, not the physical GPS driver.</p>
+      <p><strong>Action plan:</strong></p>
+      <ol>
+        <li>Keep the modules if CN10 UART GPS/RC support is planned.</li>
+        <li>Otherwise remove them and rebuild to quantify flash savings.</li>
+        <li>After removal, verify jMAVSim still publishes <code>vehicle_gps_position</code>, <code>sensor_accel</code>, and <code>sensor_gyro</code>.</li>
+      </ol>
+    </article>
+
+    <article class="finding">
+      <h3>5. HITL arming defaults should remain explicitly bench-only</h3>
+      <div class="meta">
+        <span class="badge low">Severity: Low</span>
+        <span class="badge">Area: Safety defaults</span>
+      </div>
+      <p><strong>Evidence:</strong> <code>rc.board_defaults</code> disables physical supply checks, ignores RC input, disables pre-takeoff auto-disarm, and disables magnetometer requirements.</p>
+      <p><strong>Impact:</strong> These defaults are correct for a no-sensor HITL board. They would be unsafe if copied to a flight-capable target without review.</p>
+      <p><strong>Action plan:</strong></p>
+      <ol>
+        <li>Keep the defaults for this board as long as it remains HITL-only.</li>
+        <li>Add a short warning to the README that the target is not a flight configuration.</li>
+        <li>If a real-sensor variant is added later, create a separate board target or airframe path instead of weakening these defaults conditionally.</li>
+      </ol>
+    </article>
+
+    <article class="finding">
+      <h3>6. README parameter table is incomplete</h3>
+      <div class="meta">
+        <span class="badge low">Severity: Low</span>
+        <span class="badge">Area: Documentation maintenance</span>
+      </div>
+      <p><strong>Evidence:</strong> The README lists only a subset of the defaults in <code>init/rc.board_defaults</code>.</p>
+      <p><strong>Impact:</strong> Future debugging can drift because the README does not show the full HITL defaults that actually determine arming and estimator behavior.</p>
+      <p><strong>Action plan:</strong></p>
+      <ol>
+        <li>Either replace the README table with a link to <code>docs/hitl_configuration.md</code>, or expand the table to match <code>rc.board_defaults</code>.</li>
+        <li>Treat <code>rc.board_defaults</code> as the source of truth.</li>
+      </ol>
+    </article>
+
+    <h2>Recommended Sequence</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Work item</th>
+          <th>Validation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Clarify jMAVSim/QGC serial ownership in docs.</td>
+          <td>Follow the doc from a clean terminal session and confirm QGC connects over UDP while jMAVSim owns serial.</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Choose final parameter backend: flashfs one-sector, or LittleFS two-sector.</td>
+          <td>Confirm app image still fits after any flash reservation change.</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>If moving to LittleFS, apply the isolated patch in <code>boards/st/nucleo-h753zi/littlefs</code>.</td>
+          <td>Build, flash, boot, then run <code>ls /fs/flash</code>, <code>param save</code>, reboot, and confirm parameter persistence.</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Optionally trim unused GPS/RC modules.</td>
+          <td>Verify HITL sensor topics and arming workflow are unchanged.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Status</h2>
+    <p><span class="done">Current flashfs implementation:</span> consistent and buildable.</p>
+    <p><span class="done">LittleFS implementation package:</span> provided separately under <code>boards/st/nucleo-h753zi/littlefs</code>, with the recommendation to reserve two sectors.</p>
+  </main>
+</body>
+</html>
