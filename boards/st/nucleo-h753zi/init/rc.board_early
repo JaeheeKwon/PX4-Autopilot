@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# /fs/flash is a tiny internal LittleFS volume dedicated to PX4 parameters.
+# Keep generic storage features disabled so this partition is not used for
+# parameter backups, hardfault logs, external airframes, or update directories.
+set STORAGE_CHECK no
+set USE_PARAM_BACKUPS no
+set USE_PARAM_IMPORT_DEBUG no
+set USE_HARDFAULT_LOG no
+set USE_EXTERNAL_AIRFRAMES no
+set USE_ALT_UPDATE_DIRS no
+
+# rcS passes PARAM_BACKUP_FILE to "param load-or-init". Keep this non-empty so
+# NSH does not pass an empty string as a backup path, while USE_PARAM_BACKUPS=no
+# still prevents writing backup files to the tiny parameter filesystem.
+set PARAM_BACKUP_FILE /fs/flash/parameters_backup.bson

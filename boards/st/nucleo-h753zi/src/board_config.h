@@ -47,8 +47,7 @@
 
 #define BOARD_ENABLE_CONSOLE_BUFFER
 
-/* Store params in internal flash */
-#define FLASH_BASED_PARAMS
+/* File-backed params are stored on LittleFS mounted by board_app_initialize(). */
 
 __BEGIN_DECLS
 extern void stm32_usbinitialize(void);
