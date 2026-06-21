@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nucleo-H753ZI ROMFS Startup and Board Defaults Review</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f4;
+      --surface: #ffffff;
+      --surface-alt: #eef3ef;
+      --ink: #1f2528;
+      --muted: #5e686c;
+      --line: #d7dfd8;
+      --accent: #286f61;
+      --accent-dark: #184f45;
+      --code-bg: #edf2ef;
+      --pre-bg: #17211f;
+      --pre-ink: #edf7f2;
+      --radius: 8px;
+      --content: 1180px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+
+    a { color: var(--accent-dark); text-underline-offset: 3px; }
+    code {
+      padding: 0.08rem 0.28rem;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--code-bg);
+      color: #10211d;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 1rem;
+      border: 1px solid #263531;
+      border-radius: var(--radius);
+      background: var(--pre-bg);
+      color: var(--pre-ink);
+      line-height: 1.45;
+    }
+
+    pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+
+    .header {
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .header-inner {
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 2rem 1.25rem 1.5rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.7rem;
+      color: var(--accent-dark);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    h1 {
+      max-width: 920px;
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .lede {
+      max-width: 920px;
+      margin: 1rem 0 0;
+      color: var(--muted);
+      font-size: 1.04rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 1.4rem;
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 1.4rem 1.25rem 3rem;
+    }
+
+    .toc {
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .toc strong {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--accent-dark);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .toc a {
+      display: block;
+      padding: 0.25rem 0;
+      color: #314042;
+      text-decoration: none;
+      font-size: 0.94rem;
+    }
+
+    main {
+      min-width: 0;
+      padding: 1.2rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    h2 {
+      margin: 2rem 0 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--line);
+      color: #17211f;
+      font-size: 1.55rem;
+      letter-spacing: 0;
+    }
+
+    h2:first-child { margin-top: 0; }
+    p { margin: 0.65rem 0; }
+    ul, ol { padding-left: 1.35rem; }
+    li { margin: 0.35rem 0; }
+
+    table {
+      width: 100%;
+      margin: 1rem 0 1.4rem;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 0.58rem 0.65rem;
+      border: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--surface-alt);
+      color: #24302d;
+      font-weight: 700;
+    }
+
+    .note {
+      padding: 0.9rem 1rem;
+      border: 1px solid #c8d8cf;
+      border-radius: var(--radius);
+      background: #f2f7f3;
+    }
+
+    .warning {
+      padding: 0.9rem 1rem;
+      border: 1px solid #e3c47f;
+      border-radius: var(--radius);
+      background: #fff8e8;
+    }
+
+    .mermaid {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+
+    footer {
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 0 1.25rem 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 900px) {
+      .layout { display: block; }
+      .toc { position: static; margin-bottom: 1rem; }
+      main { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 Nucleo-H753ZI</div>
+      <h1>ROMFS Startup and Board Defaults Review</h1>
+      <p class="lede">Review of the active `rcS` boot sequence, generated ROMFS files, and `rc.board_defaults` behavior for the no-sensor HITL board.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="toc">
+      <strong>Contents</strong>
+      <a href="#scope">Scope</a>
+      <a href="#summary">Runtime Summary</a>
+      <a href="#sequence">Startup Sequence</a>
+      <a href="#ordering">rcS Ordering</a>
+      <a href="#defaults">Board Defaults</a>
+      <a href="#flashfs">Flashfs Notes</a>
+      <a href="#littlefs">LittleFS Notes</a>
+      <a href="#actions">Action List</a>
+      <a href="#validation">Validation</a>
+    </aside>
+
+    <main>
+      <section id="scope">
+        <h2>Scope</h2>
+        <p>Reviewed files:</p>
+        <table>
+          <thead>
+            <tr><th>Area</th><th>File</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Main startup script</td><td><code>ROMFS/px4fmu_common/init.d/rcS</code></td></tr>
+            <tr><td>Generated runtime file paths</td><td><code>build/st_nucleo-h753zi_default/etc/init.d/rc.filepaths</code></td></tr>
+            <tr><td>Board HITL defaults</td><td><code>boards/st/nucleo-h753zi/init/rc.board_defaults</code></td></tr>
+            <tr><td>Generated airframe lookup</td><td><code>build/st_nucleo-h753zi_default/etc/init.d/rc.autostart</code></td></tr>
+            <tr><td>Generated serial startup</td><td><code>build/st_nucleo-h753zi_default/etc/init.d/rc.serial</code></td></tr>
+            <tr><td>LittleFS reference startup hook</td><td><code>boards/st/nucleo-h753zi/littlefs_ref/init/rc.board_early</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="summary">
+        <h2>Runtime Summary</h2>
+        <p>The active board currently uses raw flashfs parameter storage:</p>
+        <pre><code>set PARAM_FILE /fs/mtd_params
+set BOARD_ROOT_PATH /fs/microsd</code></pre>
+        <p>Because the active board still defines <code>FLASH_BASED_PARAMS</code>, the <code>param</code> app uses the flash backend. In this mode <code>param select $PARAM_FILE</code> does not switch storage to a normal file; the selected path is effectively ignored for default parameter persistence.</p>
+        <div class="note">
+          For a LittleFS parameter backend, remove <code>FLASH_BASED_PARAMS</code>, mount the filesystem before parameter load, and set <code>CONFIG_BOARD_PARAM_FILE="/fs/flash/params"</code>.
+        </div>
+      </section>
+
+      <section id="sequence">
+        <h2>Startup Sequence</h2>
+        <pre class="mermaid">sequenceDiagram
+    participant Board as board_app_initialize
+    participant RCS as rcS
+    participant Paths as rc.filepaths
+    participant Early as rc.board_early
+    participant Param as param app
+    participant Defaults as rc.board_defaults
+    participant Auto as rc.autostart
+    participant Modules as PX4 modules
+
+    Board-&gt;&gt;Board: init platform, DMA, LEDs
+    Board-&gt;&gt;Board: init parameter backend
+    Note over Board: active board: flashfs&lt;br/&gt;LittleFS ref: mount /fs/flash first
+    Board--&gt;&gt;RCS: NSH starts rcS
+    RCS-&gt;&gt;Paths: source /etc/init.d/rc.filepaths
+    Paths--&gt;&gt;RCS: PARAM_FILE and BOARD_ROOT_PATH
+    RCS-&gt;&gt;Early: source rc.board_early if present
+    Early--&gt;&gt;RCS: optionally adjust STORAGE_* gates
+    RCS-&gt;&gt;RCS: storage check and feature gate setup
+    RCS-&gt;&gt;Param: param select $PARAM_FILE
+    RCS-&gt;&gt;Param: param load-or-init $PARAM_BACKUP_FILE
+    RCS-&gt;&gt;Param: optional SYS_AUTOCONFIG reset
+    RCS-&gt;&gt;Defaults: source rc.board_defaults
+    Defaults-&gt;&gt;Param: param set-default HITL parameters
+    RCS-&gt;&gt;Auto: source rc.autostart
+    Auto-&gt;&gt;Param: compare SYS_AUTOSTART
+    Auto--&gt;&gt;RCS: load 1001_rc_quad_x.hil
+    RCS-&gt;&gt;Modules: start sensors in HITL mode
+    RCS-&gt;&gt;Modules: start ekf2 and controllers
+    RCS-&gt;&gt;Modules: start rc_update and manual_control
+    RCS-&gt;&gt;Modules: start commander -h
+    RCS-&gt;&gt;Modules: start pwm_out_sim -m hil
+    RCS-&gt;&gt;Modules: source rc.serial
+    RCS-&gt;&gt;Modules: start USB MAVLink / cdcacm_autostart
+    RCS-&gt;&gt;Modules: start navigator and remaining services
+    RCS-&gt;&gt;Modules: mavlink boot_complete</pre>
+      </section>
+
+      <section id="ordering">
+        <h2>rcS Ordering Review</h2>
+        <table>
+          <thead>
+            <tr><th>Order</th><th>Step</th><th>Why it matters</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td><code>rcS</code> sources <code>rc.filepaths</code></td><td>Defines <code>PARAM_FILE</code> and <code>BOARD_ROOT_PATH</code>.</td></tr>
+            <tr><td>2</td><td>Optional <code>rc.board_early</code></td><td>The only board hook that runs before storage checks and parameter load.</td></tr>
+            <tr><td>3</td><td>Storage check</td><td>Enables backup/log/external-airframe behavior when storage is detected.</td></tr>
+            <tr><td>4</td><td><code>param select $PARAM_FILE</code></td><td>Selects file-backed parameter storage when flash backend is not compiled.</td></tr>
+            <tr><td>5</td><td><code>param load-or-init</code></td><td>Loads saved params or seeds defaults on first boot.</td></tr>
+            <tr><td>6</td><td><code>rc.board_defaults</code></td><td>Applies board defaults after saved params are loaded.</td></tr>
+            <tr><td>7</td><td><code>rc.autostart</code></td><td>Uses <code>SYS_AUTOSTART</code> to load the matching airframe script.</td></tr>
+            <tr><td>8</td><td>HITL branch</td><td><code>SYS_HITL &gt; 0</code> starts HIL sensors, <code>commander -h</code>, and simulated outputs.</td></tr>
+            <tr><td>9</td><td><code>rc.serial</code> and USB autostart</td><td>Starts configured serial/MAVLink links and USB MAVLink.</td></tr>
+            <tr><td>10</td><td><code>mavlink boot_complete</code></td><td>Announces the system finished startup.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="defaults">
+        <h2>rc.board_defaults Review</h2>
+        <table>
+          <thead>
+            <tr><th>Group</th><th>Parameters</th><th>Review</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Airframe and HITL</td><td><code>SYS_AUTOSTART=1001</code>, <code>SYS_HITL=1</code></td><td>Correct for classical MAVLink HITL with the generic quadrotor HIL airframe.</td></tr>
+            <tr><td>Sensor presence</td><td><code>SYS_HAS_MAG=0</code>, <code>SYS_HAS_BARO=1</code>, <code>SYS_HAS_GPS=1</code></td><td>Correct if the simulator supplies GPS and baro.</td></tr>
+            <tr><td>EKF aiding</td><td><code>EKF2_GPS_CTRL=7</code>, <code>EKF2_HGT_REF=1</code>, <code>EKF2_BARO_CTRL=1</code>, <code>EKF2_MAG_TYPE=5</code>, <code>EKF2_EV_CTRL=0</code></td><td>Consistent with no real magnetometer and HIL GPS/baro aiding.</td></tr>
+            <tr><td>Simulator tolerance</td><td><code>EKF2_REQ_*</code>, <code>EKF2_DELAY_MAX</code></td><td>Helps avoid startup transients blocking estimator readiness.</td></tr>
+            <tr><td>Arming and IO</td><td><code>COM_ARM_WO_GPS</code>, <code>COM_ARM_MAG_STR</code>, <code>CBRK_SUPPLY_CHK</code>, <code>CBRK_IO_SAFETY</code>, <code>COM_RC_IN_MODE</code>, <code>COM_DISARM_PRFLT</code></td><td>Correct for bench HITL, but intentionally not flight-safe.</td></tr>
+            <tr><td>USB MAVLink</td><td><code>SYS_USB_AUTO=2</code>, <code>USB_MAV_MODE=2</code></td><td>Correct for USB CDC MAVLink HITL/QGC workflow.</td></tr>
+          </tbody>
+        </table>
+        <p><code>rc.board_defaults</code> uses <code>param set-default</code>, so saved user parameters can still override these defaults. This is the right behavior for a board default file.</p>
+      </section>
+
+      <section id="flashfs">
+        <h2>Active Flashfs Notes</h2>
+        <p>The active implementation stores parameters in internal flash through <code>parameter_flashfs_init()</code> in board initialization.</p>
+        <ul>
+          <li><code>param select $PARAM_FILE</code> does not control the backend while <code>FLASH_BASED_PARAMS</code> is enabled.</li>
+          <li><code>/fs/mtd_params</code> is not expected to appear as a normal file.</li>
+          <li>The current <code>BOARD_ROOT_PATH=/fs/microsd</code> is harmless for this no-SD board because no storage is detected.</li>
+        </ul>
+      </section>
+
+      <section id="littlefs">
+        <h2>LittleFS Reference Notes</h2>
+        <p>For file-backed LittleFS parameters:</p>
+        <ol>
+          <li>Remove <code>FLASH_BASED_PARAMS</code>.</li>
+          <li>Mount the LittleFS volume before <code>rcS</code> reaches <code>param select</code>.</li>
+          <li>Set <code>CONFIG_BOARD_PARAM_FILE="/fs/flash/params"</code>.</li>
+          <li>Prefer leaving <code>CONFIG_BOARD_ROOT_PATH</code> as <code>/fs/microsd</code> unless <code>/fs/flash</code> is intentionally general board storage.</li>
+        </ol>
+        <div class="warning">
+          Do not set <code>CONFIG_BOARD_ROOT_PATH="/fs/flash"</code> for a tiny parameter-only LittleFS volume unless you also want <code>rcS</code> to look there for config scripts, extras, backups, hardfault logs, external airframes, and update directories.
+        </div>
+      </section>
+
+      <section id="actions">
+        <h2>Action List</h2>
+        <table>
+          <thead>
+            <tr><th>Priority</th><th>Action</th><th>Reason</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>Keep the active <code>rc.board_defaults</code> as-is for HITL.</td><td>It matches the no-sensor board and fixes the arming workflow.</td></tr>
+            <tr><td>2</td><td>For LittleFS, set only <code>CONFIG_BOARD_PARAM_FILE="/fs/flash/params"</code> and avoid setting <code>CONFIG_BOARD_ROOT_PATH="/fs/flash"</code> unless needed.</td><td>Prevents the small parameter volume from becoming general board storage.</td></tr>
+            <tr><td>3</td><td>Keep or add <code>rc.board_early</code> for LittleFS to disable storage backups/logging on the parameter partition.</td><td>Avoids filling the LittleFS partition with non-parameter files.</td></tr>
+            <tr><td>4</td><td>After any LittleFS change, inspect generated <code>rc.filepaths</code>.</td><td>It must show the intended <code>PARAM_FILE</code>.</td></tr>
+            <tr><td>5</td><td>Verify parameter persistence after boot.</td><td>Confirms <code>param select</code>, <code>param load-or-init</code>, and <code>param save</code> use the intended backend.</td></tr>
+            <tr><td>6</td><td>Update docs to state that <code>SYS_HAS_GPS=1</code> and <code>SYS_HAS_BARO=1</code> mean HIL-provided GPS/baro are required.</td><td>Avoids confusion with physical sensors.</td></tr>
+            <tr><td>7</td><td>Optionally remove physical GPS/RC modules if flash pressure increases.</td><td>HITL disables physical GPS and ignores RC input via <code>COM_RC_IN_MODE=4</code>.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="validation">
+        <h2>Validation Commands</h2>
+        <p>After rebuilding:</p>
+        <pre><code>cat build/st_nucleo-h753zi_default/etc/init.d/rc.filepaths
+cat build/st_nucleo-h753zi_default/etc/init.d/rc.board_defaults</code></pre>
+        <p>On the board:</p>
+        <pre><code>param status
+param show SYS_AUTOSTART
+param show SYS_HITL
+param show COM_DISARM_PRFLT
+commander check</code></pre>
+        <p>For LittleFS:</p>
+        <pre><code>ls /fs/flash
+param set COM_DISARM_PRFLT -1
+param save
+reboot
+param show COM_DISARM_PRFLT
+ls /fs/flash</code></pre>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    Generated from <code>boards/st/nucleo-h753zi/docs/rc_startup_sequence.md</code>.
+  </footer>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>
