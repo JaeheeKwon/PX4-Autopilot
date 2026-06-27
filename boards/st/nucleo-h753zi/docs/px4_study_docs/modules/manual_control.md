@@ -6,7 +6,58 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Module consuming manual_control_inputs publishing one manual_control_setpoint.
+
+## Description of Module
+
+Selects valid manual input sources and publishes normalized manual stick and switch setpoints.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `action_request`, `manual_control_setpoint`, `manual_control_switches`, `parameter_update`, `vehicle_status`.
+- Publish outputs or status topics such as `action_request`, `landing_gear`, `manual_control_input`, `manual_control_setpoint`, `manual_control_switches`, `vehicle_command`, `vehicle_status`.
+- Use module configuration from `manual_control_params.yaml`.
+- Implement the main behavior in classes such as `ManualControl`, `CameraMode`, `ManualControlSelector`, `RcInMode`, `TestManualControl`, `SwitchTest`, ... 1 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Manual control shaping applies deadzones, exponential response curves, and saturation before setpoints reach controllers.
+
+```text
+deadzone(x,d) = 0                         if |x| <= d
+              = sign(x)*(|x|-d)/(1-d)      otherwise
+expo(x,e) = (1-e)*x + e*x^3
+y = constrain(expo(deadzone(x,d), e), -1, 1)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `action_request`, `manual_control_setpoint`, `manual_control_switches`, `parameter_update`, `vehicle_status` |
+| Primary outputs | `action_request`, `landing_gear`, `manual_control_input`, `manual_control_setpoint`, `manual_control_switches`, `vehicle_command`, `vehicle_status` |
+| Referenced topics | `action_request`, `landing_gear`, `manual_control_input`, `manual_control_setpoint`, `manual_control_switches`, `parameter_update`, `vehicle_command`, `vehicle_status` |
+| Parameters/config | manual_control_params.yaml |
+| Key classes | `ManualControl`, `CameraMode`, `ManualControlSelector`, `RcInMode`, `TestManualControl`, `SwitchTest`, `MovingDiff` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| ManualControl.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| manual_control_params.yaml | Build, parameter, or module configuration |
+| ManualControl.hpp | Defines `ManualControl` class |
+| ManualControlSelector.hpp | Defines `ManualControlSelector` class |
 
 ## Architecture Overview
 

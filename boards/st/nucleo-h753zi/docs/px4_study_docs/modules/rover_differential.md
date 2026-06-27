@@ -8,6 +8,59 @@
 
 Architecture notes for the Rover Differential module.
 
+## Description of Module
+
+Controls differential-drive rover motion from rover setpoints to actuator commands.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `rover_attitude_setpoint`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 9 more.
+- Publish outputs or status topics such as `actuator_motors`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_rate_status`, `rover_speed_setpoint`, ... 3 more.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `DifferentialActControl`, `DifferentialAttControl`, `DifferentialAutoMode`, `DifferentialManualMode`, `DifferentialOffboardMode`, `DrivingState`, ... 4 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `rate_ctrl`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Differential rover control maps desired forward speed and yaw rate into left and right wheel speeds.
+
+```text
+v_left  = speed_sp - 0.5 * track_width * yaw_rate_sp
+v_right = speed_sp + 0.5 * track_width * yaw_rate_sp
+speed_sp = 0.5 * (v_left + v_right)
+yaw_rate_sp = (v_right - v_left) / track_width
+throttle_left/right = speed_controller(v_left/right - v_meas_left/right)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `rover_attitude_setpoint`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_speed_setpoint`, `rover_steering_setpoint`, ... 7 more |
+| Primary outputs | `actuator_motors`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_rate_status`, `rover_speed_setpoint`, `rover_speed_status`, `rover_steering_setpoint`, ... 1 more |
+| Referenced topics | `actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 11 more |
+| Parameters/config | module.yaml |
+| Key classes | `DifferentialActControl`, `DifferentialAttControl`, `DifferentialAutoMode`, `DifferentialManualMode`, `DifferentialOffboardMode`, `DrivingState`, `DifferentialPosControl`, `DifferentialRateControl`, `DifferentialSpeedControl`, `RoverDifferential` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| RoverDifferential.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| DifferentialActControl/CMakeLists.txt | Build, parameter, or module configuration |
+| DifferentialAttControl/CMakeLists.txt | Build, parameter, or module configuration |
+| DifferentialDriveModes/CMakeLists.txt | Build, parameter, or module configuration |
+| DifferentialDriveModes/DifferentialAutoMode/CMakeLists.txt | Build, parameter, or module configuration |
+| DifferentialDriveModes/DifferentialManualMode/CMakeLists.txt | Build, parameter, or module configuration |
+| DifferentialActControl/DifferentialActControl.hpp | Defines `DifferentialActControl` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

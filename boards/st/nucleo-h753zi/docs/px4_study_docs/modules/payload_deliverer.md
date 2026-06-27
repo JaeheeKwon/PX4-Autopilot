@@ -8,6 +8,46 @@
 
 Architecture notes for the payload_deliverer module.
 
+## Description of Module
+
+Controls payload delivery or gripper-style release actions from vehicle commands.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `parameter_update`, `vehicle_command`.
+- Publish outputs or status topics such as `gripper`, `vehicle_command`, `vehicle_command_ack`.
+- Use parameters or module configuration entries such as `PD_GRIPPER_TO`, `PD_GRIPPER_TYPE`.
+- Implement the main behavior in classes such as `to`, `GripperType`, `GripperSensorType`, `GripperState`, `Gripper`, `PayloadDeliverer`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update`, `vehicle_command` |
+| Primary outputs | `gripper`, `vehicle_command`, `vehicle_command_ack` |
+| Referenced topics | `gripper`, `parameter_update`, `vehicle_command`, `vehicle_command_ack` |
+| Parameters/config | `PD_GRIPPER_TO`, `PD_GRIPPER_TYPE` |
+| Key classes | `to`, `GripperType`, `GripperSensorType`, `GripperState`, `Gripper`, `PayloadDeliverer` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| payload_deliverer.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| gripper.h | Defines `to` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="uuv_pos_control.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>uuv_pos_control</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Controls the attitude of an unmanned underwater vehicle (UUV). Publishes `attitude_setpoint` messages. Currently, this implementation supports only a few modes: * Full manual: Roll, pitch, yaw, and throttle controls are passed directly through to the actuators * Auto mission: The uuv runs missions CLI usage example: $ uuv_pos_control start $ uuv_pos_control status $ uuv_pos_control stop</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/uuv_pos_control</code></div>
       <div><strong>Build target</strong><br><code>modules__uuv_pos_control</code></div>
@@ -108,6 +120,30 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Runs underwater-vehicle position control.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.</li><li>Consume runtime inputs from uORB topics such as `manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_attitude`, `vehicle_control_mode`, `vehicle_local_position`.</li><li>Publish outputs or status topics such as `vehicle_attitude_setpoint`.</li><li>Use module configuration from `uuv_pos_control_params.yaml`.</li><li>Implement the main behavior in classes such as `UUVPOSControl`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Underwater position control is cascaded position and velocity feedback that produces force setpoints.</p>
+    <pre class="math-block">e_p = p_sp - p
+v_sp = v_ff + Kp_pos * e_p
+e_v = v_sp - v
+force_sp = Kp_vel*e_v + Ki_vel*integral(e_v) - Kd_vel*v_dot
+force_body = R_ned_to_body * force_sp</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_attitude`, `vehicle_control_mode`, `vehicle_local_position`</td></tr><tr><td>Primary outputs</td><td>`vehicle_attitude_setpoint`</td></tr><tr><td>Referenced topics</td><td>`manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_local_position`, `vehicle_rates_setpoint`</td></tr><tr><td>Parameters/config</td><td>uuv_pos_control_params.yaml</td></tr><tr><td>Key classes</td><td>`UUVPOSControl`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>uuv_pos_control.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>uuv_pos_control_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>uuv_pos_control.hpp</td><td>Defines `UUVPOSControl` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -141,7 +177,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/uuv_pos_control</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__uuv_pos_control</td></tr><tr><td>Runtime main</td><td>uuv_pos_control</td></tr><tr><td>Stack main</td><td>1200</td></tr><tr><td>Module config</td><td>uuv_pos_control_params.yaml</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Security Attack Surface Assessment</title>
+  <style>
+    :root {
+      --bg: #f5f7f9;
+      --paper: #ffffff;
+      --ink: #17212b;
+      --muted: #52616f;
+      --line: #d8e0e8;
+      --accent: #005f73;
+      --accent-soft: #e5f3f6;
+      --warn: #fff1d3;
+      --danger: #fde8e8;
+      --ok: #e4f6ed;
+      --code: #edf2f7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 24px 64px;
+    }
+
+    header {
+      padding: 38px 0 30px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 920px;
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 900px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 1.12rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .meta span {
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--paper);
+    }
+
+    section {
+      padding: 30px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.45rem;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 20px 0 8px;
+      font-size: 1.06rem;
+      letter-spacing: 0;
+    }
+
+    p {
+      max-width: 930px;
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--code);
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    .callout {
+      max-width: 960px;
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .warning {
+      border-left-color: #b77400;
+      background: var(--warn);
+    }
+
+    .danger {
+      border-left-color: #b42318;
+      background: var(--danger);
+    }
+
+    .ok {
+      border-left-color: #137333;
+      background: var(--ok);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .tile {
+      min-height: 140px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+    }
+
+    .tile h3 {
+      margin-top: 0;
+    }
+
+    .tile p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    table {
+      width: 100%;
+      margin: 18px 0 8px;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef3f7;
+      font-size: 0.88rem;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      min-width: 76px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .high {
+      color: #7a271a;
+      background: #ffdad5;
+    }
+
+    .medium {
+      color: #7a4a00;
+      background: #ffe3a3;
+    }
+
+    .low {
+      color: #084c44;
+      background: #ccebe6;
+    }
+
+    ul,
+    ol {
+      max-width: 960px;
+      margin: 10px 0 0 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .refs {
+      columns: 2;
+      column-gap: 32px;
+      max-width: 1040px;
+    }
+
+    .refs li {
+      break-inside: avoid;
+    }
+
+    footer {
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 880px) {
+      main {
+        padding: 24px 16px 48px;
+      }
+
+      header {
+        padding-top: 28px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+
+      .refs {
+        columns: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Security Assessment</p>
+      <h1>PX4 Attack Surface Assessment for Self-Driving Control Runtime Use</h1>
+      <p class="subtitle">
+        PX4 has practical mechanisms for secure boot, MAVLink signing, module isolation by convention, and controlled topic bridging. The attack surface is still broad when the architecture is connected to radios, Ethernet, companion computers, ROS 2, CAN devices, SD-card configuration, debug ports, and drive-by-wire interfaces.
+      </p>
+      <div class="meta">
+        <span>Repository: PX4-Autopilot</span>
+        <span>Scope: attack surface and mitigation review</span>
+        <span>Prepared: 2026-06-22</span>
+      </div>
+    </header>
+
+    <section>
+      <h2>Executive Summary</h2>
+      <div class="callout danger">
+        <strong>Primary risk:</strong> Any unauthenticated path that can send control, shell, parameter, mission, bridge, or actuator messages can become a direct safety risk. In a self-driving adaptation, that risk maps from "flight command" to "steering, brake, throttle, gear, and mode authority."
+      </div>
+      <p>
+        The highest-value assets are control authority, mode authority, actuator commands, safety parameters, firmware integrity, signing keys, logs, mission or route data, and bridge topic mappings. The strongest trust boundaries are the vehicle network boundary, companion-computer boundary, CAN/drive-by-wire boundary, physical maintenance boundary, and software supply-chain boundary.
+      </p>
+      <p>
+        PX4's own documentation warns that unauthenticated MAVLink can allow shell commands, file operations, parameter changes, mission upload, arming, reboot, and termination. That makes communication security and topic authorization mandatory before adapting PX4 concepts into a self-driving project.
+      </p>
+    </section>
+
+    <section>
+      <h2>Critical Assets</h2>
+      <div class="grid">
+        <article class="tile">
+          <h3>Control Authority</h3>
+          <p>Commands that affect steering, braking, throttle, arming, actuator output, or trajectory tracking.</p>
+        </article>
+        <article class="tile">
+          <h3>Mode Authority</h3>
+          <p>State-machine decisions for manual, autonomous, degraded, emergency stop, and minimal-risk maneuvers.</p>
+        </article>
+        <article class="tile">
+          <h3>Configuration</h3>
+          <p>Parameters, topic mappings, SD-card startup scripts, calibration files, and vehicle variant data.</p>
+        </article>
+        <article class="tile">
+          <h3>Firmware Integrity</h3>
+          <p>Bootloader, firmware image, module load paths, generated interfaces, and update tooling.</p>
+        </article>
+        <article class="tile">
+          <h3>Credentials</h3>
+          <p>MAVLink signing keys, secure boot private keys, companion credentials, network keys, and diagnostic access.</p>
+        </article>
+        <article class="tile">
+          <h3>Telemetry and Logs</h3>
+          <p>Location, routes, maps, event logs, fault logs, replay files, and operational behavior data.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Attack Surface Inventory</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Surface</th>
+            <th>Risk</th>
+            <th>Possible Impact</th>
+            <th>Primary Mitigations</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>MAVLink radio, serial, UDP, TCP</td>
+            <td><span class="badge high">High</span></td>
+            <td>Unauthorized commands, shell access, file operations, parameter changes, mission overwrite, reboot, flight termination, or false telemetry injection.</td>
+            <td>Enable MAVLink 2 signing, provision keys only on trusted links, firewall network ports, isolate radios, restrict shell/FTP in production builds, monitor rejected messages.</td>
+          </tr>
+          <tr>
+            <td>MAVLink signing key storage</td>
+            <td><span class="badge high">High</span></td>
+            <td>Physical SD-card access can expose or remove the key file, disabling or bypassing trust assumptions.</td>
+            <td>Lock or eliminate removable SD-card access, use tamper controls, encrypt or bind keys where platform support exists, define key rotation and revocation procedures.</td>
+          </tr>
+          <tr>
+            <td>ROS 2 / uXRCE-DDS bridge</td>
+            <td><span class="badge high">High</span></td>
+            <td>Companion or network node can publish commands into PX4 topics, receive telemetry, or abuse mismatched message definitions.</td>
+            <td>Use DDS security or network isolation, topic allowlists, bridge topic minimization, command freshness checks, companion hardening, version-locked message definitions.</td>
+          </tr>
+          <tr>
+            <td>Zenoh bridge and router</td>
+            <td><span class="badge high">High</span></td>
+            <td>Router compromise or topic mapping changes can expose control and telemetry paths over TCP, UDP, multicast, or distributed networks.</td>
+            <td>Authenticate router access, restrict peers, disable multicast where not needed, protect SD-card topic mapping files, limit subscribed control topics.</td>
+          </tr>
+          <tr>
+            <td>Companion computer</td>
+            <td><span class="badge high">High</span></td>
+            <td>Compromise of Linux companion can become control-plane compromise through MAVLink, DDS, Zenoh, serial, or CAN gateways.</td>
+            <td>Harden OS, least privilege, signed updates, secure boot, network firewalling, container isolation, audit services, restrict bridge credentials.</td>
+          </tr>
+          <tr>
+            <td>CAN / DroneCAN / UAVCAN</td>
+            <td><span class="badge high">High</span></td>
+            <td>Spoofed sensors, fake actuator state, firmware update abuse, node ID collision, or command injection to ESCs and peripherals.</td>
+            <td>Segment safety-critical CAN, authenticate gateways where possible, static node IDs for critical nodes, message plausibility checks, update authorization, bus monitoring.</td>
+          </tr>
+          <tr>
+            <td>Vehicle CAN and drive-by-wire adaptation</td>
+            <td><span class="badge high">High</span></td>
+            <td>Unauthorized steering, brake, throttle, gear, park, or mode commands.</td>
+            <td>Safety gateway, command authorization, rate and envelope limits, independent emergency stop, source authentication, CAN IDS, hardware interlocks.</td>
+          </tr>
+          <tr>
+            <td>Parameters and remote tuning</td>
+            <td><span class="badge high">High</span></td>
+            <td>Changed failsafe thresholds, actuator limits, mode selection, controller gains, topic subscriptions, or sensor selection.</td>
+            <td>Lock safety parameters, require signed/authorized changes, separate calibration mode, maintain golden configuration, log and alarm on changes.</td>
+          </tr>
+          <tr>
+            <td>SD-card startup and configuration</td>
+            <td><span class="badge high">High</span></td>
+            <td><code>rc.txt</code>, <code>config.txt</code>, or <code>extras.txt</code> can replace startup, modify parameters, or start extra apps.</td>
+            <td>Disable SD-card startup override in production, sign configuration bundles, physical access controls, boot-time integrity checks, immutable production images.</td>
+          </tr>
+          <tr>
+            <td>System console, MAVLink shell, debug UART</td>
+            <td><span class="badge high">High</span></td>
+            <td>Direct command execution, module start/stop, log inspection, parameter changes, and boot diagnostics access.</td>
+            <td>Disable production shells, require authentication, physically protect debug connectors, separate development and production firmware builds.</td>
+          </tr>
+          <tr>
+            <td>SWD / JTAG debug ports</td>
+            <td><span class="badge high">High</span></td>
+            <td>Firmware extraction, reflashing, memory inspection, bypass of software security, key extraction if stored in accessible memory or flash.</td>
+            <td>Lock debug access, remove or seal connectors, use secure boot, use hardware key storage when available, control factory access.</td>
+          </tr>
+          <tr>
+            <td>Bootloader and firmware update path</td>
+            <td><span class="badge high">High</span></td>
+            <td>Unauthorized firmware, rollback to vulnerable firmware, test-key use in production, or supply-chain insertion.</td>
+            <td>Enable secure boot with production keys, protect private keys, anti-rollback policy, signed update manifests, release signing process.</td>
+          </tr>
+          <tr>
+            <td>Sensor inputs</td>
+            <td><span class="badge medium">Medium</span></td>
+            <td>GNSS spoofing, IMU fault injection, magnetometer disturbance, camera or rangefinder spoofing, false obstacle or position estimates.</td>
+            <td>Sensor fusion consistency checks, authenticated GNSS where available, redundancy, physical shielding, plausibility monitoring, degraded-mode logic.</td>
+          </tr>
+          <tr>
+            <td>Logging, replay, and ULog streaming</td>
+            <td><span class="badge medium">Medium</span></td>
+            <td>Privacy leakage, route leakage, tampered evidence, storage exhaustion, or replay data used as an input source in unsafe contexts.</td>
+            <td>Encrypt sensitive logs, sign logs, rotate storage, restrict log streaming, separate test replay from production runtime.</td>
+          </tr>
+          <tr>
+            <td>Simulation and SITL interfaces</td>
+            <td><span class="badge medium">Medium</span></td>
+            <td>Simulation ports, developer shells, dynamic modules, and test bridges can leak into production images or lab networks.</td>
+            <td>Separate build variants, block simulation services in production, scan enabled modules, firewall lab networks, release-gate build configs.</td>
+          </tr>
+          <tr>
+            <td>Supply chain and generated code</td>
+            <td><span class="badge medium">Medium</span></td>
+            <td>Compromised dependencies, submodules, message generators, scripts, build tools, or generated topic bridges.</td>
+            <td>Pinned dependencies, reproducible builds, signed source provenance, generator review, SBOM, vulnerability monitoring.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Likely Attack Paths</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>Entry Point</th>
+            <th>Target Asset</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Unauthenticated command path</td>
+            <td>MAVLink over radio, serial, WiFi, UDP, or TCP</td>
+            <td>Mode authority and actuator command path</td>
+            <td>Unauthorized control command, unsafe mode transition, or emergency action.</td>
+          </tr>
+          <tr>
+            <td>Companion pivot</td>
+            <td>Linux companion network service or ROS 2 node</td>
+            <td>PX4 bridge topics and vehicle state</td>
+            <td>Adversary sends apparently valid offboard trajectory or actuator commands.</td>
+          </tr>
+          <tr>
+            <td>Configuration tampering</td>
+            <td>SD card, parameter protocol, startup scripts, topic mapping files</td>
+            <td>Safety thresholds, actuator mapping, bridge subscriptions</td>
+            <td>Vehicle boots with unsafe defaults or accepts unintended external inputs.</td>
+          </tr>
+          <tr>
+            <td>Peripheral spoofing</td>
+            <td>CAN, DroneCAN, UART, I2C, SPI, or GNSS radio-frequency path</td>
+            <td>Estimator and health checks</td>
+            <td>False localization, false health state, false obstacle/traffic data, or actuator-state confusion.</td>
+          </tr>
+          <tr>
+            <td>Firmware integrity failure</td>
+            <td>Bootloader update, debug port, insecure firmware distribution</td>
+            <td>Runtime binary and keys</td>
+            <td>Persistent compromise before any application-level security controls run.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Security Strengths Present in PX4</h2>
+      <ul>
+        <li>MAVLink 2 signing support can authenticate incoming MAVLink commands when a key is provisioned.</li>
+        <li>PX4 documents production MAVLink hardening and explicitly identifies high-risk unsigned capabilities.</li>
+        <li>Secure boot support exists for OEM use on supported targets, using firmware signatures verified by the bootloader.</li>
+        <li>Health, arming checks, failsafe flags, and commander provide useful guardrails for unsafe states.</li>
+        <li>Topic-based architecture makes data flows easier to inventory than ad hoc direct calls.</li>
+        <li>Logging and event mechanisms can support incident analysis if logs are protected from tampering and leakage.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Security Gaps</h2>
+      <div class="callout warning">
+        PX4 gives building blocks, but the deployment security posture depends heavily on the integrator. A production vehicle needs a security architecture, not just feature switches.
+      </div>
+      <ul>
+        <li>No default end-to-end encryption for MAVLink. Signing authenticates and detects tampering, but telemetry and commands remain visible to eavesdroppers.</li>
+        <li>Initial MAVLink signing provisioning is accepted before a key exists, so first provisioning must be done on a trusted link.</li>
+        <li>Some MAVLink messages remain accepted unsigned by design, which leaves residual spoofing risk.</li>
+        <li>Security-critical keys and configuration can depend on removable SD-card storage.</li>
+        <li>ROS 2, DDS, and Zenoh bridges require separate access control and topic authorization design.</li>
+        <li>CAN and many embedded peripheral buses do not provide authentication by default.</li>
+        <li>Debug ports and system consoles can bypass higher-level security if physically accessible.</li>
+        <li>Simulation, dynamic modules, test shells, and developer services must be excluded from production builds.</li>
+        <li>No complete ISO/SAE 21434-style Threat Analysis and Risk Assessment is present for a self-driving item.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Self-Driving Specific Concerns</h2>
+      <p>
+        A self-driving adaptation changes the consequence of several PX4 surfaces. MAVLink or ROS 2 offboard control becomes a steering and braking authority path. CAN peripherals become part of drive-by-wire trust. Parameters become safety-critical calibration data. Logs and telemetry become privacy-sensitive vehicle behavior data. The bridge between autonomy compute and control runtime becomes the highest-value trust boundary.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Automotive Asset</th>
+            <th>PX4-Inspired Surface</th>
+            <th>Required Security Control</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Steering, brake, throttle</td>
+            <td>Actuator topics, offboard commands, CAN output mapping</td>
+            <td>Command source authentication, independent safety monitor, rate limits, command envelopes, hardware fallback.</td>
+          </tr>
+          <tr>
+            <td>Autonomous mode engagement</td>
+            <td>Commander, mode request topics, GCS or companion commands</td>
+            <td>Mode authorization, driver or remote-operator policy, precondition checks, authenticated requests.</td>
+          </tr>
+          <tr>
+            <td>Localization and perception inputs</td>
+            <td>Sensor topics, bridge topics, GNSS, CAN sensors</td>
+            <td>Sensor provenance, plausibility checks, redundancy, attack detection, degraded operation.</td>
+          </tr>
+          <tr>
+            <td>Calibration and vehicle variant data</td>
+            <td>Parameters, SD-card files, topic mapping files</td>
+            <td>Signed configuration, versioned release, rollback protection, change approval, boot-time validation.</td>
+          </tr>
+          <tr>
+            <td>Remote maintenance and OTA</td>
+            <td>Firmware upload, companion update, logs, diagnostics</td>
+            <td>Signed updates, secure channels, vulnerability response, fleet monitoring, audit trail.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Recommended Mitigation Program</h2>
+      <ol>
+        <li>
+          Define assets, trust boundaries, attacker classes, and misuse cases for the actual self-driving item.
+        </li>
+        <li>
+          Perform a TARA aligned with ISO/SAE 21434 and connect the result to the ISO 26262 safety concept.
+        </li>
+        <li>
+          Reduce exposed interfaces: disable unused MAVLink services, shells, dynamic modules, simulation bridges, debug commands, and unused bridge topics.
+        </li>
+        <li>
+          Require authentication for every control-authority path, including companion-to-controller, controller-to-actuator, and maintenance tools.
+        </li>
+        <li>
+          Protect configuration integrity with signed parameter bundles, boot-time checks, and release-controlled defaults.
+        </li>
+        <li>
+          Use secure boot and signed firmware for every production ECU and companion image. Replace test keys with production keys and define key custody.
+        </li>
+        <li>
+          Segment networks: separate public, cloud, maintenance, autonomy compute, control, and actuator buses.
+        </li>
+        <li>
+          Add runtime intrusion and anomaly monitoring for command rates, source identity, sensor plausibility, CAN traffic, and unexpected parameter changes.
+        </li>
+        <li>
+          Establish vulnerability management: SBOM, dependency tracking, coordinated disclosure, patch triage, and secure update rollout.
+        </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Immediate Hardening Checklist</h2>
+      <ul>
+        <li>Enable MAVLink 2 signing before any wireless or network exposure.</li>
+        <li>Do not expose MAVLink UDP/TCP ports to untrusted networks or the internet.</li>
+        <li>Disable MAVLink shell and file operations in production unless explicitly required and authenticated.</li>
+        <li>Lock or remove external access to SD card, debug UART, SWD, and JTAG.</li>
+        <li>Use production secure-boot keys and remove upstream test keys from deployable builds.</li>
+        <li>Minimize DDS and Zenoh bridge topic sets, especially subscribed command topics.</li>
+        <li>Protect ROS 2 and Zenoh routers with network access control and peer authorization.</li>
+        <li>Use a safety gateway for vehicle CAN and drive-by-wire command paths.</li>
+        <li>Log security-relevant events: rejected signatures, parameter changes, mode requests, firmware version, topic map changes, and CAN anomalies.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>References</h2>
+      <ul class="refs">
+        <li><a href="https://www.iso.org/standard/70918.html">ISO/SAE 21434:2021, Road vehicles - Cybersecurity engineering</a></li>
+        <li><a href="docs/en/mavlink/security_hardening.md">PX4 MAVLink security hardening</a></li>
+        <li><a href="docs/en/mavlink/message_signing.md">PX4 MAVLink message signing</a></li>
+        <li><a href="docs/en/middleware/uxrce_dds.md">PX4 uXRCE-DDS bridge</a></li>
+        <li><a href="docs/en/middleware/zenoh.md">PX4 Zenoh bridge</a></li>
+        <li><a href="docs/en/concept/system_startup.md">PX4 system startup and SD-card customization</a></li>
+        <li><a href="docs/en/concept/sd_card_layout.md">PX4 SD-card layout</a></li>
+        <li><a href="docs/en/debug/mavlink_shell.md">PX4 MAVLink shell</a></li>
+        <li><a href="docs/en/debug/system_console.md">PX4 system console</a></li>
+        <li><a href="docs/en/advanced_config/bootloader_secure_boot.md">PX4 bootloader secure boot</a></li>
+        <li><a href="docs/en/dronecan/index.md">PX4 DroneCAN documentation</a></li>
+        <li><a href="px4_iso26262_do178_gap_assessment.html">PX4 ISO 26262 and DO-178C gap assessment</a></li>
+      </ul>
+    </section>
+
+    <footer>
+      This document is a defensive engineering assessment. It does not provide exploit instructions and is not a substitute for a full ISO/SAE 21434 TARA, penetration test, or product cybersecurity assessment.
+    </footer>
+  </main>
+</body>
+</html>

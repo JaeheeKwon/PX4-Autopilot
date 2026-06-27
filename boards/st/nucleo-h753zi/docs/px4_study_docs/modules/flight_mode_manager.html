@@ -98,7 +98,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="flight_mode_manager.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>flight_mode_manager</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>This implements the setpoint generation for all modes. It takes the current mode state of the vehicle as input and outputs setpoints for controllers.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/flight_mode_manager</code></div>
       <div><strong>Build target</strong><br><code>modules__flight_mode_manager</code></div>
@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Selects and runs multicopter flight-mode tasks that generate trajectory and control setpoints.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Coordinate higher-level vehicle behavior rather than directly driving actuators.</li><li>Consume runtime inputs from uORB topics such as `follow_target`, `follow_target_estimator`, `gimbal_device_attitude_status`, `gimbal_manager_status`, `home_position`, `parameter_update`, `position_setpoint_triplet`, `prec_land_status`, ... 9 more.</li><li>Publish outputs or status topics such as `follow_target_estimator`, `follow_target_status`, `gimbal_manager_set_attitude`, `landing_gear`, `orbit_status`, `trajectory_setpoint`, `vehicle_command`, `vehicle_constraints`.</li><li>Use module configuration files such as `tasks/AutoFollowTarget/follow_target_params.yaml`, `tasks/ManualAccelerationSlow/flight_task_acceleration_slow_params.yaml`, `tasks/Orbit/flight_task_orbit_params.yaml`.</li><li>Implement the main behavior in classes such as `FlightTaskError`, `FlightModeManager`, `FlightTaskAltitudeCruise`, `WaypointType`, `yaw_mode`, `FlightTaskAuto`, ... 20 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`follow_target`, `follow_target_estimator`, `gimbal_device_attitude_status`, `gimbal_manager_status`, `home_position`, `parameter_update`, `position_setpoint_triplet`, `prec_land_status`, `takeoff_status`, `vehicle_attitude_setpoint`, ... 7 more</td></tr><tr><td>Primary outputs</td><td>`follow_target_estimator`, `follow_target_status`, `gimbal_manager_set_attitude`, `landing_gear`, `orbit_status`, `trajectory_setpoint`, `vehicle_command`, `vehicle_constraints`</td></tr><tr><td>Referenced topics</td><td>`follow_target`, `follow_target_estimator`, `follow_target_status`, `gimbal_device_attitude_status`, `gimbal_manager_set_attitude`, `gimbal_manager_status`, `home_position`, `landing_gear`, `manual_control_setpoint`, `orbit_status`, ... 16 more</td></tr><tr><td>Parameters/config</td><td>`tasks/AutoFollowTarget/follow_target_params.yaml`, `tasks/ManualAccelerationSlow/flight_task_acceleration_slow_params.yaml`, `tasks/Orbit/flight_task_orbit_params.yaml`</td></tr><tr><td>Key classes</td><td>`FlightTaskError`, `FlightModeManager`, `FlightTaskAltitudeCruise`, `WaypointType`, `yaw_mode`, `FlightTaskAuto`, `as`, `to`, `FlightTask`, `FlightTaskAutoFollowTarget`, ... 16 more</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>FlightModeManager.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>tasks/AutoFollowTarget/follow_target_estimator/TargetEstimator.cpp</td><td>Work-item callback or main runtime update path</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>tasks/AltitudeCruise/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>tasks/Auto/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>tasks/AutoFollowTarget/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>tasks/AutoFollowTarget/follow_target_estimator/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>FlightModeManager.hpp</td><td>Defines `FlightTaskError` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +169,6 @@ classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
 classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
 classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
 classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/flight_mode_manager</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__flight_mode_manager</td></tr><tr><td>Runtime main</td><td>flight_mode_manager</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>Not specified</td></tr><tr><td>Detected sources</td><td>19</td></tr><tr><td>Detected headers</td><td>18</td></tr><tr><td>Detected configs</td><td>20</td></tr></tbody></table>
 

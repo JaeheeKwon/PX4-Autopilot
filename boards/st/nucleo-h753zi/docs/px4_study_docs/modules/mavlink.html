@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Implements MAVLink telemetry, command, mission, parameter, and shell communication links.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Translate between PX4 uORB data and an external transport or companion-computer interface.</li><li>Consume runtime inputs from uORB topics such as `actuator_armed`, `actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `airspeed_validated`, `autotune_attitude_control_status`, `battery_status`, `camera_capture`, ... 77 more.</li><li>Publish outputs or status topics such as `airspeed`, `aux_global_position`, `battery_status`, `camera_status`, `cellular_status`, `debug_array`, `debug_key_value`, `debug_value`, ... 56 more.</li><li>Use parameters or module configuration entries such as `MAV_S_FORWARD`, `MAV_S_MODE`.</li><li>Implement the main behavior in classes such as `MavlinkStatustextHandler`, `access`, `MsgMap`, `_T`, `MavlinkCommandSender`, `Mavlink`, ... 127 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.</li><li>Uses a `run()` loop style module body for repeated execution.</li><li>Creates an additional pthread helper context.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`actuator_armed`, `actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `airspeed_validated`, `autotune_attitude_control_status`, `battery_status`, `camera_capture`, `camera_status`, `camera_trigger`, ... 75 more</td></tr><tr><td>Primary outputs</td><td>`airspeed`, `aux_global_position`, `battery_status`, `camera_status`, `cellular_status`, `debug_array`, `debug_key_value`, `debug_value`, `debug_vect`, `differential_pressure`, ... 54 more</td></tr><tr><td>Referenced topics</td><td>`actuator_armed`, `actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `airspeed_validated`, `autotune_attitude_control_status`, `aux_global_position`, `battery_info`, `battery_status`, `camera_capture`, ... 123 more</td></tr><tr><td>Parameters/config</td><td>`MAV_S_FORWARD`, `MAV_S_MODE`</td></tr><tr><td>Key classes</td><td>`MavlinkStatustextHandler`, `access`, `MsgMap`, `_T`, `MavlinkCommandSender`, `Mavlink`, `EventBuffer`, `SendProtocol`, `and`, `Mavlink`, ... 123 more</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>mavlink_events.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>mavlink_ftp.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>mavlink_log_handler.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>mavlink_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>mavlink_messages.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>mavlink/.github/dependabot.yml</td><td>Build, parameter, or module configuration</td></tr><tr><td>MavlinkStatustextHandler.hpp</td><td>Defines `MavlinkStatustextHandler` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +169,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/mavlink</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__mavlink</td></tr><tr><td>Runtime main</td><td>mavlink</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>23</td></tr><tr><td>Detected headers</td><td>132</td></tr><tr><td>Detected configs</td><td>16</td></tr></tbody></table>
 

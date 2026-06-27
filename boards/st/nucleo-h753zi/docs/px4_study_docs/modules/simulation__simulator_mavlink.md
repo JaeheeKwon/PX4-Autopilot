@@ -8,6 +8,47 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Connects PX4 to a MAVLink-based simulator backend.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Translate between PX4 uORB data and an external transport or companion-computer interface.
+- Consume runtime inputs from uORB topics such as `actuator_outputs`, `actuator_outputs_sim`, `battery_status`, `parameter_update`, `vehicle_attitude`, `vehicle_command`, `vehicle_local_position`, `vehicle_status`.
+- Publish outputs or status topics such as `differential_pressure`, `distance_sensor`, `esc_status`, `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, `input_rc`, `irlock_report`, `landing_target_pose`, ... 11 more.
+- Implement the main behavior in classes such as `SensorSource`, `TargetAbsoluteSensorCapability`, `SimulatorMavlink`, `InternetProtocol`.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+- Creates an additional pthread helper context.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_outputs`, `actuator_outputs_sim`, `battery_status`, `parameter_update`, `vehicle_attitude`, `vehicle_command`, `vehicle_local_position`, `vehicle_status` |
+| Primary outputs | `differential_pressure`, `distance_sensor`, `esc_status`, `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, `input_rc`, `irlock_report`, `landing_target_pose`, `rpm`, `sensor_gps`, ... 9 more |
+| Referenced topics | `actuator_outputs`, `actuator_outputs_sim`, `battery_status`, `differential_pressure`, `distance_sensor`, `esc_report`, `esc_status`, `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, `input_rc`, ... 22 more |
+| Parameters/config | none detected |
+| Key classes | `SensorSource`, `TargetAbsoluteSensorCapability`, `SimulatorMavlink`, `InternetProtocol` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| SimulatorMavlink.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| SimulatorMavlink.hpp | Defines `SensorSource` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

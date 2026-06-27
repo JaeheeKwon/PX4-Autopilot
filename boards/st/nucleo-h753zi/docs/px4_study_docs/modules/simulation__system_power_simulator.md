@@ -8,6 +8,53 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Simulates system power status for simulation workflows.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Reference uORB topics such as `system_power`.
+- Publish outputs or status topics such as `system_power`.
+- Implement the main behavior in classes such as `SystemPowerSimulator`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+The system power simulator derives rail voltage/current states from a simple battery and load model.
+
+```text
+V_batt = V_oc(SOC) - I_load * R_internal
+P_load = V_batt * I_load
+rail_ok = V_batt > V_min and I_load < I_max
+SOC[k] = SOC[k-1] - I_load * dt / (3600 * capacity_Ah)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | `system_power` |
+| Referenced topics | `system_power` |
+| Parameters/config | none detected |
+| Key classes | `SystemPowerSimulator` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| SystemPowerSimulator.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| SystemPowerSimulator.hpp | Defines `SystemPowerSimulator` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

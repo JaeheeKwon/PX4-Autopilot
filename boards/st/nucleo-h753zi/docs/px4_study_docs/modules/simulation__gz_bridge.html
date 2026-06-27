@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Bridges PX4 uORB data with Gazebo transport for simulation.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.</li><li>Translate between PX4 uORB data and an external transport or companion-computer interface.</li><li>Consume runtime inputs from uORB topics such as `gimbal_controls`, `gimbal_device_set_attitude`, `parameter_update`, `vehicle_command`.</li><li>Publish outputs or status topics such as `differential_pressure`, `esc_status`, `gimbal_device_attitude_status`, `gimbal_device_information`, `obstacle_distance`, `sensor_gps`, `sensor_optical_flow`, `vehicle_angular_velocity_groundtruth`, ... 6 more.</li><li>Use module configuration from `module.yaml`.</li><li>Implement the main behavior in classes such as `GZBridge`, `GZGimbal`, `GZBridge`, `GZMixingInterfaceESC`, `GZBridge`, `GZMixingInterfaceServo`, ... 3 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `rate_ctrl`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`gimbal_controls`, `gimbal_device_set_attitude`, `parameter_update`, `vehicle_command`</td></tr><tr><td>Primary outputs</td><td>`differential_pressure`, `esc_status`, `gimbal_device_attitude_status`, `gimbal_device_information`, `obstacle_distance`, `sensor_gps`, `sensor_optical_flow`, `vehicle_angular_velocity_groundtruth`, `vehicle_attitude_groundtruth`, `vehicle_command_ack`, ... 4 more</td></tr><tr><td>Referenced topics</td><td>`differential_pressure`, `esc_status`, `gimbal_controls`, `gimbal_device_attitude_status`, `gimbal_device_information`, `gimbal_device_set_attitude`, `obstacle_distance`, `parameter_update`, `sensor_gps`, `sensor_optical_flow`, ... 13 more</td></tr><tr><td>Parameters/config</td><td>module.yaml</td></tr><tr><td>Key classes</td><td>`GZBridge`, `GZGimbal`, `GZBridge`, `GZMixingInterfaceESC`, `GZBridge`, `GZMixingInterfaceServo`, `GZBridge`, `GZMixingInterfaceWheel`, `GZBridge`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>GZBridge.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>GZGimbal.cpp</td><td>Work-item callback or main runtime update path</td></tr><tr><td>GZMixingInterfaceESC.cpp</td><td>Work-item callback or main runtime update path</td></tr><tr><td>GZMixingInterfaceServo.cpp</td><td>Work-item callback or main runtime update path</td></tr><tr><td>GZMixingInterfaceWheel.cpp</td><td>Work-item callback or main runtime update path</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>module.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>GZBridge.hpp</td><td>Defines `GZBridge` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -147,7 +165,6 @@ classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
 classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
 classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
 classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/simulation/gz_bridge</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__simulation__gz_bridge</td></tr><tr><td>Runtime main</td><td>gz_bridge</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>5</td></tr><tr><td>Detected headers</td><td>5</td></tr><tr><td>Detected configs</td><td>3</td></tr></tbody></table>
 

@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Custom uORB Message Guide</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --paper: #ffffff;
+      --ink: #17202c;
+      --muted: #5d6878;
+      --line: #d8e0ea;
+      --blue: #2563eb;
+      --green: #0f766e;
+      --amber: #a16207;
+      --red: #b42318;
+      --blue-soft: #eef4ff;
+      --green-soft: #edf8f5;
+      --amber-soft: #fff8e8;
+      --red-soft: #fff0ee;
+      --code: #111827;
+      --code-ink: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 30px 0 56px;
+    }
+
+    header {
+      padding: 28px 0 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 980px;
+      font-size: clamp(34px, 5vw, 56px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 940px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    nav {
+      margin: 22px 0;
+      padding: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    nav strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    nav ul {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 20px;
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    section {
+      margin-top: 24px;
+      padding: 24px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 26px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    .lead {
+      font-size: 17px;
+      color: var(--muted);
+    }
+
+    ul, ol {
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #eef2f7;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: .94em;
+    }
+
+    pre {
+      margin: 14px 0;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 8px;
+      background: var(--code);
+      color: var(--code-ink);
+      line-height: 1.45;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f2f5f9;
+      font-weight: 800;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .callout {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .callout strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .callout.green {
+      border-color: #a7d9cb;
+      background: var(--green-soft);
+    }
+
+    .callout.blue {
+      border-color: #b8cdf8;
+      background: var(--blue-soft);
+    }
+
+    .callout.amber {
+      border-color: #efd09a;
+      background: var(--amber-soft);
+    }
+
+    .callout.red {
+      border-color: #efb8b2;
+      background: var(--red-soft);
+    }
+
+    .diagram {
+      margin: 18px 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow .node {
+      min-height: 96px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .node .title {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .node .text {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .layer-stack {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .layer {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .layer strong {
+      display: inline-block;
+      min-width: 180px;
+    }
+
+    .checklist {
+      columns: 2;
+      column-gap: 34px;
+    }
+
+    .checklist li {
+      break-inside: avoid;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #e7eef8;
+      color: #344054;
+      font-size: 12px;
+      font-weight: 800;
+      vertical-align: 1px;
+    }
+
+    @media (max-width: 860px) {
+      .grid,
+      nav ul,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .checklist {
+        columns: 1;
+      }
+
+      section {
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <p class="eyebrow">PX4 Middleware Guide</p>
+      <h1>Adding and Using a Custom uORB Message</h1>
+      <p class="subtitle">
+        Practical guide for defining a new PX4 uORB topic, generating the topic API, publishing it from a driver or module,
+        subscribing from an application, testing it on target, and deciding when to expose it to logs or ROS 2/DDS.
+      </p>
+      <div class="meta">
+        <span class="chip">Target context: ST Nucleo-H753ZI custom board</span>
+        <span class="chip">PX4 layer: middleware and application</span>
+        <span class="chip">Date: 2026-06-23</span>
+      </div>
+    </header>
+
+    <nav>
+      <strong>Contents</strong>
+      <ul>
+        <li><a href="#concept">Concept</a></li>
+        <li><a href="#build-flow">Build Flow</a></li>
+        <li><a href="#message-design">Message Design</a></li>
+        <li><a href="#add-message">Add the Message</a></li>
+        <li><a href="#publish">Publish Example</a></li>
+        <li><a href="#subscribe">Subscribe Example</a></li>
+        <li><a href="#logging">Logging and DDS</a></li>
+        <li><a href="#test">Build and Test</a></li>
+        <li><a href="#patterns">Patterns and Pitfalls</a></li>
+        <li><a href="#references">References</a></li>
+      </ul>
+    </nav>
+
+    <section id="concept">
+      <h2>Concept</h2>
+      <p class="lead">
+        uORB is PX4's publish/subscribe middleware. A driver, module, or app publishes structured data to a topic, and
+        another driver, module, or app subscribes to that topic without needing to know which hardware device or thread
+        produced it.
+      </p>
+
+      <div class="diagram">
+        <div class="flow">
+          <div class="node">
+            <span class="title">1. Message File</span>
+            <span class="text"><code>msg/MyBoardStatus.msg</code> defines fields and optional topic aliases.</span>
+          </div>
+          <div class="node">
+            <span class="title">2. Code Generation</span>
+            <span class="text">Build creates <code>uORB/topics/my_board_status.h</code> and topic metadata.</span>
+          </div>
+          <div class="node">
+            <span class="title">3. Publisher</span>
+            <span class="text">Driver or module fills <code>my_board_status_s</code> and publishes.</span>
+          </div>
+          <div class="node">
+            <span class="title">4. uORB Topic</span>
+            <span class="text">PX4 stores the latest sample, queue, or multi-instance topic data.</span>
+          </div>
+          <div class="node">
+            <span class="title">5. Subscriber</span>
+            <span class="text">Application copies the topic and consumes the data contract.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout green">
+        <strong>Board bring-up implication</strong>
+        Use uORB as the boundary between hardware-specific drivers and PX4 applications. If the lower driver is disabled
+        for HITL or simulation, a simulator publisher can provide the same topic and the application logic can stay mostly
+        unchanged.
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Responsibility</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Hardware / board</td>
+            <td>Capture physical data from GPIO, SPI, I2C, UART, ADC, PWM capture, or interrupts.</td>
+            <td>Board status, custom sensor, external safety monitor.</td>
+          </tr>
+          <tr>
+            <td>Driver</td>
+            <td>Convert hardware-specific data into a PX4 message contract.</td>
+            <td>Publish <code>my_board_status</code> or an existing standard topic.</td>
+          </tr>
+          <tr>
+            <td>uORB</td>
+            <td>Transport typed data between threads/modules with timestamps, queueing, and optional multi-instance support.</td>
+            <td><code>ORB_ID(my_board_status)</code>.</td>
+          </tr>
+          <tr>
+            <td>Application</td>
+            <td>Subscribe to the topic and implement behavior without depending on the lower hardware driver.</td>
+            <td>Health monitor, controller, logger, command handler.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="build-flow">
+      <h2>Build Flow</h2>
+      <p>
+        PX4 message generation is integrated into the normal CMake build. Adding a <code>.msg</code> file is not enough
+        in this checkout: the file must also be listed in <code>msg/CMakeLists.txt</code>.
+      </p>
+
+      <pre><code>msg/MyBoardStatus.msg
+  -&gt; listed in msg/CMakeLists.txt
+  -&gt; Tools/msg/px_generate_uorb_topic_files.py runs during build
+  -&gt; build/&lt;target&gt;/uORB/topics/my_board_status.h
+  -&gt; build/&lt;target&gt;/msg/topics_sources/my_board_status.cpp
+  -&gt; application includes &lt;uORB/topics/my_board_status.h&gt;
+  -&gt; publisher/subscriber use ORB_ID(my_board_status)</code></pre>
+
+      <div class="layer-stack">
+        <div class="layer"><strong>Source definition</strong> <code>msg/MyBoardStatus.msg</code></div>
+        <div class="layer"><strong>Message list</strong> <code>msg/CMakeLists.txt</code>, variable <code>msg_files</code></div>
+        <div class="layer"><strong>Generated header</strong> <code>build/st_nucleo-h753zi_default/uORB/topics/my_board_status.h</code></div>
+        <div class="layer"><strong>Generated type</strong> <code>my_board_status_s</code></div>
+        <div class="layer"><strong>Generated topic ID</strong> <code>ORB_ID(my_board_status)</code></div>
+      </div>
+
+      <div class="callout blue">
+        <strong>Generated files are build artifacts</strong>
+        Do not edit generated topic headers. Edit the <code>.msg</code> source file, rebuild, and let PX4 regenerate the C/C++
+        definitions.
+      </div>
+    </section>
+
+    <section id="message-design">
+      <h2>Message Design</h2>
+      <p>
+        A uORB message is a software interface contract. Treat it like an API: name it for the data it represents, document
+        units, avoid leaking bus-specific details, and keep timestamps explicit.
+      </p>
+
+      <h3>Recommended Message for a Custom Board Status Topic</h3>
+      <pre><code># Custom board status reported by the board support layer or health driver.
+
+uint64 timestamp        # [us] Time since system start when this message is published.
+uint64 timestamp_sample # [us] Time when the raw hardware state was sampled.
+
+uint8 STATE_UNKNOWN = 0
+uint8 STATE_OK = 1
+uint8 STATE_WARNING = 2
+uint8 STATE_ERROR = 3
+
+uint8 state             # Current board state.
+float32 temperature_c   # [deg C] Board or MCU temperature if available, NAN otherwise.
+float32 supply_v        # [V] Board supply voltage if available, NAN otherwise.
+uint32 error_count      # Monotonic count of detected hardware or communication errors.</code></pre>
+
+      <p>
+        Save this as <code>msg/MyBoardStatus.msg</code>. PX4 converts CamelCase file names to snake_case topic names, so
+        <code>MyBoardStatus.msg</code> becomes <code>my_board_status</code>.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Rule</th>
+            <th>Reason</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Always include <code>uint64 timestamp</code></td>
+            <td>PX4 logging and tooling expect timestamped topics.</td>
+            <td><code>msg.timestamp = hrt_absolute_time();</code></td>
+          </tr>
+          <tr>
+            <td>Use <code>timestamp_sample</code> for sensor-like data</td>
+            <td>Separates raw capture time from publication time.</td>
+            <td>IRQ timestamp or ADC conversion completion time.</td>
+          </tr>
+          <tr>
+            <td>Document units in comments</td>
+            <td>Generated docs and logs become understandable.</td>
+            <td><code>float32 supply_v # [V]</code></td>
+          </tr>
+          <tr>
+            <td>Avoid protocol-specific fields</td>
+            <td>Apps should not care whether data came from SPI, I2C, UART, HITL, or simulation.</td>
+            <td>Use <code>error_count</code>, not raw register dump fields, unless needed.</td>
+          </tr>
+          <tr>
+            <td>Use fixed-size arrays only when needed</td>
+            <td>Messages have fixed binary layouts and are logged.</td>
+            <td><code>float32[3] xyz</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Multi-Topic Message</h3>
+      <p>
+        If two topic names share the exact same payload, add <code># TOPICS</code> at the end of the message.
+      </p>
+
+      <pre><code># TOPICS my_board_status my_board_status_sim</code></pre>
+
+      <p>
+        This creates two distinct topics with the same message layout. This is different from multi-instance publishing,
+        where one topic has several instances, such as multiple sensors of the same type.
+      </p>
+
+      <h3>Queue Length</h3>
+      <p>
+        uORB defaults to keeping the latest sample. For command/event data where drops matter, define an explicit queue
+        length. The queue length must be a power of two.
+      </p>
+
+      <pre><code>uint8 ORB_QUEUE_LENGTH = 4</code></pre>
+
+      <div class="callout amber">
+        <strong>Use queues sparingly</strong>
+        A status or sensor topic usually only needs the latest value. A command, request, acknowledgement, or event topic
+        may need a queue to avoid losing bursts.
+      </div>
+    </section>
+
+    <section id="add-message">
+      <h2>Add the Message to PX4</h2>
+      <ol>
+        <li>Create <code>msg/MyBoardStatus.msg</code>.</li>
+        <li>Add <code>MyBoardStatus.msg</code> to the <code>msg_files</code> list in <code>msg/CMakeLists.txt</code>.</li>
+        <li>Include the generated header from publisher and subscriber code.</li>
+        <li>Enable the module or driver that uses it in the board <code>.px4board</code> file.</li>
+        <li>Build the target so PX4 regenerates uORB headers and topic metadata.</li>
+      </ol>
+
+      <h3>CMake Change</h3>
+      <pre><code>set(msg_files
+    ...
+    MyBoardStatus.msg
+    ...
+)</code></pre>
+
+      <h3>Generated Include</h3>
+      <pre><code>#include &lt;uORB/topics/my_board_status.h&gt;</code></pre>
+
+      <h3>Generated Names</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Generated Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>MyBoardStatus.msg</code></td>
+            <td>Topic name <code>my_board_status</code></td>
+          </tr>
+          <tr>
+            <td><code>MyBoardStatus.msg</code></td>
+            <td>Struct type <code>my_board_status_s</code></td>
+          </tr>
+          <tr>
+            <td><code>my_board_status</code></td>
+            <td>Topic ID <code>ORB_ID(my_board_status)</code></td>
+          </tr>
+          <tr>
+            <td><code>my_board_status.h</code></td>
+            <td>Generated include <code>&lt;uORB/topics/my_board_status.h&gt;</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout green">
+        <strong>Out-of-tree option</strong>
+        If the custom message belongs to an external module tree, place it in <code>$EXTERNAL_MODULES_LOCATION/msg</code>
+        and provide that directory's <code>msg/CMakeLists.txt</code>. The generated headers are still available in the
+        normal build output.
+      </div>
+    </section>
+
+    <section id="publish">
+      <h2>Publish From a Driver or Module</h2>
+      <p>
+        The C++ API is the preferred style for most modern PX4 modules and drivers. A publication object is normally a
+        class member, and the driver publishes each time it has a fresh sample.
+      </p>
+
+      <h3>Header Member</h3>
+      <pre><code>#include &lt;uORB/Publication.hpp&gt;
+#include &lt;uORB/topics/my_board_status.h&gt;
+
+class MyBoardMonitor
+{
+public:
+    void publish_status();
+
+private:
+    uORB::Publication&lt;my_board_status_s&gt; _status_pub{ORB_ID(my_board_status)};
+    uint32_t _error_count{0};
+};</code></pre>
+
+      <h3>Publisher Implementation</h3>
+      <pre><code>#include &lt;drivers/drv_hrt.h&gt;
+#include &lt;mathlib/mathlib.h&gt;
+
+void MyBoardMonitor::publish_status()
+{
+    const hrt_abstime sample_time = hrt_absolute_time();
+
+    my_board_status_s status{};
+    status.timestamp_sample = sample_time;
+    status.timestamp = hrt_absolute_time();
+    status.state = my_board_status_s::STATE_OK;
+    status.temperature_c = NAN;
+    status.supply_v = 5.0f;
+    status.error_count = _error_count;
+
+    _status_pub.publish(status);
+}</code></pre>
+
+      <h3>Where This Fits in a Driver</h3>
+      <div class="diagram">
+        <div class="flow">
+          <div class="node">
+            <span class="title">Polling / IRQ</span>
+            <span class="text">Driver gets raw hardware sample or event.</span>
+          </div>
+          <div class="node">
+            <span class="title">Decode</span>
+            <span class="text">Convert registers, bytes, ADC values, or GPIO state.</span>
+          </div>
+          <div class="node">
+            <span class="title">Timestamp</span>
+            <span class="text">Set <code>timestamp_sample</code> and <code>timestamp</code>.</span>
+          </div>
+          <div class="node">
+            <span class="title">Publish</span>
+            <span class="text"><code>_status_pub.publish(status)</code>.</span>
+          </div>
+          <div class="node">
+            <span class="title">Consumers</span>
+            <span class="text">App, logger, health monitor, or HITL replacement.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout amber">
+        <strong>Interrupt context caution</strong>
+        uORB can be used from interrupt-related contexts, but the topic must be advertised and published once outside the
+        interrupt context first. The normal PX4 driver pattern is to capture the IRQ timestamp, schedule work, and publish
+        from the work queue.
+      </div>
+
+      <h3>C API Publisher</h3>
+      <p>
+        Older code can use the C API directly.
+      </p>
+
+      <pre><code>#include &lt;uORB/uORB.h&gt;
+#include &lt;uORB/topics/my_board_status.h&gt;
+
+struct my_board_status_s status = {};
+status.timestamp = hrt_absolute_time();
+
+orb_advert_t pub = orb_advertise(ORB_ID(my_board_status), &amp;status);
+
+status.state = my_board_status_s::STATE_OK;
+status.timestamp = hrt_absolute_time();
+orb_publish(ORB_ID(my_board_status), pub, &amp;status);</code></pre>
+    </section>
+
+    <section id="subscribe">
+      <h2>Subscribe From an Application</h2>
+      <p>
+        Applications can subscribe without knowing which hardware driver produced the data. This is the abstraction that
+        makes it possible to disable a lower driver in HITL and replace it with a simulator publisher.
+      </p>
+
+      <h3>Simple C++ Subscription</h3>
+      <pre><code>#include &lt;uORB/Subscription.hpp&gt;
+#include &lt;uORB/topics/my_board_status.h&gt;
+
+class MyBoardConsumer
+{
+public:
+    void update();
+
+private:
+    uORB::Subscription _status_sub{ORB_ID(my_board_status)};
+    my_board_status_s _last_status{};
+};
+
+void MyBoardConsumer::update()
+{
+    if (_status_sub.updated()) {
+        my_board_status_s status{};
+
+        if (_status_sub.copy(&amp;status)) {
+            _last_status = status;
+
+            if (status.state == my_board_status_s::STATE_ERROR) {
+                // Take application-specific action.
+            }
+        }
+    }
+}</code></pre>
+
+      <h3>Callback Work Item Subscription</h3>
+      <p>
+        If the module should run whenever the topic updates, use <code>SubscriptionCallbackWorkItem</code>. This is common
+        for work-queue based modules.
+      </p>
+
+      <pre><code>#include &lt;px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp&gt;
+#include &lt;uORB/SubscriptionCallback.hpp&gt;
+#include &lt;uORB/topics/my_board_status.h&gt;
+
+class MyBoardConsumer :
+    public px4::ScheduledWorkItem
+{
+public:
+    bool init()
+    {
+        return _status_sub.registerCallback();
+    }
+
+private:
+    void Run() override
+    {
+        my_board_status_s status{};
+
+        while (_status_sub.update(&amp;status)) {
+            // Consume every available update from this callback.
+        }
+    }
+
+    uORB::SubscriptionCallbackWorkItem _status_sub{this, ORB_ID(my_board_status)};
+};</code></pre>
+
+      <h3>C API Subscriber</h3>
+      <pre><code>#include &lt;poll.h&gt;
+#include &lt;px4_platform_common/posix.h&gt;
+#include &lt;uORB/uORB.h&gt;
+#include &lt;uORB/topics/my_board_status.h&gt;
+
+int sub = orb_subscribe(ORB_ID(my_board_status));
+orb_set_interval(sub, 200); // Limit updates to 5 Hz.
+
+px4_pollfd_struct_t fds[] = {
+    { .fd = sub, .events = POLLIN },
+};
+
+if (px4_poll(fds, 1, 1000) &gt; 0 &amp;&amp; (fds[0].revents &amp; POLLIN)) {
+    struct my_board_status_s status;
+    orb_copy(ORB_ID(my_board_status), sub, &amp;status);
+}</code></pre>
+    </section>
+
+    <section id="logging">
+      <h2>Logging and DDS Exposure</h2>
+      <p>
+        Defining a uORB topic makes it available inside PX4. It does not automatically mean that the topic is logged by
+        default or bridged to ROS 2/DDS.
+      </p>
+
+      <div class="grid">
+        <div class="callout blue">
+          <strong>ULog logging</strong>
+          To include the topic in default logs, add it to <code>src/modules/logger/logged_topics.cpp</code>, or use a
+          runtime <code>logger_topics.txt</code> file if that is more appropriate for experiments.
+        </div>
+        <div class="callout blue">
+          <strong>ROS 2 / uXRCE-DDS</strong>
+          To expose the topic externally, add it to <code>src/modules/uxrce_dds_client/dds_topics.yaml</code> and make
+          sure the matching message definition exists in the external <code>px4_msgs</code> workspace.
+        </div>
+      </div>
+
+      <h3>Logger Example</h3>
+      <pre><code>// src/modules/logger/logged_topics.cpp
+add_optional_topic("my_board_status", 100); // minimum interval in ms</code></pre>
+
+      <h3>DDS Topic Selection</h3>
+      <p>
+        Add the custom topic to the DDS topic configuration only if a companion computer or ROS 2 node needs it. If it is
+        only internal to PX4, keep it internal to reduce ABI and compatibility burden.
+      </p>
+
+      <div class="callout amber">
+        <strong>Versioned messages</strong>
+        If the message is exposed to ROS 2 and must remain compatible across PX4/ROS versions, place it under
+        <code>msg/versioned</code> and include <code>uint32 MESSAGE_VERSION = 0</code>. Updating versioned messages has
+        additional migration requirements.
+      </div>
+    </section>
+
+    <section id="test">
+      <h2>Build and Test</h2>
+      <p>
+        After adding the message and publisher/subscriber code, build the board target so PX4 regenerates topic headers
+        and validates that all code includes match the generated names.
+      </p>
+
+      <h3>Build</h3>
+      <pre><code>make st_nucleo-h753zi_default</code></pre>
+
+      <h3>Check Generated Headers</h3>
+      <pre><code>ls build/st_nucleo-h753zi_default/uORB/topics/my_board_status.h
+ls build/st_nucleo-h753zi_default/msg/topics_sources/my_board_status.cpp</code></pre>
+
+      <h3>Runtime Inspection</h3>
+      <pre><code>ls /obj
+listener my_board_status 5
+uorb top</code></pre>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Check</th>
+            <th>Expected Result</th>
+            <th>If It Fails</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Build finds <code>my_board_status.h</code></td>
+            <td>Generated header exists under the build directory.</td>
+            <td>Confirm <code>MyBoardStatus.msg</code> is listed in <code>msg/CMakeLists.txt</code>.</td>
+          </tr>
+          <tr>
+            <td><code>listener my_board_status 5</code></td>
+            <td>Five messages print with timestamps and field values.</td>
+            <td>Confirm publisher module is running and topic name matches snake_case conversion.</td>
+          </tr>
+          <tr>
+            <td><code>uorb top</code></td>
+            <td>Topic appears with publication rate, subscriber count, queue size, and lost count.</td>
+            <td>Confirm the board build includes the publisher and uORB command support.</td>
+          </tr>
+          <tr>
+            <td>ULog contains topic</td>
+            <td>Topic appears in log analysis tools.</td>
+            <td>Add topic to logger defaults or runtime logger topic config.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="patterns">
+      <h2>Patterns and Pitfalls</h2>
+
+      <h3>Good Patterns</h3>
+      <ul class="checklist">
+        <li>Use existing standard PX4 messages if they already match the semantic meaning.</li>
+        <li>Create a custom message only when the data is a new software contract.</li>
+        <li>Keep bus details below the uORB boundary.</li>
+        <li>Set <code>timestamp_sample</code> from the data capture time.</li>
+        <li>Set <code>timestamp</code> at publication time.</li>
+        <li>Use <code>PublicationMulti</code> for several devices of the same type.</li>
+        <li>Use <code># TOPICS</code> for several named topics sharing one structure.</li>
+        <li>Use <code>SubscriptionInterval</code> when consumers do not need every update.</li>
+        <li>Add logger support only when the topic is needed in evidence, debug, or analysis logs.</li>
+        <li>Add DDS support only when a companion-side consumer needs the topic.</li>
+      </ul>
+
+      <h3>Common Pitfalls</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Pitfall</th>
+            <th>Consequence</th>
+            <th>Correction</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Adding <code>.msg</code> but not editing <code>msg/CMakeLists.txt</code></td>
+            <td>No generated header; include fails.</td>
+            <td>Add the message to <code>msg_files</code>.</td>
+          </tr>
+          <tr>
+            <td>Using wrong generated include name</td>
+            <td>Compiler cannot find the header.</td>
+            <td>Convert CamelCase file name to snake_case include name.</td>
+          </tr>
+          <tr>
+            <td>Forgetting <code>timestamp</code></td>
+            <td>Logging and tooling behavior is poor or invalid.</td>
+            <td>Always include and fill <code>uint64 timestamp</code>.</td>
+          </tr>
+          <tr>
+            <td>Encoding hardware registers as app-level API</td>
+            <td>Application becomes tied to one device implementation.</td>
+            <td>Publish semantic state, units, health, and values instead.</td>
+          </tr>
+          <tr>
+            <td>Using queue length for high-rate sensor streams without need</td>
+            <td>Extra memory and possible stale backlog.</td>
+            <td>Use latest-sample semantics unless every message matters.</td>
+          </tr>
+          <tr>
+            <td>Publishing from IRQ before advertisement</td>
+            <td>Runtime failure or undefined behavior.</td>
+            <td>Advertise/publish once from normal context, then use scheduled work for IRQ-driven drivers.</td>
+          </tr>
+          <tr>
+            <td>Changing an existing message without compatibility review</td>
+            <td>Breaks logs, Flight Review, ROS 2, or external tooling.</td>
+            <td>Add a new field, deprecate old fields carefully, or use versioned messages.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Decision Guide</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Need</th>
+            <th>Recommended Approach</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>New physical sensor already represented by PX4</td>
+            <td>Publish the existing standard topic, such as <code>sensor_accel</code>, <code>distance_sensor</code>, or <code>sensor_baro</code>.</td>
+          </tr>
+          <tr>
+            <td>Board health or custom safety monitor</td>
+            <td>Create a custom board status topic.</td>
+          </tr>
+          <tr>
+            <td>Simulation replacement for a driver</td>
+            <td>Publish the same uORB topic from a simulator/HITL module and disable the real hardware driver.</td>
+          </tr>
+          <tr>
+            <td>Multiple identical devices</td>
+            <td>Use multi-instance publication/subscription.</td>
+          </tr>
+          <tr>
+            <td>Multiple logical channels with same data layout</td>
+            <td>Use <code># TOPICS topic_a topic_b</code>.</td>
+          </tr>
+          <tr>
+            <td>External ROS 2 consumer</td>
+            <td>Consider a versioned message and add DDS topic configuration.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="references">
+      <h2>Local References</h2>
+      <ul>
+        <li><a href="../../../../docs/en/middleware/uorb.md"><code>docs/en/middleware/uorb.md</code></a></li>
+        <li><a href="../../../../docs/en/advanced/out_of_tree_modules.md"><code>docs/en/advanced/out_of_tree_modules.md</code></a></li>
+        <li><a href="../../../../msg/CMakeLists.txt"><code>msg/CMakeLists.txt</code></a></li>
+        <li><a href="../../../../msg/OrbTest.msg"><code>msg/OrbTest.msg</code></a></li>
+        <li><a href="../../../../msg/ActuatorOutputs.msg"><code>msg/ActuatorOutputs.msg</code></a></li>
+        <li><a href="../../../../src/examples/work_item/WorkItemExample.hpp"><code>src/examples/work_item/WorkItemExample.hpp</code></a></li>
+        <li><a href="../../../../src/examples/work_item/WorkItemExample.cpp"><code>src/examples/work_item/WorkItemExample.cpp</code></a></li>
+        <li><a href="../../../../src/examples/px4_simple_app/px4_simple_app.c"><code>src/examples/px4_simple_app/px4_simple_app.c</code></a></li>
+        <li><a href="../../../../src/modules/logger/logged_topics.cpp"><code>src/modules/logger/logged_topics.cpp</code></a></li>
+        <li><a href="../../../../src/modules/uxrce_dds_client/dds_topics.yaml"><code>src/modules/uxrce_dds_client/dds_topics.yaml</code></a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

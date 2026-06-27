@@ -31,12 +31,25 @@ The STM32H7 NuttX driver assigns `/dev/ttySx` in numeric USART order (with `CONF
 | NuttX device | USART | Pins | Connector | Baud | PX4 role |
 |---|---|---|---|---|---|
 | `/dev/ttyS0` | USART3 | PD8 (TX) / PD9 (RX) | **CN1 — ST-LINK virtual COM** | 57 600 | NSH console / `CONSOLE` |
-| `/dev/ttyS1` | USART6 | PG14 (TX) / PG9 (RX) | **CN10 — Arduino header** | 57 600 | `TEL1` (MAVLink telemetry) |
+| `/dev/ttyS1` | USART6 | PG14 (TX) / PG9 (RX) | **Morpho: CN12-61 / CN11-63** | 921 600 | `TEL1` (uXRCE-DDS) |
 | `/dev/ttyACM0` | USB OTG-FS | PA11 (DM) / PA12 (DP) | **CN13 — User USB** | USB bulk | MAVLink / HIL (auto-started by `cdcacm_autostart`) |
 
 **For HILS:** connect your simulator PC to **CN13 (User USB)**. The board appears as `/dev/ttyACM0` on Linux. `cdcacm_autostart` detects the USB connection and starts `mavlink` on that device automatically. CN1 (ST-LINK) stays free as the NSH debug console.
 
-**TEL1 (`/dev/ttyS1`)** is available on the Arduino CN10 header (pins D0/D1) for a second MAVLink link or RC input if needed.
+**TEL1 (`/dev/ttyS1`)** is dedicated to uXRCE-DDS. PG14 TX is on CN12
+Morpho pin 61 and PG9 RX is on CN11 Morpho pin 63. Stock Arduino CN10 D0/D1
+are PB7/PB6 (LPUART1), not the USART6 pins selected by this firmware. PG14 is
+also present on Arduino D2, but PG9 is only on the Morpho header.
+
+No jumper or solder-bridge changes are required for this USART6 route on the
+stock MB1364 board: CN11 and CN12 are soldered by default. SB12/SB19 select the
+separate target USART3 connection to the ST-LINK virtual COM port and must stay
+in their default ON state for the NSH console. In UM2407's SB12/SB19 description,
+PG9/PG14 name pins on the **ST-LINK MCU**, not these target STM32H753 USART6 pins.
+
+> Manual check: `../um3.pdf` identifies itself as UM3115 for NUCLEO-H563ZI
+> (MB1404). Its LPUART1 bridge table does not apply to NUCLEO-H753ZI. Use ST
+> UM2407 for NUCLEO-H753ZI (MB1364) connector and bridge settings.
 
 ### Shell Prompts
 
@@ -73,6 +86,19 @@ make st_nucleo-h753zi_default
 # Bootloader
 make st_nucleo-h753zi_bootloader
 ```
+
+For adding a module to this board without enabling it globally, see
+[Adding a Custom Module to a Specific Board Build](docs/custom_module_board_build.md)
+([HTML](docs/custom_module_board_build.html)).
+
+For complete ROS 2 environment setup and gated integration testing, see the
+[ROS 2 Integration Test Runbook](docs/ros2/ros2_integration_test_runbook.html).
+For a direct USART6 TX/RX check with minicom, see the
+[USART6 Minicom Quick Test](docs/ros2/usart6_minicom_quick_test.html).
+
+For exploring MPU-backed kernel/user separation with NuttX protected build, see
+[MPU and NuttX Protected Build Exploration](docs/mpu_nuttx_protected_build.md)
+([HTML](docs/mpu_nuttx_protected_build.html)).
 
 ---
 
@@ -211,6 +237,10 @@ Community alternative for fixed-wing and weather simulation. A bridge process co
 - Return-to-launch (RTL)
 - Takeoff and land commands
 
+For the board-specific mission-mode data path, storage behavior, and runtime
+checks, see [Automatic Flight with Stored Waypoints on Nucleo-H753ZI](docs/auto_flight_waypoint_mission.md)
+([HTML](docs/auto_flight_waypoint_mission.html)).
+
 #### Estimator validation
 
 `ekf2` runs fully on-hardware processing the simulated `HIL_SENSOR` and `HIL_GPS` streams. You can observe the estimator's attitude, velocity, and position outputs against the simulator ground truth to verify EKF tuning parameters behave correctly on the actual MCU at 400 MHz.
@@ -272,7 +302,7 @@ CONFIG_NOTE_SYSVIEW=y
 
 ### 2 — ROS2 Connection (uXRCE-DDS)
 
-uXRCE-DDS requires a **dedicated serial UART at 921600 baud** — it cannot share a port with MAVLink. In this board's HILS layout MAVLink HIL already occupies `ttyACM0` (USB). **USART6 → `ttyS1`** (already enabled, Arduino CN10 pins D0/D1) is the natural second port.
+uXRCE-DDS requires a **dedicated serial UART at 921600 baud** — it cannot share a port with MAVLink. In this board's HILS layout MAVLink HIL already occupies `ttyACM0` (USB). **USART6 → `ttyS1`** is the dedicated second port, exposed as PG14 TX on CN12 pin 61 and PG9 RX on CN11 pin 63.
 
 ```
 ┌─────────────────────┐          USB-UART adapter
@@ -291,15 +321,10 @@ pip install micro-xrce-dds-agent
 MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600
 ```
 
-**Firmware side** — add to `default.px4board`:
-```
-CONFIG_MODULES_UXRCE_DDS_CLIENT=y
-```
-
-Then start the client at boot by adding to `init/rc.board_extras` (create if missing):
-```sh
-uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600
-```
+**Firmware side** — `default.px4board` enables `uxrce_dds_client` and maps
+TEL1 to `/dev/ttyS1`. `rc.board_defaults` assigns `UXRCE_DDS_CFG=101` and
+`SER_TEL1_BAUD=921600`, so the generated `rc.serial` script starts the client
+automatically.
 
 **Topics available to ROS2** (defined in `src/modules/uxrce_dds_client/dds_topics.yaml`):
 
@@ -353,7 +378,7 @@ flowchart LR
 | SEGGER SystemView traces | SWD → ST-LINK CN1 | RTT (no ttyS) | No |
 | Arm ITM / SWO | PB3 → ST-LINK CN1 | SWO (no ttyS) | No |
 | MAVLink HIL (simulator) | USB OTG-FS → CN13 | `ttyACM0` | No |
-| ROS2 / uXRCE-DDS | USART6 → CN10 D0/D1 | `ttyS1` | USB-UART adapter on PC |
+| ROS2 / uXRCE-DDS | USART6 → CN12-61 TX / CN11-63 RX | `ttyS1` | 3.3 V USB-UART adapter on PC |
 | QGC / MAVLink console | USB OTG-FS → CN13 | `ttyACM0` | Shared with HIL |
 
 ---

@@ -8,6 +8,40 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Builds PX4IO firmware support code for the IO co-processor path.
+
+### Primary Responsibilities
+
+- Reference uORB topics such as `input_rc`.
+- Do not publish directly detected uORB outputs from this module directory.
+- Implement behavior mostly in C/C++ source functions rather than detected C++ classes.
+
+### Runtime Behavior
+
+- Scheduling style was not explicit in the detected source inventory; inspect the entry source for runtime details.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | none detected |
+| Referenced topics | `input_rc` |
+| Parameters/config | none detected |
+| Key classes | none detected |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| CMakeLists.txt | Build, parameter, or module configuration |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

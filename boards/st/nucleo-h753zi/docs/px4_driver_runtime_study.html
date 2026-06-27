@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Driver Runtime Study</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --paper: #ffffff;
+      --ink: #18212f;
+      --muted: #5b6677;
+      --line: #d9e1ec;
+      --blue: #2563eb;
+      --green: #0f766e;
+      --amber: #a16207;
+      --red: #b42318;
+      --blue-soft: #eef4ff;
+      --green-soft: #eef8f6;
+      --amber-soft: #fff7e8;
+      --red-soft: #fff0ee;
+      --code: #111827;
+      --code-ink: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .page {
+      width: min(1160px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 30px 0 56px;
+    }
+
+    header {
+      padding: 26px 0 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 980px;
+      font-size: clamp(34px, 5vw, 54px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 930px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    section {
+      margin-top: 34px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 29px;
+      line-height: 1.16;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul {
+      margin: 8px 0 18px 20px;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #e9eef5;
+      color: #132033;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: .93em;
+    }
+
+    pre {
+      margin: 12px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 8px;
+      background: var(--code);
+      color: var(--code-ink);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      padding: 18px;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 14px 16px;
+      border-radius: 4px;
+      border-left: 4px solid var(--green);
+      background: var(--green-soft);
+    }
+
+    .callout.warn {
+      border-left-color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .callout.risk {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .callout-title {
+      margin: 0 0 6px;
+      font-weight: 850;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef2f7;
+      color: #263142;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .diagram {
+      margin: 16px 0 20px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow-x: auto;
+    }
+
+    svg {
+      display: block;
+      max-width: 100%;
+      min-width: 760px;
+      height: auto;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .svg-title {
+      font-size: 18px;
+      font-weight: 850;
+      fill: #18212f;
+    }
+
+    .svg-label {
+      font-size: 13px;
+      font-weight: 800;
+      fill: #18212f;
+    }
+
+    .svg-small {
+      font-size: 11px;
+      fill: #536174;
+    }
+
+    .box {
+      fill: #fff;
+      stroke: #b9c5d6;
+      stroke-width: 1.3;
+      rx: 8;
+    }
+
+    .box-blue {
+      fill: var(--blue-soft);
+      stroke: #9eb8ed;
+    }
+
+    .box-green {
+      fill: var(--green-soft);
+      stroke: #90cac2;
+    }
+
+    .box-amber {
+      fill: var(--amber-soft);
+      stroke: #e6bd72;
+    }
+
+    .box-red {
+      fill: var(--red-soft);
+      stroke: #e6a29a;
+    }
+
+    .arrow {
+      fill: none;
+      stroke: #526071;
+      stroke-width: 1.6;
+      marker-end: url(#arrowhead);
+    }
+
+    .arrow-green {
+      fill: none;
+      stroke: var(--green);
+      stroke-width: 2;
+      marker-end: url(#arrowheadGreen);
+    }
+
+    .source-list {
+      columns: 2;
+      column-gap: 24px;
+    }
+
+    .source-list li {
+      break-inside: avoid;
+    }
+
+    footer {
+      margin-top: 44px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 840px) {
+      .page {
+        width: min(100% - 28px, 1160px);
+        padding-top: 22px;
+      }
+
+      .grid.two,
+      .grid.three {
+        grid-template-columns: 1fr;
+      }
+
+      .source-list {
+        columns: 1;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        width: auto;
+        padding: 0;
+      }
+
+      nav {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <p class="eyebrow">PX4 Driver Study</p>
+      <h1>Runtime Abstraction, uORB Publication, HITL Replacement, and Driver Rates</h1>
+      <p class="subtitle">
+        This study explains how PX4 input and output drivers behave at runtime, how input
+        drivers publish through uORB, how hardware drivers can be replaced by HITL or simulation
+        publishers, and where driver update rates are specified.
+      </p>
+      <div class="meta">
+        <span class="pill">Repository: PX4-Autopilot</span>
+        <span class="pill">Scope: <code>src/drivers</code>, <code>src/modules/sensors</code></span>
+        <span class="pill">Generated: 2026-06-23</span>
+        <span class="pill">Examples: <code>SRF02</code>, <code>BMI270</code>, <code>GPS</code>, <code>PWMOut</code></span>
+      </div>
+      <nav aria-label="Document sections">
+        <a href="#summary">Summary</a>
+        <a href="#implementation">Implementation Pattern</a>
+        <a href="#uorb">uORB Boundary</a>
+        <a href="#hitl">HITL Replacement</a>
+        <a href="#generation">Generation Patterns</a>
+        <a href="#rates">Driver Rates</a>
+        <a href="#examples">Examples</a>
+        <a href="#ad">Self-Driving Reuse</a>
+        <a href="#references">References</a>
+      </nav>
+    </header>
+
+    <section id="summary">
+      <h2>Executive Summary</h2>
+      <div class="grid two">
+        <div class="card">
+          <h3>Main Finding</h3>
+          <p>
+            PX4 drivers hide device-specific data generation details behind a typed uORB
+            message contract. A consumer usually subscribes to a topic such as
+            <code>distance_sensor</code>, <code>sensor_gyro</code>, <code>sensor_accel</code>,
+            or <code>sensor_gps</code> rather than calling a physical driver directly.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Architecture Benefit</h3>
+          <p>
+            Because the application consumes uORB topics, the underlying producer can be a
+            real hardware driver, a simulator, a HITL bridge, a replay source, or a test stub.
+            The application code does not need to distinguish the source if the topic contract
+            and timing semantics are preserved.
+          </p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <p class="callout-title">Short conclusion</p>
+        <p>
+          PX4 does not impose one universal hardware data generation model. Some devices are
+          scheduled/polled, some are interrupt driven, some read streaming serial data, and
+          output drivers are driven by actuator/control topic updates plus hardware timer
+          configuration. The common abstraction is the driver module plus uORB topic boundary.
+        </p>
+      </div>
+    </section>
+
+    <section id="implementation">
+      <h2>Driver Implementation Pattern</h2>
+      <p>
+        PX4 driver code follows a consistent implementation style even though individual
+        devices use different buses, sample timing, and protocols. A driver is usually a
+        runtime module with an explicit lifecycle, a bus or output abstraction, scheduled
+        execution, uORB publication/subscription, and built-in diagnostics.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Pattern Element</th>
+            <th>Typical PX4 Implementation</th>
+            <th>Purpose</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Build/module declaration</td>
+            <td><code>px4_add_module()</code> with <code>MODULE</code>, <code>MAIN</code>, <code>SRCS</code>, and <code>DEPENDS</code></td>
+            <td>Compiles each driver as an independently startable PX4 module.</td>
+            <td><code>drivers__distance_sensor__srf02</code>, <code>drivers__pwm_out</code></td>
+          </tr>
+          <tr>
+            <td>Runtime entry point</td>
+            <td><code>extern "C" __EXPORT int *_main(int argc, char *argv[])</code> or <code>ModuleBase</code> descriptor</td>
+            <td>Provides CLI lifecycle commands and module startup.</td>
+            <td><code>srf02_main()</code>, <code>PWMOut::task_spawn()</code></td>
+          </tr>
+          <tr>
+            <td>Common lifecycle verbs</td>
+            <td><code>start</code>, <code>stop</code>, <code>status</code></td>
+            <td>Allows runtime control and inspection without application coupling.</td>
+            <td><code>I2CSPIDriver::module_start()</code>, <code>module_stop()</code>, <code>module_status()</code></td>
+          </tr>
+          <tr>
+            <td>I2C/SPI bus abstraction</td>
+            <td><code>device::I2C</code> or SPI base class plus <code>I2CSPIDriver&lt;T&gt;</code></td>
+            <td>Centralizes bus selection, device ID, instance management, and work queue setup.</td>
+            <td><code>class SRF02 : public device::I2C, public I2CSPIDriver&lt;SRF02&gt;</code></td>
+          </tr>
+          <tr>
+            <td>Scheduled execution</td>
+            <td><code>px4::ScheduledWorkItem</code>, <code>Run()</code>, or <code>RunImpl()</code></td>
+            <td>Keeps hardware IO bounded and avoids direct blocking from consumers.</td>
+            <td><code>SRF02::RunImpl()</code>, <code>BMI270::RunImpl()</code>, <code>PWMOut::Run()</code></td>
+          </tr>
+          <tr>
+            <td>Sensor wrapper</td>
+            <td><code>PX4Rangefinder</code>, <code>PX4Accelerometer</code>, <code>PX4Gyroscope</code>, and similar wrappers</td>
+            <td>Normalizes fields, device identity, orientation, and uORB publication.</td>
+            <td><code>_px4_rangefinder.update(...)</code></td>
+          </tr>
+          <tr>
+            <td>Output mediation</td>
+            <td><code>ModuleBase</code> plus <code>OutputModuleInterface</code> and <code>MixingOutput</code></td>
+            <td>Separates actuator intent, output assignment, limiting, and physical writes.</td>
+            <td><code>PWMOut</code></td>
+          </tr>
+          <tr>
+            <td>Diagnostics</td>
+            <td><code>perf_alloc</code>, <code>perf_count</code>, <code>perf_print_counter</code>, <code>print_status()</code></td>
+            <td>Exposes timing, interval, communication errors, and runtime health.</td>
+            <td><code>_sample_perf</code>, <code>_comms_errors</code>, <code>_interval_perf</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="diagram" role="img" aria-label="PX4 driver implementation pattern diagram">
+        <svg viewBox="0 0 1080 500">
+          <defs>
+            <marker id="arrowheadImpl" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#526071"></polygon>
+            </marker>
+            <marker id="arrowheadImplGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#0f766e"></polygon>
+            </marker>
+          </defs>
+
+          <text class="svg-title" x="30" y="36">Common PX4 Driver Implementation Shape</text>
+
+          <rect class="box box-blue" x="50" y="82" width="190" height="84"></rect>
+          <text class="svg-label" x="74" y="114">Build declaration</text>
+          <text class="svg-small" x="74" y="137">px4_add_module</text>
+          <text class="svg-small" x="74" y="155">MAIN, SRCS, DEPENDS</text>
+
+          <rect class="box box-blue" x="300" y="82" width="190" height="84"></rect>
+          <text class="svg-label" x="324" y="114">Module entry</text>
+          <text class="svg-small" x="324" y="137">*_main or ModuleBase</text>
+          <text class="svg-small" x="324" y="155">start, stop, status</text>
+
+          <rect class="box box-amber" x="550" y="82" width="190" height="84"></rect>
+          <text class="svg-label" x="574" y="114">Bus/output binding</text>
+          <text class="svg-small" x="574" y="137">I2C/SPI/serial</text>
+          <text class="svg-small" x="574" y="155">PWM/CAN/board API</text>
+
+          <rect class="box box-green" x="800" y="82" width="190" height="84"></rect>
+          <text class="svg-label" x="824" y="114">Work queue</text>
+          <text class="svg-small" x="824" y="137">Run or RunImpl</text>
+          <text class="svg-small" x="824" y="155">bounded IO cycle</text>
+
+          <path class="arrow" d="M240 124 L300 124" marker-end="url(#arrowheadImpl)"></path>
+          <path class="arrow" d="M490 124 L550 124" marker-end="url(#arrowheadImpl)"></path>
+          <path class="arrow" d="M740 124 L800 124" marker-end="url(#arrowheadImpl)"></path>
+
+          <rect class="box box-amber" x="50" y="276" width="190" height="92"></rect>
+          <text class="svg-label" x="74" y="307">Hardware protocol</text>
+          <text class="svg-small" x="74" y="330">registers, frames</text>
+          <text class="svg-small" x="74" y="348">timer groups, FIFOs</text>
+
+          <rect class="box box-green" x="300" y="276" width="190" height="92"></rect>
+          <text class="svg-label" x="324" y="307">Normalize</text>
+          <text class="svg-small" x="324" y="330">SI units, timestamp</text>
+          <text class="svg-small" x="324" y="348">device ID, quality</text>
+
+          <rect class="box box-green" x="550" y="276" width="190" height="92"></rect>
+          <text class="svg-label" x="574" y="307">uORB boundary</text>
+          <text class="svg-small" x="574" y="330">publish sensor topic</text>
+          <text class="svg-small" x="574" y="348">or consume actuator topic</text>
+
+          <rect class="box" x="800" y="276" width="190" height="92"></rect>
+          <text class="svg-label" x="824" y="307">Diagnostics</text>
+          <text class="svg-small" x="824" y="330">perf counters</text>
+          <text class="svg-small" x="824" y="348">print_status</text>
+
+          <path class="arrow" d="M895 166 C895 222, 145 220, 145 276" marker-end="url(#arrowheadImpl)"></path>
+          <path class="arrow-green" d="M240 322 L300 322" marker-end="url(#arrowheadImplGreen)"></path>
+          <path class="arrow-green" d="M490 322 L550 322" marker-end="url(#arrowheadImplGreen)"></path>
+          <path class="arrow" d="M740 322 L800 322" marker-end="url(#arrowheadImpl)"></path>
+        </svg>
+      </div>
+
+      <h3>Input Sensor Skeleton</h3>
+      <pre><code>class MySensor final : public device::I2C, public I2CSPIDriver&lt;MySensor&gt;
+{
+public:
+  int init() override
+  {
+    if (I2C::init() != PX4_OK) {
+      return PX4_ERROR;
+    }
+
+    ScheduleDelayed(first_cycle_delay_us);
+    return PX4_OK;
+  }
+
+  void RunImpl()
+  {
+    const hrt_abstime timestamp_sample = hrt_absolute_time();
+
+    if (read_device_and_convert() == PX4_OK) {
+      _sensor_wrapper.update(timestamp_sample, normalized_value);
+    } else {
+      perf_count(_comms_errors);
+    }
+
+    ScheduleDelayed(sample_interval_us);
+  }
+};</code></pre>
+
+      <h3>Output Driver Skeleton</h3>
+      <pre><code>class MyOutput final : public ModuleBase, public OutputModuleInterface
+{
+private:
+  void Run() override
+  {
+    if (should_exit()) {
+      ScheduleClear();
+      exit_and_cleanup(desc);
+      return;
+    }
+
+    _mixing_output.update();
+    check_parameter_updates();
+    _mixing_output.updateSubscriptions(true);
+  }
+
+  bool updateOutputs(float outputs[MAX_ACTUATORS],
+                     unsigned num_outputs,
+                     unsigned num_control_groups_updated) override
+  {
+    for (unsigned i = 0; i &lt; num_outputs; ++i) {
+      write_output_channel(i, outputs[i]);
+    }
+
+    trigger_hardware_update(num_control_groups_updated);
+    return true;
+  }
+};</code></pre>
+
+      <div class="callout">
+        <p class="callout-title">Implementation pattern takeaway</p>
+        <p>
+          The driver implementation pattern is not just "read hardware and publish." A PX4
+          driver is a managed module: it owns startup, bus/device selection, scheduling,
+          protocol handling, normalization, publication or output writes, parameters, and
+          runtime diagnostics.
+        </p>
+      </div>
+    </section>
+
+    <section id="uorb">
+      <h2>uORB Boundary</h2>
+      <p>
+        Input drivers normally publish data to uORB. The driver owns hardware access, sample
+        timing, data conversion, device identity, and health counters. Consumers subscribe to
+        the normalized topic and use timestamps and metadata to judge freshness and validity.
+      </p>
+
+      <div class="diagram" role="img" aria-label="uORB boundary diagram">
+        <svg viewBox="0 0 1080 430">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#526071"></polygon>
+            </marker>
+            <marker id="arrowheadGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#0f766e"></polygon>
+            </marker>
+          </defs>
+
+          <text class="svg-title" x="30" y="36">Input Driver Data Path</text>
+
+          <rect class="box box-amber" x="44" y="86" width="180" height="88"></rect>
+          <text class="svg-label" x="68" y="119">Hardware device</text>
+          <text class="svg-small" x="68" y="142">I2C, SPI, serial, CAN</text>
+          <text class="svg-small" x="68" y="160">polling or data ready</text>
+
+          <rect class="box box-blue" x="292" y="86" width="196" height="88"></rect>
+          <text class="svg-label" x="316" y="119">PX4 driver</text>
+          <text class="svg-small" x="316" y="142">probe, schedule, read</text>
+          <text class="svg-small" x="316" y="160">convert and validate</text>
+
+          <rect class="box box-green" x="556" y="86" width="196" height="88"></rect>
+          <text class="svg-label" x="580" y="119">uORB topic</text>
+          <text class="svg-small" x="580" y="142">timestamped message</text>
+          <text class="svg-small" x="580" y="160">device ID and data</text>
+
+          <rect class="box" x="820" y="86" width="196" height="88"></rect>
+          <text class="svg-label" x="844" y="119">Application</text>
+          <text class="svg-small" x="844" y="142">estimator, controller</text>
+          <text class="svg-small" x="844" y="160">sensor selection</text>
+
+          <path class="arrow-green" d="M224 130 L292 130"></path>
+          <path class="arrow-green" d="M488 130 L556 130"></path>
+          <path class="arrow" d="M752 130 L820 130"></path>
+
+          <rect class="box box-green" x="292" y="256" width="196" height="86"></rect>
+          <text class="svg-label" x="316" y="287">Sensor wrapper</text>
+          <text class="svg-small" x="316" y="310">PX4Rangefinder</text>
+          <text class="svg-small" x="316" y="328">PX4Gyroscope, etc.</text>
+
+          <rect class="box" x="556" y="256" width="196" height="86"></rect>
+          <text class="svg-label" x="580" y="287">Diagnostics</text>
+          <text class="svg-small" x="580" y="310">perf counters</text>
+          <text class="svg-small" x="580" y="328">print_status</text>
+
+          <path class="arrow" d="M390 174 L390 256"></path>
+          <path class="arrow" d="M488 299 L556 299"></path>
+          <path class="arrow" d="M654 256 L654 174"></path>
+        </svg>
+      </div>
+
+      <h3>SRF02 Example</h3>
+      <p>
+        The <code>SRF02</code> rangefinder reads two I2C bytes, converts the result from
+        centimeters to meters, and calls the rangefinder wrapper:
+      </p>
+      <pre><code>_px4_rangefinder.update(timestamp_sample, distance_m);</code></pre>
+      <p>
+        The wrapper publishes a <code>distance_sensor_s</code> uORB message. That means the
+        estimator or control code does not need to know about SRF02 I2C commands or conversion
+        timing.
+      </p>
+    </section>
+
+    <section id="hitl">
+      <h2>HITL And Simulation Replacement</h2>
+      <p>
+        Since the application layer subscribes to uORB topics, a physical input driver can be
+        disabled for HITL or simulation and replaced by another publisher that emits the same
+        message type. This is the key abstraction property.
+      </p>
+
+      <div class="diagram" role="img" aria-label="HITL replacement diagram">
+        <svg viewBox="0 0 1080 430">
+          <defs>
+            <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#526071"></polygon>
+            </marker>
+            <marker id="arrowhead2g" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#0f766e"></polygon>
+            </marker>
+          </defs>
+
+          <text class="svg-title" x="30" y="36">Producer Replacement Behind uORB</text>
+
+          <rect class="box box-amber" x="58" y="78" width="214" height="78"></rect>
+          <text class="svg-label" x="82" y="110">Real hardware driver</text>
+          <text class="svg-small" x="82" y="132">started in flight config</text>
+
+          <rect class="box box-blue" x="58" y="190" width="214" height="78"></rect>
+          <text class="svg-label" x="82" y="222">HITL bridge</text>
+          <text class="svg-small" x="82" y="244">publishes equivalent topic</text>
+
+          <rect class="box box-blue" x="58" y="302" width="214" height="78"></rect>
+          <text class="svg-label" x="82" y="334">Simulator or replay</text>
+          <text class="svg-small" x="82" y="356">synthetic or recorded data</text>
+
+          <rect class="box box-green" x="412" y="190" width="220" height="78"></rect>
+          <text class="svg-label" x="436" y="222">Same uORB topic</text>
+          <text class="svg-small" x="436" y="244">payload, timestamp, metadata</text>
+
+          <rect class="box" x="772" y="190" width="220" height="78"></rect>
+          <text class="svg-label" x="796" y="222">Unchanged consumers</text>
+          <text class="svg-small" x="796" y="244">application sees topic contract</text>
+
+          <path class="arrow-green" d="M272 117 C342 117, 342 205, 412 229" marker-end="url(#arrowhead2g)"></path>
+          <path class="arrow-green" d="M272 229 L412 229" marker-end="url(#arrowhead2g)"></path>
+          <path class="arrow-green" d="M272 341 C342 341, 342 253, 412 229" marker-end="url(#arrowhead2g)"></path>
+          <path class="arrow" d="M632 229 L772 229" marker-end="url(#arrowhead2)"></path>
+        </svg>
+      </div>
+
+      <div class="callout warn">
+        <p class="callout-title">Important nuance</p>
+        <p>
+          A replacement publisher must mimic more than message fields. For realistic HITL,
+          it should preserve update rate, timestamps, jitter, freshness behavior, device identity
+          where relevant, batching/FIFO behavior, fault injection, stale data behavior, and validity
+          flags. Otherwise the application will subscribe successfully but may behave differently.
+        </p>
+      </div>
+    </section>
+
+    <section id="generation">
+      <h2>Hardware Data Generation Patterns</h2>
+      <p>
+        Different hardware devices generate data differently. PX4 keeps those details inside
+        the driver while exposing a consistent uORB-facing interface.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Generation Pattern</th>
+            <th>PX4 Mechanism</th>
+            <th>Example</th>
+            <th>uORB Effect</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Scheduled polling</td>
+            <td><code>ScheduleOnInterval()</code> or <code>ScheduleDelayed()</code></td>
+            <td><code>SRF02</code> rangefinder</td>
+            <td>Publishes one sample per measurement cycle.</td>
+          </tr>
+          <tr>
+            <td>Command, wait, collect</td>
+            <td>Driver state machine in <code>RunImpl()</code></td>
+            <td>Many rangefinders</td>
+            <td>Publishes after conversion time completes.</td>
+          </tr>
+          <tr>
+            <td>Data-ready interrupt</td>
+            <td>GPIO event calls callback, then <code>ScheduleNow()</code></td>
+            <td><code>BMI270</code> IMU</td>
+            <td>Work queue reads FIFO/sample near hardware-ready time.</td>
+          </tr>
+          <tr>
+            <td>FIFO batching</td>
+            <td>Read multiple samples per work item and publish FIFO topic</td>
+            <td>Modern IMUs</td>
+            <td>Preserves high-rate data without one work item per sample.</td>
+          </tr>
+          <tr>
+            <td>Streaming serial</td>
+            <td><code>poll()</code>, <code>read()</code>, protocol parser</td>
+            <td>GPS and serial rangefinders</td>
+            <td>Publishes when a complete valid frame is decoded.</td>
+          </tr>
+          <tr>
+            <td>Actuator output</td>
+            <td>uORB callbacks, mixer update, board output API</td>
+            <td><code>PWMOut</code></td>
+            <td>Consumes actuator topics and writes physical outputs.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="diagram" role="img" aria-label="Polling versus interrupt driver pattern diagram">
+        <svg viewBox="0 0 1080 470">
+          <defs>
+            <marker id="arrowhead3" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#526071"></polygon>
+            </marker>
+          </defs>
+
+          <text class="svg-title" x="30" y="36">Polling vs IRQ Driven Input Drivers</text>
+
+          <rect class="box box-amber" x="54" y="86" width="186" height="78"></rect>
+          <text class="svg-label" x="78" y="118">Polling device</text>
+          <text class="svg-small" x="78" y="140">driver chooses interval</text>
+
+          <rect class="box box-blue" x="300" y="86" width="186" height="78"></rect>
+          <text class="svg-label" x="324" y="118">ScheduleDelayed</text>
+          <text class="svg-small" x="324" y="140">or ScheduleOnInterval</text>
+
+          <rect class="box box-green" x="546" y="86" width="186" height="78"></rect>
+          <text class="svg-label" x="570" y="118">Read and publish</text>
+          <text class="svg-small" x="570" y="140">one cycle at a time</text>
+
+          <rect class="box" x="792" y="86" width="186" height="78"></rect>
+          <text class="svg-label" x="816" y="118">uORB consumer</text>
+          <text class="svg-small" x="816" y="140">sees topic updates</text>
+
+          <path class="arrow" d="M240 125 L300 125" marker-end="url(#arrowhead3)"></path>
+          <path class="arrow" d="M486 125 L546 125" marker-end="url(#arrowhead3)"></path>
+          <path class="arrow" d="M732 125 L792 125" marker-end="url(#arrowhead3)"></path>
+
+          <rect class="box box-amber" x="54" y="282" width="186" height="78"></rect>
+          <text class="svg-label" x="78" y="314">IRQ device</text>
+          <text class="svg-small" x="78" y="336">data-ready signal</text>
+
+          <rect class="box box-blue" x="300" y="282" width="186" height="78"></rect>
+          <text class="svg-label" x="324" y="314">ISR callback</text>
+          <text class="svg-small" x="324" y="336">timestamp, ScheduleNow</text>
+
+          <rect class="box box-green" x="546" y="282" width="186" height="78"></rect>
+          <text class="svg-label" x="570" y="314">Work queue read</text>
+          <text class="svg-small" x="570" y="336">FIFO/sample transfer</text>
+
+          <rect class="box" x="792" y="282" width="186" height="78"></rect>
+          <text class="svg-label" x="816" y="314">uORB consumer</text>
+          <text class="svg-small" x="816" y="336">same topic style</text>
+
+          <path class="arrow" d="M240 321 L300 321" marker-end="url(#arrowhead3)"></path>
+          <path class="arrow" d="M486 321 L546 321" marker-end="url(#arrowhead3)"></path>
+          <path class="arrow" d="M732 321 L792 321" marker-end="url(#arrowhead3)"></path>
+
+          <text class="svg-small" x="62" y="210">Different timing source</text>
+          <text class="svg-small" x="548" y="210">Same output idea: timestamped normalized uORB data</text>
+        </svg>
+      </div>
+    </section>
+
+    <section id="rates">
+      <h2>How Driver Rates Are Specified</h2>
+      <p>
+        There is no single universal rate specification mechanism across all PX4 drivers.
+        The rate may be hard-coded, computed from hardware configuration, set by a PX4
+        parameter, controlled by an output timer group, or adjusted downstream by a consumer.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Rate Type</th>
+            <th>Where Specified</th>
+            <th>Example</th>
+            <th>How To Change</th>
+            <th>Risk/Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Hard-coded polling/conversion interval</td>
+            <td>Driver header/source constant</td>
+            <td><code>SRF02_CONVERSION_INTERVAL</code></td>
+            <td>Code change, or add a PX4 parameter</td>
+            <td>Must respect sensor conversion time and acoustic/physical interference.</td>
+          </tr>
+          <tr>
+            <td>Device register sample rate</td>
+            <td>Driver configuration code</td>
+            <td><code>BMI270::RATE</code> and FIFO watermark</td>
+            <td>Code/device configuration change</td>
+            <td>Must match filter assumptions, FIFO capacity, bus bandwidth, and CPU budget.</td>
+          </tr>
+          <tr>
+            <td>Driver parameter</td>
+            <td>PX4 parameter YAML and driver read path</td>
+            <td><code>GPS_UBX_RATE</code></td>
+            <td>Set PX4 parameter and reboot if required</td>
+            <td>Device model and baudrate may limit practical rate.</td>
+          </tr>
+          <tr>
+            <td>Output hardware timer rate</td>
+            <td>Output module parameter</td>
+            <td><code>PWM_MAIN_TIMx</code> / <code>PWM_AUX_TIMx</code></td>
+            <td>Set output timer parameter</td>
+            <td>Timer groups share rates; ESC/servo protocol limits apply.</td>
+          </tr>
+          <tr>
+            <td>Downstream processing/integration rate</td>
+            <td>Consumer module parameter</td>
+            <td><code>IMU_INTEG_RATE</code></td>
+            <td>Set consumer parameter</td>
+            <td>Does not necessarily change raw hardware sampling rate.</td>
+          </tr>
+          <tr>
+            <td>Topic callback or fixed scheduling rate</td>
+            <td>Middleware subscription and scheduler logic</td>
+            <td><code>MixingOutput</code> scheduling policy</td>
+            <td>Module/framework configuration</td>
+            <td>Rate may be driven by topic updates rather than a fixed loop.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="diagram" role="img" aria-label="rate ownership diagram">
+        <svg viewBox="0 0 1080 440">
+          <defs>
+            <marker id="arrowhead4" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#526071"></polygon>
+            </marker>
+          </defs>
+
+          <text class="svg-title" x="30" y="36">Rate Ownership Is Layered</text>
+
+          <rect class="box box-amber" x="60" y="88" width="190" height="90"></rect>
+          <text class="svg-label" x="84" y="120">Hardware rate</text>
+          <text class="svg-small" x="84" y="144">sensor ODR, GPS output</text>
+          <text class="svg-small" x="84" y="162">PWM timer rate</text>
+
+          <rect class="box box-blue" x="315" y="88" width="190" height="90"></rect>
+          <text class="svg-label" x="339" y="120">Driver rate</text>
+          <text class="svg-small" x="339" y="144">poll interval, FIFO read</text>
+          <text class="svg-small" x="339" y="162">IRQ fallback watchdog</text>
+
+          <rect class="box box-green" x="570" y="88" width="190" height="90"></rect>
+          <text class="svg-label" x="594" y="120">Publication rate</text>
+          <text class="svg-small" x="594" y="144">uORB topic updates</text>
+          <text class="svg-small" x="594" y="162">single sample or batch</text>
+
+          <rect class="box" x="825" y="88" width="190" height="90"></rect>
+          <text class="svg-label" x="849" y="120">Consumer rate</text>
+          <text class="svg-small" x="849" y="144">filter, integrate</text>
+          <text class="svg-small" x="849" y="162">downsample/throttle</text>
+
+          <path class="arrow" d="M250 133 L315 133" marker-end="url(#arrowhead4)"></path>
+          <path class="arrow" d="M505 133 L570 133" marker-end="url(#arrowhead4)"></path>
+          <path class="arrow" d="M760 133 L825 133" marker-end="url(#arrowhead4)"></path>
+
+          <rect class="box box-amber" x="60" y="262" width="190" height="80"></rect>
+          <text class="svg-label" x="84" y="294">Device limits</text>
+          <text class="svg-small" x="84" y="316">conversion time, bandwidth</text>
+
+          <rect class="box box-blue" x="315" y="262" width="190" height="80"></rect>
+          <text class="svg-label" x="339" y="294">Scheduler limits</text>
+          <text class="svg-small" x="339" y="316">work queue and CPU load</text>
+
+          <rect class="box box-green" x="570" y="262" width="190" height="80"></rect>
+          <text class="svg-label" x="594" y="294">Message limits</text>
+          <text class="svg-small" x="594" y="316">queueing and latency</text>
+
+          <rect class="box" x="825" y="262" width="190" height="80"></rect>
+          <text class="svg-label" x="849" y="294">Algorithm limits</text>
+          <text class="svg-small" x="849" y="316">filter stability and delay</text>
+
+          <path class="arrow" d="M155 178 L155 262" marker-end="url(#arrowhead4)"></path>
+          <path class="arrow" d="M410 178 L410 262" marker-end="url(#arrowhead4)"></path>
+          <path class="arrow" d="M665 178 L665 262" marker-end="url(#arrowhead4)"></path>
+          <path class="arrow" d="M920 178 L920 262" marker-end="url(#arrowhead4)"></path>
+        </svg>
+      </div>
+
+      <div class="callout warn">
+        <p class="callout-title">Terminology caution</p>
+        <p>
+          "Driver rate" can mean hardware sample rate, FIFO transfer rate, uORB publication
+          rate, actuator output update rate, or consumer processing rate. These are related
+          but not identical. A design review should name which rate is being changed.
+        </p>
+      </div>
+    </section>
+
+    <section id="examples">
+      <h2>Concrete PX4 Examples</h2>
+
+      <h3>1. SRF02 Rangefinder: Hard-Coded Scheduled Input</h3>
+      <p>
+        <code>SRF02</code> has a compile-time interval and a simple state machine. It starts
+        a measurement, waits for conversion, collects the result, converts it, and publishes.
+      </p>
+      <pre><code>#define SRF02_CONVERSION_INTERVAL 100000
+int _interval{SRF02_CONVERSION_INTERVAL};
+
+void SRF02::RunImpl()
+{
+  if (_collect_phase) {
+    collect();
+    _collect_phase = false;
+  }
+
+  measure();
+  _collect_phase = true;
+  ScheduleDelayed(_interval);
+}</code></pre>
+
+      <h3>2. BMI270 IMU: Device Rate, FIFO, IRQ, And Fallback</h3>
+      <p>
+        <code>BMI270</code> uses a hardware sample rate constant and FIFO batching. If the
+        data-ready interrupt is configured successfully, the interrupt schedules the work item.
+        If not, the driver falls back to periodic scheduling based on the FIFO empty interval.
+      </p>
+      <pre><code>static constexpr uint32_t RATE{1600}; // 1600 Hz
+static constexpr float FIFO_SAMPLE_DT{1e6f / RATE};
+
+if (DataReadyInterruptConfigure()) {
+  _data_ready_interrupt_enabled = true;
+  ScheduleDelayed(100_ms); // watchdog backup
+} else {
+  ScheduleOnInterval(_fifo_empty_interval_us, _fifo_empty_interval_us);
+}</code></pre>
+
+      <h3>3. GPS: Parameterized Device Output Rate</h3>
+      <p>
+        The GPS driver exposes <code>GPS_UBX_RATE</code> as a parameter. The driver reads it
+        and passes the desired output rate into the u-blox device configuration path. The final
+        effective rate depends on the receiver model, RTK mode, baudrate, and configured messages.
+      </p>
+      <pre><code>GPS_UBX_RATE:
+  short: u-blox GPS output rate
+  default: 0
+  min: 0
+  max: 25</code></pre>
+
+      <h3>4. PWMOut: Output Timer Rate Parameters</h3>
+      <p>
+        <code>PWMOut</code> gets timer rates from output parameters such as
+        <code>PWM_MAIN_TIMx</code> or <code>PWM_AUX_TIMx</code>. A positive value configures
+        PWM frequency. Negative values select protocols such as OneShot or DShot variants.
+      </p>
+      <pre><code>snprintf(param_name, sizeof(param_name), "%s_TIM%u",
+         _mixing_output.paramPrefix(), timer);
+
+param_get(handle, &tim_config);
+
+if (tim_config > 0) {
+  _timer_rates[timer] = tim_config;
+} else if (tim_config == -1) {
+  _timer_rates[timer] = 0; // OneShot
+}</code></pre>
+
+      <h3>5. VehicleIMU: Consumer Integration Rate</h3>
+      <p>
+        <code>IMU_INTEG_RATE</code> controls downstream IMU integration behavior in the
+        sensor module. It is not necessarily the raw IMU hardware sample rate.
+      </p>
+      <pre><code>const int32_t imu_integration_rate_hz =
+  constrain(_param_imu_integ_rate.get(), 50, 1000);
+
+_imu_integration_interval_us = 1e6f / imu_integration_rate_hz;</code></pre>
+    </section>
+
+    <section id="ad">
+      <h2>Implications For Self-Driving Software</h2>
+      <p>
+        The PX4 pattern is directly useful for a self-driving platform if adapted carefully.
+        The core idea is to isolate physical devices behind stable message contracts while
+        keeping source timing, health, and failure behavior explicit.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>PX4 Lesson</th>
+            <th>Automotive Application</th>
+            <th>Design Rule</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Consumers subscribe to uORB, not drivers.</td>
+            <td>Perception/control subscribe to DDS/ROS 2/vehicle middleware topics.</td>
+            <td>Do not let algorithms depend on hardware-driver APIs.</td>
+          </tr>
+          <tr>
+            <td>Driver timing model is private to the driver.</td>
+            <td>Radar, lidar, ultrasonic, IMU, and CAN devices can use different acquisition models.</td>
+            <td>Normalize into a topic with timestamp, frame, source ID, and health.</td>
+          </tr>
+          <tr>
+            <td>HITL can replace hardware behind the same topic.</td>
+            <td>Vehicle bench, replay, and simulation can publish the same interface.</td>
+            <td>Simulated publishers must mimic timing and failure semantics, not just data fields.</td>
+          </tr>
+          <tr>
+            <td>Rates are layered and source-specific.</td>
+            <td>Camera frame rate, lidar spin rate, radar cycle time, CAN command period, and fusion rate differ.</td>
+            <td>Document hardware rate, publication rate, and consumer processing rate separately.</td>
+          </tr>
+          <tr>
+            <td>Output drivers mediate final actuation.</td>
+            <td>Steering, brake, throttle, and gear commands should pass through arbitration and limiting.</td>
+            <td>Keep physical actuation behind a bounded output layer with safe states.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout risk">
+        <p class="callout-title">Safety note</p>
+        <p>
+          For a safety-relevant self-driving system, this architecture needs additional evidence:
+          requirements traceability, timing budgets, stale-data handling, source selection rules,
+          diagnostic coverage, fault injection results, ISO 26262 safety analysis, and cybersecurity
+          controls for update, debug, and configuration paths.
+        </p>
+      </div>
+    </section>
+
+    <section id="checklist">
+      <h2>Driver Study Checklist</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Question</th>
+            <th>What To Capture</th>
+            <th>Why It Matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>What topic does the driver publish or consume?</td>
+            <td>uORB topic name, message fields, instance behavior.</td>
+            <td>Defines the replacement contract for simulation and HITL.</td>
+          </tr>
+          <tr>
+            <td>What generates data?</td>
+            <td>Polling, command/wait/collect, IRQ, FIFO, serial stream, callback.</td>
+            <td>Determines realistic timing and fault modeling.</td>
+          </tr>
+          <tr>
+            <td>Where is the rate configured?</td>
+            <td>Code constant, parameter, device register, timer group, consumer parameter.</td>
+            <td>Avoids changing the wrong rate layer.</td>
+          </tr>
+          <tr>
+            <td>What metadata is required?</td>
+            <td>Timestamp, device ID, orientation/frame, calibration link, quality/validity.</td>
+            <td>Prevents source ambiguity and stale-data misuse.</td>
+          </tr>
+          <tr>
+            <td>How is health exposed?</td>
+            <td>Communication errors, perf counters, status print, timeout behavior.</td>
+            <td>Supports diagnosis, failover, and serviceability.</td>
+          </tr>
+          <tr>
+            <td>Can the hardware driver be disabled?</td>
+            <td>Startup script/module config and replacement publisher plan.</td>
+            <td>Enables HITL and simulation without application changes.</td>
+          </tr>
+          <tr>
+            <td>What happens on invalid or missing data?</td>
+            <td>Timeouts, stale flags, fallback source selection, safe output state.</td>
+            <td>Critical for safety-relevant runtime behavior.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="references">
+      <h2>Repository References</h2>
+      <ul class="source-list">
+        <li><a href="src/drivers/distance_sensor/srf02/SRF02.hpp"><code>src/drivers/distance_sensor/srf02/SRF02.hpp</code></a></li>
+        <li><a href="src/drivers/distance_sensor/srf02/SRF02.cpp"><code>src/drivers/distance_sensor/srf02/SRF02.cpp</code></a></li>
+        <li><a href="src/lib/drivers/rangefinder/PX4Rangefinder.hpp"><code>src/lib/drivers/rangefinder/PX4Rangefinder.hpp</code></a></li>
+        <li><a href="src/lib/drivers/rangefinder/PX4Rangefinder.cpp"><code>src/lib/drivers/rangefinder/PX4Rangefinder.cpp</code></a></li>
+        <li><a href="src/drivers/imu/bosch/bmi270/BMI270.hpp"><code>src/drivers/imu/bosch/bmi270/BMI270.hpp</code></a></li>
+        <li><a href="src/drivers/imu/bosch/bmi270/BMI270.cpp"><code>src/drivers/imu/bosch/bmi270/BMI270.cpp</code></a></li>
+        <li><a href="src/drivers/gps/params.yaml"><code>src/drivers/gps/params.yaml</code></a></li>
+        <li><a href="src/drivers/gps/gps.cpp"><code>src/drivers/gps/gps.cpp</code></a></li>
+        <li><a href="src/drivers/gps/devices/src/ubx.cpp"><code>src/drivers/gps/devices/src/ubx.cpp</code></a></li>
+        <li><a href="src/drivers/pwm_out/module.yaml"><code>src/drivers/pwm_out/module.yaml</code></a></li>
+        <li><a href="src/drivers/pwm_out/PWMOut.cpp"><code>src/drivers/pwm_out/PWMOut.cpp</code></a></li>
+        <li><a href="src/lib/mixer_module/mixer_module.hpp"><code>src/lib/mixer_module/mixer_module.hpp</code></a></li>
+        <li><a href="src/lib/mixer_module/mixer_module.cpp"><code>src/lib/mixer_module/mixer_module.cpp</code></a></li>
+        <li><a href="src/modules/sensors/vehicle_imu/VehicleIMU.cpp"><code>src/modules/sensors/vehicle_imu/VehicleIMU.cpp</code></a></li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>
+        This document is a local code study of PX4 driver runtime patterns. It focuses on
+        implementation behavior visible in the checked-out PX4-Autopilot repository.
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

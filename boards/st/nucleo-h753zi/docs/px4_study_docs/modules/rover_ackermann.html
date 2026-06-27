@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -108,6 +120,29 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Controls Ackermann-steered rover motion from rover setpoints to actuator commands.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `actuator_motors`, `actuator_servos`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_controller_status`, `position_setpoint_triplet`, `rover_attitude_setpoint`, ... 11 more.</li><li>Publish outputs or status topics such as `actuator_motors`, `actuator_servos`, `position_controller_status`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 5 more.</li><li>Use module configuration from `module.yaml`.</li><li>Implement the main behavior in classes such as `AckermannActControl`, `AckermannAttControl`, `AckermannAutoMode`, `AckermannManualMode`, `AckermannOffboardMode`, `AckermannPosControl`, ... 3 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `rate_ctrl`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Ackermann rover control uses car-like planar kinematics. Steering angle is related to path curvature and yaw rate by the wheelbase.</p>
+    <pre class="math-block">curvature = yaw_rate_sp / max(speed_sp, epsilon)
+steering_angle = atan(wheelbase * curvature)
+yaw_rate = speed / wheelbase * tan(steering_angle)
+throttle = K_speed * (speed_sp - speed) + feedforward(speed_sp)</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`actuator_motors`, `actuator_servos`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_controller_status`, `position_setpoint_triplet`, `rover_attitude_setpoint`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 9 more</td></tr><tr><td>Primary outputs</td><td>`actuator_motors`, `actuator_servos`, `position_controller_status`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_rate_status`, `rover_speed_setpoint`, ... 3 more</td></tr><tr><td>Referenced topics</td><td>`actuator_motors`, `actuator_servos`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_controller_status`, `position_setpoint_triplet`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, ... 13 more</td></tr><tr><td>Parameters/config</td><td>module.yaml</td></tr><tr><td>Key classes</td><td>`AckermannActControl`, `AckermannAttControl`, `AckermannAutoMode`, `AckermannManualMode`, `AckermannOffboardMode`, `AckermannPosControl`, `AckermannRateControl`, `AckermannSpeedControl`, `RoverAckermann`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>RoverAckermann.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>AckermannActControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>AckermannAttControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>AckermannDriveModes/AckermannAutoMode/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>AckermannDriveModes/AckermannManualMode/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>AckermannDriveModes/AckermannOffboardMode/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>AckermannDriveModes/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>AckermannActControl/AckermannActControl.hpp</td><td>Defines `AckermannActControl` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +186,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/rover_ackermann</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__rover_ackermann</td></tr><tr><td>Runtime main</td><td>rover_ackermann</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>9</td></tr><tr><td>Detected headers</td><td>9</td></tr><tr><td>Detected configs</td><td>11</td></tr></tbody></table>
 

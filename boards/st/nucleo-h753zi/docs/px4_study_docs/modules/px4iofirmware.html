@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Builds PX4IO firmware support code for the IO co-processor path.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Reference uORB topics such as `input_rc`.</li><li>Do not publish directly detected uORB outputs from this module directory.</li><li>Implement behavior mostly in C/C++ source functions rather than detected C++ classes.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Scheduling style was not explicit in the detected source inventory; inspect the entry source for runtime details.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>none detected</td></tr><tr><td>Primary outputs</td><td>none detected</td></tr><tr><td>Referenced topics</td><td>`input_rc`</td></tr><tr><td>Parameters/config</td><td>none detected</td></tr><tr><td>Key classes</td><td>none detected</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -129,7 +147,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/px4iofirmware</td></tr><tr><td>Build kind</td><td>library</td></tr><tr><td>Build target</td><td>px4iofirmware</td></tr><tr><td>Runtime main</td><td>px4iofirmware</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>Not specified</td></tr><tr><td>Detected sources</td><td>7</td></tr><tr><td>Detected headers</td><td>2</td></tr><tr><td>Detected configs</td><td>1</td></tr></tbody></table>
 

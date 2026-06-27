@@ -6,7 +6,46 @@
 - Build kind: `px4 module`
 - Mermaid palette: `ash` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Module to provide persistent storage for the rest of the system in form of a simple database through a C API. Multiple backends are supported depending on the board: - a file (eg. on the SD card) - RAM (this is obviously not persistent) It is used to store structured data of different types: mission waypoints, mission state and geofence polygons. Each type has a specific type and a fixed maximum amount of storage items, so that fast random access is possible. Reading and writing a single item is always atomic.
+
+## Description of Module
+
+Provides persistent storage services for mission, geofence, rally point, and other structured data records.
+
+### Primary Responsibilities
+
+- Provide persistence, replay, or data-recording services used by other PX4 modules.
+- Consume runtime inputs from uORB topics such as `dataman_request`.
+- Publish outputs or status topics such as `dataman_response`.
+- Use module configuration from `parameters.yaml`.
+- Implement behavior mostly in C/C++ source functions rather than detected C++ classes.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `dataman_request` |
+| Primary outputs | `dataman_response` |
+| Referenced topics | `dataman_request`, `dataman_response`, `mission` |
+| Parameters/config | parameters.yaml |
+| Key classes | none detected |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| dataman.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| parameters.yaml | Build, parameter, or module configuration |
 
 ## Architecture Overview
 

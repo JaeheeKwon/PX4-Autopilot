@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Automatic Flight with Stored Waypoints on Nucleo-H753ZI</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+.header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.header-inner {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1.5rem;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+h1 { max-width: 920px; margin: 0; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.08; letter-spacing: 0; }
+.lede { max-width: 920px; margin: 1rem 0 0; color: var(--muted); font-size: 1.04rem; }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] { border-color: var(--accent); background: #dbece7; color: var(--accent-dark); }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 { margin: 0 0 0.75rem; font-size: 0.88rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+.toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+h2 { margin-top: 2rem; padding-top: 0.3rem; border-top: 1px solid var(--line); font-size: 1.65rem; line-height: 1.2; letter-spacing: 0; }
+h2:first-child { border-top: 0; }
+h3 { margin-top: 1.4rem; font-size: 1.15rem; line-height: 1.25; letter-spacing: 0; }
+h4 { margin-top: 1.1rem; font-size: 1rem; letter-spacing: 0; }
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { padding: 0.58rem 0.7rem; border: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-alt); text-align: left; }
+blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface-alt);
+  color: #344044;
+}
+.admonition {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+}
+.admonition-title { margin: 0 0 0.35rem; font-weight: 700; color: var(--accent-dark); }
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  overflow-x: auto;
+}
+.footer {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+}
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>Automatic Flight with Stored Waypoints on Nucleo-H753ZI</h1>
+      <p class="lede">Mission-mode data flow, storage behavior, runtime checks, and implementation guidance for automatic waypoint flight on the ST Nucleo-H753ZI HITL target.</p>
+    </div>
+  </header>
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="../../index.html">Middleware</a><a href="../../flight_controller_software_architecture.html">PX4 Flight Controller Software Architecture</a><a href="../../uorb_architecture.html">uORB Middleware Architecture Deep Dive</a><a href="../README.html">ST Nucleo-H753ZI PX4 Board Support</a><a href="hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a><a href="auto_flight_waypoint_mission.html" aria-current="page">Automatic Flight with Stored Waypoints</a><a href="hils_ros2_setup.html">HILS, ROS2, and uORB Communication Setup</a>
+  </nav>
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#concept">Concept</a></li>
+        <li><a href="#board-build-requirements">Board Build Requirements</a></li>
+        <li><a href="#mission-storage-on-this-board">Mission Storage on This Board</a></li>
+        <li><a href="#mission-contents">Mission Contents</a></li>
+        <li><a href="#run-workflow">Run Workflow</a></li>
+        <li><a href="#runtime-checks">Runtime Checks</a></li>
+        <li><a href="#failure-points">Failure Points</a></li>
+        <li><a href="#implementation-guidance">Implementation Guidance</a></li>
+      </ul>
+    </aside>
+    <main>
+      <h1 id="automatic-flight-with-stored-waypoints-on-nucleo-h753zi">Automatic Flight with Stored Waypoints on Nucleo-H753ZI<a class="headerlink" href="#automatic-flight-with-stored-waypoints-on-nucleo-h753zi" title="Permanent link">&para;</a></h1>
+      <p>This page explains how automatic waypoint flight is implemented and tested on the ST Nucleo-H753ZI PX4 target. The board has no onboard flight sensors in the default configuration, so this workflow is for Hardware-In-the-Loop simulation (HITL): the simulator provides sensor data, PX4 runs the real mission and control stack on the STM32H753, and <code>pwm_out_sim</code> sends actuator commands back to the simulator.</p>
+      <p>For the base HITL setup, see <a href="hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a>. The markdown source for this page is <a href="auto_flight_waypoint_mission.md">auto_flight_waypoint_mission.md</a>.</p>
+
+      <h2 id="concept">Concept<a class="headerlink" href="#concept" title="Permanent link">&para;</a></h2>
+      <p>Automatic waypoint flight should use PX4 Mission mode rather than custom motor, attitude, or position-control code. The mission layer owns the route and mode progression; the existing controllers own vehicle stabilization.</p>
+      <div class="mermaid">
+flowchart LR
+    qgc["QGroundControl / MAVSDK"]
+    mavlink["mavlink<br/>mission protocol"]
+    dataman["dataman<br/>mission item storage"]
+    mission["mission uORB topic"]
+    navigator["navigator<br/>Mission mode"]
+    triplet["position_setpoint_triplet"]
+    fmm["flight_mode_manager<br/>Auto task"]
+    mpc["mc_pos_control"]
+    att["mc_att_control<br/>mc_rate_control"]
+    alloc["control_allocator"]
+    pwm["pwm_out_sim"]
+    sim["jMAVSim / Gazebo HITL"]
+
+    qgc -- "MISSION_COUNT / MISSION_ITEM_INT" --> mavlink
+    mavlink --> dataman
+    mavlink --> mission
+    mission --> navigator
+    dataman --> navigator
+    navigator --> triplet
+    triplet --> fmm
+    fmm --> mpc
+    mpc --> att
+    att --> alloc
+    alloc --> pwm
+    pwm -- "HIL_ACTUATOR_CONTROLS" --> sim
+    sim -- "HIL_SENSOR / HIL_GPS" --> mavlink
+      </div>
+      <p>The mission data is stored as <code>mission_item_s</code> entries. Navigation commands are defined in <code>src/modules/navigator/navigation.h</code>, including:</p>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Use</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>NAV_CMD_TAKEOFF</code></td><td>Climb from the launch point to the mission takeoff altitude.</td></tr>
+          <tr><td><code>NAV_CMD_WAYPOINT</code></td><td>Fly to a latitude, longitude, and altitude.</td></tr>
+          <tr><td><code>NAV_CMD_LOITER_TIME_LIMIT</code></td><td>Hold around a point for a fixed time.</td></tr>
+          <tr><td><code>NAV_CMD_LAND</code></td><td>Land at the final mission point.</td></tr>
+          <tr><td><code>NAV_CMD_RETURN_TO_LAUNCH</code></td><td>Return to the home position.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="board-build-requirements">Board Build Requirements<a class="headerlink" href="#board-build-requirements" title="Permanent link">&para;</a></h2>
+      <p>The default Nucleo-H753ZI board configuration already includes the modules needed for waypoint missions:</p>
+      <table>
+        <thead>
+          <tr><th>Build option</th><th>Runtime role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>CONFIG_MODULES_MAVLINK=y</code></td><td>Receives mission uploads and commands from QGC or MAVSDK.</td></tr>
+          <tr><td><code>CONFIG_MODULES_DATAMAN=y</code></td><td>Stores mission items for the current boot session.</td></tr>
+          <tr><td><code>CONFIG_MODULES_COMMANDER=y</code></td><td>Handles arming, mode changes, and mission start checks.</td></tr>
+          <tr><td><code>CONFIG_MODULES_NAVIGATOR=y</code></td><td>Executes Mission mode and publishes position setpoint triplets.</td></tr>
+          <tr><td><code>CONFIG_MODULES_FLIGHT_MODE_MANAGER=y</code></td><td>Converts auto navigation goals into multicopter trajectory setpoints.</td></tr>
+          <tr><td><code>CONFIG_MODULES_MC_POS_CONTROL=y</code></td><td>Tracks position and velocity targets.</td></tr>
+          <tr><td><code>CONFIG_MODULES_MC_ATT_CONTROL=y</code></td><td>Tracks attitude setpoints.</td></tr>
+          <tr><td><code>CONFIG_MODULES_MC_RATE_CONTROL=y</code></td><td>Tracks body-rate setpoints.</td></tr>
+          <tr><td><code>CONFIG_MODULES_CONTROL_ALLOCATOR=y</code></td><td>Maps torque and thrust requests to actuator topics.</td></tr>
+          <tr><td><code>CONFIG_MODULES_SIMULATION_PWM_OUT_SIM=y</code></td><td>Sends actuator output back to the HITL simulator.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="mission-storage-on-this-board">Mission Storage on This Board<a class="headerlink" href="#mission-storage-on-this-board" title="Permanent link">&para;</a></h2>
+      <p>PX4 stores missions in <code>dataman</code> using these key areas:</p>
+      <table>
+        <thead>
+          <tr><th>Dataman key</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>DM_KEY_WAYPOINTS_OFFBOARD_0</code></td><td>Active or previous uploaded mission item set.</td></tr>
+          <tr><td><code>DM_KEY_WAYPOINTS_OFFBOARD_1</code></td><td>Alternate mission item set used during upload/update.</td></tr>
+          <tr><td><code>DM_KEY_MISSION_STATE</code></td><td>Mission metadata such as current sequence and selected storage key.</td></tr>
+        </tbody>
+      </table>
+      <p>This target sets <code>CONFIG_DATAMAN_PERSISTENT_STORAGE</code> to disabled, so <code>dataman</code> falls back to RAM. That means:</p>
+      <ul>
+        <li>A mission uploaded after boot can be flown normally.</li>
+        <li>The uploaded mission is lost on reboot.</li>
+        <li>"Pre-stored" means stored for the current boot session unless persistent storage is added.</li>
+      </ul>
+      <p>For a mission that must survive reboot, use one of these approaches:</p>
+      <table>
+        <thead>
+          <tr><th>Approach</th><th>When to use</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Enable persistent <code>dataman</code> storage</td><td>Use this when the board has a mounted filesystem or a LittleFS-backed storage area available for mission files.</td></tr>
+          <tr><td>Upload after every boot</td><td>Use this for HITL validation from QGC, MAVSDK, or a companion script.</td></tr>
+          <tr><td>Add a mission preload module</td><td>Use this when a fixed built-in route must be written into <code>dataman</code> at boot before Mission mode is started.</td></tr>
+        </tbody>
+      </table>
+      <p>Do not bypass <code>navigator</code> for stored waypoint flight. A preload path should only write valid mission items and mission metadata, then let normal Mission mode execute the route.</p>
+
+      <h2 id="mission-contents">Mission Contents<a class="headerlink" href="#mission-contents" title="Permanent link">&para;</a></h2>
+      <p>A minimal multicopter mission for this board should contain:</p>
+      <table>
+        <thead>
+          <tr><th>Sequence</th><th>Mission item</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0</td><td>Takeoff to a safe relative altitude.</td></tr>
+          <tr><td>1</td><td>First waypoint near the simulator home position.</td></tr>
+          <tr><td>2..N</td><td>Additional waypoints.</td></tr>
+          <tr><td>N+1</td><td>Land, or return-to-launch.</td></tr>
+        </tbody>
+      </table>
+      <p>Keep the first mission near the simulator start location. PX4 performs mission feasibility checks before execution, and a route too far from home may be rejected.</p>
+      <p>Typical waypoint fields:</p>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>lat</code>, <code>lon</code></td><td>WGS84 waypoint position in degrees.</td></tr>
+          <tr><td><code>altitude</code></td><td>Mission altitude in meters.</td></tr>
+          <tr><td><code>altitude_is_relative</code></td><td>Use relative altitude when the route is planned above the home position.</td></tr>
+          <tr><td><code>acceptance_radius</code></td><td>Radius where the waypoint counts as reached.</td></tr>
+          <tr><td><code>yaw</code></td><td>Desired yaw in radians, or <code>NaN</code> to let PX4 choose yaw behavior.</td></tr>
+          <tr><td><code>autocontinue</code></td><td>Continue to the next item after this one is reached.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="run-workflow">Run Workflow<a class="headerlink" href="#run-workflow" title="Permanent link">&para;</a></h2>
+      <ol>
+        <li>Flash and boot the Nucleo-H753ZI PX4 firmware.</li>
+        <li>Start the HITL simulator on CN13 User USB.</li>
+        <li>Open QGroundControl or a MAVSDK mission uploader.</li>
+        <li>Create a mission with takeoff, nearby waypoints, and land or RTL.</li>
+        <li>Upload the mission to the vehicle.</li>
+        <li>Wait for valid local and global position estimates.</li>
+        <li>Arm the vehicle.</li>
+        <li>Start Mission mode.</li>
+      </ol>
+      <p>From the MAVLink console or NSH, Mission mode can be requested with:</p>
+      <pre><code class="language-sh">commander mode auto:mission
+</code></pre>
+      <p>If the mission is valid and the vehicle is allowed to arm, QGroundControl can also start the mission using its normal mission start controls.</p>
+
+      <h2 id="runtime-checks">Runtime Checks<a class="headerlink" href="#runtime-checks" title="Permanent link">&para;</a></h2>
+      <p>Use these commands while the simulator is running:</p>
+      <pre><code class="language-sh">dataman status
+listener mission
+listener mission_result
+listener position_setpoint_triplet
+listener vehicle_local_position
+listener vehicle_global_position
+</code></pre>
+      <p>Expected behavior:</p>
+      <ul>
+        <li><code>listener mission</code> shows a nonzero <code>count</code>.</li>
+        <li><code>listener mission_result</code> shows <code>valid: true</code> and the current mission sequence.</li>
+        <li><code>listener position_setpoint_triplet</code> shows the current and next waypoint setpoints while Mission mode is active.</li>
+        <li><code>listener vehicle_local_position</code> and <code>listener vehicle_global_position</code> update from HITL sensor data.</li>
+        <li>The simulator receives <code>HIL_ACTUATOR_CONTROLS</code> from <code>pwm_out_sim</code>.</li>
+      </ul>
+
+      <h2 id="failure-points">Failure Points<a class="headerlink" href="#failure-points" title="Permanent link">&para;</a></h2>
+      <table>
+        <thead>
+          <tr><th>Symptom</th><th>Likely cause</th><th>Check</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Mission upload succeeds but disappears after reboot</td><td><code>dataman</code> is RAM-backed on this board</td><td>Re-upload after boot or add persistent storage.</td></tr>
+          <tr><td>Mission mode is rejected</td><td>No valid mission, invalid position, or failed mission feasibility check</td><td><code>listener mission_result</code>, <code>commander check</code>.</td></tr>
+          <tr><td>Vehicle arms but does not move</td><td>Simulator is not providing fresh HITL sensor data or Mission mode is not active</td><td><code>listener vehicle_status</code>, <code>listener vehicle_local_position</code>, <code>mavlink status</code>.</td></tr>
+          <tr><td>Waypoint advances immediately or too late</td><td>Acceptance radius or hold-time settings are wrong</td><td>Inspect mission item settings in QGC.</td></tr>
+          <tr><td>QGC cannot connect during HITL</td><td>Wrong USB connector or wrong serial device</td><td>Use CN13 User USB for MAVLink/HITL, not CN1 ST-LINK console.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="implementation-guidance">Implementation Guidance<a class="headerlink" href="#implementation-guidance" title="Permanent link">&para;</a></h2>
+      <p>If a built-in route is required, keep the implementation narrow:</p>
+      <ol>
+        <li>Define the route as normal mission items.</li>
+        <li>Write those items to <code>DM_KEY_WAYPOINTS_OFFBOARD_0</code> or <code>_1</code>.</li>
+        <li>Write matching <code>mission_s</code> metadata to <code>DM_KEY_MISSION_STATE</code>.</li>
+        <li>Publish or trigger a mission update so <code>navigator</code> reloads the mission.</li>
+        <li>Start Mission mode through <code>commander</code>.</li>
+      </ol>
+      <p>The preload code should not publish actuator commands and should not directly control attitude, rates, or motors. Those responsibilities belong to the PX4 controller stack.</p>
+    </main>
+  </div>
+  <footer class="footer">
+    Rendered from <code>boards/st/nucleo-h753zi/docs/auto_flight_waypoint_mission.md</code>.
+  </footer>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose', theme: 'default' });
+  </script>
+</body>
+</html>

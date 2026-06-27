@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="gimbal.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>gimbal</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Mount/gimbal Gimbal control driver. It maps several different input methods (eg. RC or MAVLink) to a configured output (eg. AUX channels or MAVLink). Documentation how to use it is on the [gimbal_control](../advanced/gimbal_control.md) page. Test the output by setting a angles (all omitted axes are set to 0): $ gimbal test pitch -45 yaw 30</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/gimbal</code></div>
       <div><strong>Build target</strong><br><code>drivers__gimbal</code></div>
@@ -108,6 +120,29 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Manages gimbal control commands, gimbal device status, and mount orientation setpoints.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `gimbal_device_attitude_status`, `gimbal_device_information`, `gimbal_manager_set_attitude`, `gimbal_manager_set_manual_control`, `manual_control_setpoint`, `parameter_update`, `position_setpoint_triplet`, `vehicle_attitude`, ... 4 more.</li><li>Publish outputs or status topics such as `gimbal_controls`, `gimbal_device_attitude_status`, `gimbal_device_set_attitude`, `gimbal_manager_information`, `gimbal_manager_status`, `gimbal_v1_command`, `mount_orientation`, `vehicle_command`, ... 1 more.</li><li>Use module configuration from `gimbal_params.yaml`.</li><li>Implement the main behavior in classes such as `Type`, `Frame`, `InputBase`, `UpdateResult`, `InputFixed`, `InputMavlinkROI`, ... 9 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.</li><li>Waits on file descriptors or uORB subscriptions with `px4_poll()`.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Gimbal control is primarily a frame-transform problem: a requested pointing attitude is converted through vehicle, mount, and gimbal frames before actuator commands are produced.</p>
+    <pre class="math-block">R_world_gimbal_sp = R_world_vehicle * R_vehicle_mount * R_mount_gimbal_sp
+q_err = inverse(q_gimbal) * q_gimbal_sp
+rate_sp = K_att * sign(q_err.w) * q_err.xyz
+actuator_cmd = map_axis(rate_sp or angle_sp)</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`gimbal_device_attitude_status`, `gimbal_device_information`, `gimbal_manager_set_attitude`, `gimbal_manager_set_manual_control`, `manual_control_setpoint`, `parameter_update`, `position_setpoint_triplet`, `vehicle_attitude`, `vehicle_command`, `vehicle_global_position`, ... 2 more</td></tr><tr><td>Primary outputs</td><td>`gimbal_controls`, `gimbal_device_attitude_status`, `gimbal_device_set_attitude`, `gimbal_manager_information`, `gimbal_manager_status`, `gimbal_v1_command`, `mount_orientation`, `vehicle_command`, `vehicle_command_ack`</td></tr><tr><td>Referenced topics</td><td>`gimbal_controls`, `gimbal_device_attitude_status`, `gimbal_device_information`, `gimbal_device_set_attitude`, `gimbal_manager_information`, `gimbal_manager_set_attitude`, `gimbal_manager_set_manual_control`, `gimbal_manager_status`, `gimbal_v1_command`, `manual_control_setpoint`, ... 9 more</td></tr><tr><td>Parameters/config</td><td>gimbal_params.yaml</td></tr><tr><td>Key classes</td><td>`Type`, `Frame`, `InputBase`, `UpdateResult`, `InputFixed`, `InputMavlinkROI`, `InputMavlinkCmdMount`, `InputMavlinkGimbalV2`, `InputRC`, `InputTest`, ... 5 more</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>gimbal.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>gimbal_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>common.h</td><td>Defines `Type` class</td></tr><tr><td>input.h</td><td>Defines `InputBase` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +186,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/gimbal</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>drivers__gimbal</td></tr><tr><td>Runtime main</td><td>gimbal</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>gimbal_params.yaml</td></tr><tr><td>Detected sources</td><td>9</td></tr><tr><td>Detected headers</td><td>10</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

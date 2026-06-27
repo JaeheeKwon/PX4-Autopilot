@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Control System Architecture</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --paper: #ffffff;
+      --ink: #1f2933;
+      --muted: #5f6b7a;
+      --line: #d8dee8;
+      --accent: #0f6f78;
+      --accent-soft: #e4f3f4;
+      --code-bg: #f1f4f8;
+      --warn-bg: #fff6df;
+      --warn-line: #e6bd4f;
+      --control: #f0f7ff;
+      --state: #eef8f1;
+      --actuator: #fff3eb;
+      --supervision: #f7f0ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.58 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .page {
+      width: min(1480px, calc(100% - 24px));
+      margin: 24px auto 56px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 45px rgba(31, 41, 51, 0.08);
+    }
+
+    .hero {
+      padding: 42px 48px 28px;
+      border-bottom: 1px solid var(--line);
+      border-radius: 8px 8px 0 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbfc 100%);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .index-sidebar {
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      padding: 24px 18px;
+      border-right: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .index-title {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .index-sidebar a {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 4px;
+      color: var(--ink);
+      font-size: 0.92rem;
+      line-height: 1.25;
+      text-decoration: none;
+    }
+
+    .index-sidebar a:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .index-sidebar .sub-link {
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .section {
+      padding: 30px 36px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 860px;
+      font-size: 2.15rem;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-size: 1.45rem;
+    }
+
+    h3 {
+      margin: 24px 0 8px;
+      font-size: 1.05rem;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code,
+    .path {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+      background: var(--code-bg);
+      border: 1px solid #e1e7ef;
+      border-radius: 4px;
+      padding: 0.08rem 0.28rem;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 14px 16px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .warning {
+      border-left-color: var(--warn-line);
+      background: var(--warn-bg);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 16px;
+      background: #fbfcfe;
+    }
+
+    .card h3 {
+      margin-top: 0;
+    }
+
+    .diagram {
+      overflow-x: auto;
+      margin: 18px 0 22px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+    }
+
+    .flow {
+      min-width: 900px;
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(96px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+      margin-bottom: 12px;
+    }
+
+    .flow-row.six {
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+    }
+
+    .node {
+      min-height: 94px;
+      padding: 12px 10px;
+      border: 1px solid #8794a5;
+      border-radius: 7px;
+      background: #f6f8fb;
+      text-align: center;
+    }
+
+    .node.state {
+      background: var(--state);
+    }
+
+    .node.control {
+      background: var(--control);
+    }
+
+    .node.actuator {
+      background: var(--actuator);
+    }
+
+    .node.supervision {
+      background: var(--supervision);
+    }
+
+    .node-title {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .node-detail {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+
+    .arrow-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      margin: -2px 58px 12px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+
+    .flow-note {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .flow-note span {
+      display: block;
+      border: 1px dashed var(--accent);
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: #f7fbfc;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .equation {
+      overflow-x: auto;
+      padding: 12px 14px;
+      margin: 14px 0 18px;
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 16px 0 22px;
+      font-size: 0.95rem;
+    }
+
+    th,
+    td {
+      vertical-align: top;
+      text-align: left;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      background: #f4f7fb;
+      font-weight: 700;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 14px 0 18px;
+      padding: 14px 16px;
+      background: #101820;
+      color: #eef6ff;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      display: block;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    ul {
+      margin: 0 0 18px 1.2rem;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    @media (max-width: 920px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .index-sidebar {
+        position: static;
+        max-height: none;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .section,
+      .hero {
+        padding-left: 24px;
+        padding-right: 24px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="hero">
+      <h1>PX4 Control System Architecture</h1>
+      <p class="lead">
+        This document explains the PX4 control path from sensors to actuators, with emphasis on the default multicopter
+        cascaded controller. It also maps the controller blocks to implementation files, uORB topics, and key tuning
+        parameters in this checkout.
+      </p>
+      <div class="meta">
+        <span class="pill">Scope: PX4 controllers</span>
+        <span class="pill">Primary path: multicopter</span>
+        <span class="pill">Related: <a href="ekf2_kalman_equations.html">EKF2 equations</a></span>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="index-sidebar" aria-label="Document index">
+        <p class="index-title">Index</p>
+        <a href="#summary">1. Summary</a>
+        <a href="#e2e">2. E2E System Diagram</a>
+        <a href="#vehicle-model">3. Vehicle Model Dependency</a>
+        <a href="#internal">4. Controller Internals</a>
+        <a href="#math">5. Control Equations</a>
+        <a href="#implementation">6. Implementation Map</a>
+        <a class="sub-link" href="#mc-implementation">Multicopter</a>
+        <a class="sub-link" href="#fw-implementation">Fixed-wing</a>
+        <a class="sub-link" href="#rover-implementation">Rover</a>
+        <a class="sub-link" href="#allocation-implementation">Allocation</a>
+        <a href="#parameters">7. Parameter Map</a>
+        <a href="#topics">8. uORB Topic Flow</a>
+        <a href="#ackermann-build">9. Ackermann Rover Build</a>
+        <a href="#notes">10. Notes and Caveats</a>
+      </div>
+
+      <div class="content">
+        <div class="section" id="summary">
+          <h2>1. Summary</h2>
+          <p>
+            PX4's default multicopter controller is not model predictive control. The name <code>MPC_*</code> in many
+            PX4 parameters means <strong>Multicopter Position Control</strong>, not <strong>Model Predictive Control</strong>.
+            The default control structure is a fast cascaded controller:
+          </p>
+          <div class="equation">
+            <code>position P -> velocity PID -> acceleration/thrust mapping -> attitude P -> rate PID -> control allocation</code>
+          </div>
+          <p>
+            The controller is split across modules. State estimation produces attitude, velocity, and position. Flight mode
+            logic produces trajectory setpoints. Control modules convert those setpoints into thrust and torque demands.
+            The control allocator converts thrust and torque into motor and servo commands.
+          </p>
+          <div class="note">
+            <strong>Important distinction:</strong> PX4 does contain optimization-like allocation methods such as
+            pseudo-inverse allocation and sequential desaturation, but the default multicopter flight controller is not
+            solving a finite-horizon model-predictive optimization problem every cycle.
+          </div>
+        </div>
+
+        <div class="section" id="e2e">
+          <h2>2. E2E System Diagram</h2>
+          <p>
+            The full end-to-end loop starts with sensors, passes through estimation and guidance, then cascades through
+            controller layers before actuator outputs drive motors and servos.
+          </p>
+
+          <div class="diagram" role="img" aria-label="PX4 end to end control system block diagram">
+            <div class="flow">
+              <div class="flow-row">
+                <div class="node">
+                  <span class="node-title">Sensors</span>
+                  <span class="node-detail">IMU, mag, baro<br>GNSS, range, flow</span>
+                </div>
+                <div class="node state">
+                  <span class="node-title">Sensor Pipeline</span>
+                  <span class="node-detail">sensor_accel<br>sensor_gyro<br>vehicle_imu</span>
+                </div>
+                <div class="node state">
+                  <span class="node-title">EKF2</span>
+                  <span class="node-detail">vehicle_attitude<br>vehicle_local_position</span>
+                </div>
+                <div class="node supervision">
+                  <span class="node-title">Pilot / Mission</span>
+                  <span class="node-detail">manual_control<br>navigator<br>offboard</span>
+                </div>
+                <div class="node supervision">
+                  <span class="node-title">Commander / Modes</span>
+                  <span class="node-detail">vehicle_status<br>vehicle_control_mode<br>trajectory_setpoint</span>
+                </div>
+                <div class="node control">
+                  <span class="node-title">Controller Stack</span>
+                  <span class="node-detail">mc_pos_control<br>mc_att_control<br>mc_rate_control</span>
+                </div>
+                <div class="node actuator">
+                  <span class="node-title">Control Allocator</span>
+                  <span class="node-detail">vehicle_torque_setpoint<br>vehicle_thrust_setpoint<br>actuator_motors</span>
+                </div>
+                <div class="node actuator">
+                  <span class="node-title">Outputs / Vehicle</span>
+                  <span class="node-detail">PWM, DShot, UAVCAN<br>ESCs, motors, servos<br>airframe dynamics</span>
+                </div>
+              </div>
+              <div class="arrow-row" aria-hidden="true">
+                <span>-></span><span>-></span><span>state</span><span>mode</span><span>setpoint</span><span>torque/thrust</span><span>actuation</span>
+              </div>
+              <div class="flow-note">
+                <span>State feedback: EKF2 outputs feed the position, attitude, and rate control loops.</span>
+                <span>Supervision: commander gates which control loops are allowed to run.</span>
+                <span>Allocator feedback: saturation status feeds back to the rate-loop anti-windup logic.</span>
+              </div>
+            </div>
+          </div>
+
+          <p>
+            The dashed feedback lines are important: controllers are not open-loop command converters. EKF2 state outputs
+            feed back into the position and attitude loops, and allocator saturation status feeds back into the rate
+            controller anti-windup logic.
+          </p>
+        </div>
+
+        <div class="section" id="vehicle-model">
+          <h2>3. Vehicle Model Dependency</h2>
+          <p>
+            The PX4 controller is not fully independent from the vehicle model. PX4 shares the same high-level architecture
+            across vehicles, but the actual control law and actuator mapping are vehicle-specific. A multicopter, fixed-wing
+            aircraft, Ackermann rover, differential rover, and mecanum rover do not use the same controller.
+          </p>
+
+          <div class="equation">
+            <code>common architecture = sensors + EKF2 + commander + modes + uORB + actuator outputs</code><br>
+            <code>vehicle-specific part = controller module + actuator mapping + geometry parameters</code>
+          </div>
+
+          <p>
+            For a Land Rover style platform, the closest PX4 vehicle class is an <strong>Ackermann rover</strong>: one
+            forward/reverse throttle output and one steering output. PX4 routes manual, mission, or offboard commands into
+            rover setpoints, then the Ackermann controller converts those setpoints into throttle and steering.
+          </p>
+
+          <pre><code>manual / mission / offboard command
+  -> rover position, speed, yaw, and yaw-rate setpoints
+  -> rover_ackermann controller stack
+  -> rover_throttle_setpoint + rover_steering_setpoint
+  -> actuator_motors.control[0] + actuator_servos.control[0]</code></pre>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Vehicle type</th>
+                <th>PX4 controller</th>
+                <th>Actuator meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Car / Land Rover style front steering</td>
+                <td><code>rover_ackermann</code></td>
+                <td>Motor output 0 is throttle. Servo output 0 is steering.</td>
+              </tr>
+              <tr>
+                <td>Tank / skid steering</td>
+                <td><code>rover_differential</code></td>
+                <td>Left/right wheel speeds are computed from throttle and steering.</td>
+              </tr>
+              <tr>
+                <td>Omnidirectional mecanum platform</td>
+                <td><code>rover_mecanum</code></td>
+                <td>Wheel commands combine forward, lateral, and yaw motion.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section" id="internal">
+          <h2>4. Controller Internals</h2>
+          <p>
+            The multicopter controller uses nested loops. Outer loops run on position/velocity information. Inner loops run
+            on attitude and gyro-rate information. Inner loops are faster and closer to the actuators.
+          </p>
+
+          <div class="diagram" role="img" aria-label="PX4 multicopter controller internal block diagram">
+            <div class="flow">
+              <div class="flow-row">
+                <div class="node state">
+                  <span class="node-title">Trajectory</span>
+                  <span class="node-detail">position<br>velocity<br>accel, yaw</span>
+                </div>
+                <div class="node state">
+                  <span class="node-title">Position P</span>
+                  <span class="node-detail">position error<br>to velocity setpoint</span>
+                </div>
+                <div class="node state">
+                  <span class="node-title">Velocity PID</span>
+                  <span class="node-detail">velocity error<br>to acceleration setpoint</span>
+                </div>
+                <div class="node control">
+                  <span class="node-title">Thrust Mapper</span>
+                  <span class="node-detail">acceleration<br>to thrust vector</span>
+                </div>
+                <div class="node control">
+                  <span class="node-title">Attitude P</span>
+                  <span class="node-detail">quaternion error<br>to body rates</span>
+                </div>
+                <div class="node control">
+                  <span class="node-title">Rate PID</span>
+                  <span class="node-detail">gyro-rate error<br>to body torque</span>
+                </div>
+                <div class="node actuator">
+                  <span class="node-title">Allocator</span>
+                  <span class="node-detail">effectiveness matrix<br>desaturation</span>
+                </div>
+                <div class="node actuator">
+                  <span class="node-title">Actuators</span>
+                  <span class="node-detail">motors<br>servos</span>
+                </div>
+              </div>
+              <div class="arrow-row" aria-hidden="true">
+                <span>-></span><span>-></span><span>-></span><span>-></span><span>-></span><span>-></span><span>-></span>
+              </div>
+              <div class="flow-note">
+                <span>Position and velocity feedback close the outer loop through EKF2 local position.</span>
+                <span>Attitude and gyro-rate feedback close the inner loop through EKF2 attitude and angular velocity.</span>
+                <span>Allocator saturation feedback protects the rate-loop integrator during actuator limits.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <h3>Outer Loop</h3>
+              <p>
+                The outer loop handles position and velocity tracking. It is most affected by GNSS, optical flow, visual
+                odometry, barometer, range sensors, and EKF2 local-position quality.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Inner Loop</h3>
+              <p>
+                The inner loop handles attitude and angular-rate tracking. It is most affected by gyro quality, frame
+                dynamics, actuator latency, control allocation, and rate-controller tuning.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section" id="math">
+          <h2>5. Control Equations</h2>
+          <p>
+            These equations are simplified representations of the implementation. They show the data flow without every
+            limiter, failsafe, saturation, takeoff ramp, NaN setpoint rule, or filter.
+          </p>
+
+          <h3>Position to velocity</h3>
+          <div class="equation">
+            <code>v_sp = v_ff + K_pos_p * (p_sp - p)</code>
+          </div>
+          <p>
+            PX4 applies a proportional position controller. The result is constrained by velocity limits and combined with
+            feed-forward velocity when provided.
+          </p>
+
+          <h3>Velocity to acceleration</h3>
+          <div class="equation">
+            <code>a_sp = a_ff + K_vel_p * (v_sp - v) + I_vel - K_vel_d * v_dot</code><br>
+            <code>I_vel[k+1] = I_vel[k] + K_vel_i * (v_sp - v) * dt</code>
+          </div>
+          <p>
+            The velocity loop is PID-style. PX4 includes anti-windup and saturation handling so the integrator does not keep
+            pushing into actuator limits.
+          </p>
+
+          <h3>Acceleration to thrust and attitude</h3>
+          <div class="equation">
+            <code>body_z_sp = normalize([-a_sp,x, -a_sp,y, g - a_sp,z])</code><br>
+            <code>thrust_sp = body_z_sp * collective_thrust</code>
+          </div>
+          <p>
+            The acceleration demand becomes a desired thrust direction. PX4 limits tilt and maps acceleration to normalized
+            collective thrust using the hover-thrust estimate.
+          </p>
+
+          <h3>Attitude to body-rate setpoint</h3>
+          <div class="equation">
+            <code>q_error = inverse(q) * q_desired</code><br>
+            <code>e_q = 2 * imag(canonical(q_error))</code><br>
+            <code>omega_sp = K_att_p * e_q + yaw_rate_ff</code>
+          </div>
+          <p>
+            The attitude loop uses quaternion error. Roll and pitch are prioritized over yaw using the yaw-weight logic.
+          </p>
+
+          <h3>Body-rate to torque</h3>
+          <div class="equation">
+            <code>tau_sp = K_rate_p * (omega_sp - omega) + I_rate - K_rate_d * angular_accel + K_rate_ff * omega_sp</code>
+          </div>
+          <p>
+            The rate loop is the innermost multicopter feedback loop. It consumes gyro angular velocity and angular
+            acceleration, then produces body torque setpoints.
+          </p>
+
+          <h3>Torque and thrust to actuators</h3>
+          <div class="equation">
+            <code>u = allocate(tau_sp, thrust_sp, actuator_effectiveness, constraints)</code>
+          </div>
+          <p>
+            The allocator maps desired force and moment into actuator commands. Depending on the configured method, it uses
+            pseudo-inverse allocation with clipping or sequential desaturation.
+          </p>
+        </div>
+
+        <div class="section" id="implementation">
+          <h2>6. Implementation Map</h2>
+          <p>
+            PX4 uses separate modules for the major loops. The following tables map the controller concepts to files and
+            topics in this source tree.
+          </p>
+
+          <h3 id="mc-implementation">Multicopter Controller</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Block</th>
+                <th>Files</th>
+                <th>Inputs</th>
+                <th>Outputs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Position and velocity control</td>
+                <td>
+                  <span class="path">src/modules/mc_pos_control/MulticopterPositionControl.cpp</span><br>
+                  <span class="path">src/modules/mc_pos_control/PositionControl/PositionControl.cpp</span>
+                </td>
+                <td>
+                  <code>vehicle_local_position</code>, <code>trajectory_setpoint</code>,
+                  <code>vehicle_constraints</code>, <code>vehicle_control_mode</code>
+                </td>
+                <td>
+                  <code>vehicle_attitude_setpoint</code>, <code>vehicle_local_position_setpoint</code>
+                </td>
+              </tr>
+              <tr>
+                <td>Attitude control</td>
+                <td>
+                  <span class="path">src/modules/mc_att_control/mc_att_control_main.cpp</span><br>
+                  <span class="path">src/modules/mc_att_control/AttitudeControl/AttitudeControl.cpp</span>
+                </td>
+                <td>
+                  <code>vehicle_attitude</code>, <code>vehicle_attitude_setpoint</code>,
+                  <code>vehicle_local_position</code>
+                </td>
+                <td>
+                  <code>vehicle_rates_setpoint</code>
+                </td>
+              </tr>
+              <tr>
+                <td>Rate control</td>
+                <td>
+                  <span class="path">src/modules/mc_rate_control/MulticopterRateControl.cpp</span><br>
+                  <span class="path">src/lib/rate_control/rate_control.cpp</span>
+                </td>
+                <td>
+                  <code>vehicle_angular_velocity</code>, <code>vehicle_rates_setpoint</code>,
+                  <code>control_allocator_status</code>
+                </td>
+                <td>
+                  <code>vehicle_torque_setpoint</code>, <code>vehicle_thrust_setpoint</code>,
+                  <code>rate_ctrl_status</code>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 id="fw-implementation">Fixed-wing Controller</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Block</th>
+                <th>Files</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Lateral and longitudinal control</td>
+                <td><span class="path">src/modules/fw_lateral_longitudinal_control/FwLateralLongitudinalControl.cpp</span></td>
+                <td>
+                  Uses lateral guidance and TECS-style longitudinal energy control to produce roll, pitch, throttle, and
+                  airspeed-related setpoints.
+                </td>
+              </tr>
+              <tr>
+                <td>Fixed-wing attitude control</td>
+                <td><span class="path">src/modules/fw_att_control/FixedwingAttitudeControl.cpp</span></td>
+                <td>Converts fixed-wing attitude setpoints to rate setpoints.</td>
+              </tr>
+              <tr>
+                <td>Fixed-wing rate control</td>
+                <td><span class="path">src/modules/fw_rate_control/FixedwingRateControl.cpp</span></td>
+                <td>Runs roll, pitch, and yaw rate loops for control-surface outputs.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 id="rover-implementation">Rover Controller</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Block</th>
+                <th>Files</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ackermann rover</td>
+                <td>
+                  <span class="path">src/modules/rover_ackermann/RoverAckermann.cpp</span><br>
+                  <span class="path">src/modules/rover_ackermann/AckermannActControl/AckermannActControl.cpp</span>
+                </td>
+                <td>
+                  Starts mode-specific rover setpoint generation, runs position/speed/yaw/yaw-rate layers, then publishes
+                  throttle to <code>actuator_motors.control[0]</code> and steering to
+                  <code>actuator_servos.control[0]</code>.
+                </td>
+              </tr>
+              <tr>
+                <td>Differential rover</td>
+                <td>
+                  <span class="path">src/modules/rover_differential/RoverDifferential.cpp</span><br>
+                  <span class="path">src/modules/rover_differential/DifferentialActControl/DifferentialActControl.cpp</span>
+                </td>
+                <td>
+                  Converts throttle and steering into left/right wheel commands:
+                  <code>left = throttle - steering</code>, <code>right = throttle + steering</code>.
+                </td>
+              </tr>
+              <tr>
+                <td>Mecanum rover</td>
+                <td>
+                  <span class="path">src/modules/rover_mecanum/RoverMecanum.cpp</span><br>
+                  <span class="path">src/modules/rover_mecanum/MecanumActControl/MecanumActControl.cpp</span>
+                </td>
+                <td>
+                  Handles forward, lateral, and yaw commands for omnidirectional wheel platforms.
+                </td>
+              </tr>
+              <tr>
+                <td>Rover startup scripts</td>
+                <td>
+                  <span class="path">ROMFS/px4fmu_common/init.d/airframes/51000_generic_rover_ackermann</span><br>
+                  <span class="path">ROMFS/px4fmu_common/init.d/rc.rover_ackermann_apps</span><br>
+                  <span class="path">ROMFS/px4fmu_common/init.d/rc.rover_ackermann_defaults</span>
+                </td>
+                <td>
+                  Selects <code>VEHICLE_TYPE=rover_ackermann</code>, sets ground-rover defaults, and starts
+                  <code>rover_ackermann</code> when the Ackermann airframe is selected.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 id="allocation-implementation">Control Allocation and Outputs</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Block</th>
+                <th>Files</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Control allocator</td>
+                <td><span class="path">src/modules/control_allocator/ControlAllocator.cpp</span></td>
+                <td>
+                  Selects actuator effectiveness, consumes thrust/torque setpoints, runs allocation, publishes
+                  <code>actuator_motors</code> and <code>actuator_servos</code>.
+                </td>
+              </tr>
+              <tr>
+                <td>Actuator effectiveness</td>
+                <td><span class="path">src/modules/control_allocator/VehicleActuatorEffectiveness/</span></td>
+                <td>
+                  Defines the vehicle geometry and effectiveness matrix for multirotor, fixed-wing, VTOL, helicopter,
+                  UUV, spacecraft, and custom airframes.
+                </td>
+              </tr>
+              <tr>
+                <td>Output drivers</td>
+                <td><span class="path">src/drivers/</span></td>
+                <td>Convert actuator topics to hardware outputs such as PWM, DShot, UAVCAN, or board-specific drivers.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section" id="parameters">
+          <h2>7. Parameter Map</h2>
+          <p>
+            Tuning should follow the loop order from inside to outside: rate loop first, attitude loop second, velocity and
+            position loops last. Allocation geometry must be correct before controller tuning is meaningful.
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th>Important parameters</th>
+                <th>Definition files</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Multicopter position loop</td>
+                <td>
+                  <code>MPC_XY_P</code>, <code>MPC_Z_P</code>,
+                  <code>MPC_XY_VEL_P_ACC</code>, <code>MPC_XY_VEL_I_ACC</code>,
+                  <code>MPC_XY_VEL_D_ACC</code>, <code>MPC_Z_VEL_P_ACC</code>,
+                  <code>MPC_Z_VEL_I_ACC</code>, <code>MPC_Z_VEL_D_ACC</code>
+                </td>
+                <td><span class="path">src/modules/mc_pos_control/multicopter_position_control_gain_params.yaml</span></td>
+              </tr>
+              <tr>
+                <td>Multicopter limits and motion shaping</td>
+                <td>
+                  <code>MPC_XY_VEL_MAX</code>, <code>MPC_Z_VEL_MAX_UP</code>,
+                  <code>MPC_Z_VEL_MAX_DN</code>, <code>MPC_TILTMAX_AIR</code>,
+                  <code>MPC_THR_MIN</code>, <code>MPC_THR_MAX</code>,
+                  <code>MPC_ACC_HOR_MAX</code>, <code>MPC_JERK_MAX</code>
+                </td>
+                <td>
+                  <span class="path">src/modules/mc_pos_control/multicopter_position_control_limits_params.yaml</span><br>
+                  <span class="path">src/modules/mc_pos_control/multicopter_position_mode_params.yaml</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Hover thrust</td>
+                <td>
+                  <code>MPC_THR_HOVER</code>, plus optional hover-thrust estimator output
+                  <code>hover_thrust_estimate</code>
+                </td>
+                <td><span class="path">src/modules/mc_pos_control/multicopter_position_control_params.yaml</span></td>
+              </tr>
+              <tr>
+                <td>Multicopter attitude loop</td>
+                <td>
+                  <code>MC_ROLL_P</code>, <code>MC_PITCH_P</code>, <code>MC_YAW_P</code>,
+                  <code>MC_YAW_WEIGHT</code>, <code>MC_ROLLRATE_MAX</code>,
+                  <code>MC_PITCHRATE_MAX</code>, <code>MC_YAWRATE_MAX</code>
+                </td>
+                <td><span class="path">src/modules/mc_att_control/mc_att_control_params.yaml</span></td>
+              </tr>
+              <tr>
+                <td>Multicopter rate loop</td>
+                <td>
+                  <code>MC_ROLLRATE_P/I/D/FF/K</code>, <code>MC_PITCHRATE_P/I/D/FF/K</code>,
+                  <code>MC_YAWRATE_P/I/D/FF/K</code>, <code>MC_RR_INT_LIM</code>,
+                  <code>MC_PR_INT_LIM</code>, <code>MC_YR_INT_LIM</code>
+                </td>
+                <td><span class="path">src/modules/mc_rate_control/mc_rate_control_params.yaml</span></td>
+              </tr>
+              <tr>
+                <td>Control allocation</td>
+                <td>
+                  <code>CA_AIRFRAME</code>, <code>CA_METHOD</code>, <code>CA_ROTOR_COUNT</code>,
+                  <code>CA_ROTOR*_PX/PY/PZ</code>, <code>CA_ROTOR*_AX/AY/AZ</code>,
+                  <code>CA_ROTOR*_CT</code>, <code>CA_ROTOR*_KM</code>
+                </td>
+                <td><span class="path">src/modules/control_allocator/module.yaml</span></td>
+              </tr>
+              <tr>
+                <td>Ackermann rover geometry</td>
+                <td>
+                  <code>RA_WHEEL_BASE</code>, <code>RA_MAX_STR_ANG</code>,
+                  <code>RA_STR_RATE_LIM</code>, <code>RA_ACC_RAD_MAX</code>,
+                  <code>RA_ACC_RAD_GAIN</code>
+                </td>
+                <td><span class="path">src/modules/rover_ackermann/module.yaml</span></td>
+              </tr>
+              <tr>
+                <td>Common rover control</td>
+                <td>
+                  <code>RO_MAX_THR_SPEED</code>, <code>RO_SPEED_LIM</code>,
+                  <code>RO_SPEED_P</code>, <code>RO_SPEED_I</code>,
+                  <code>RO_ACCEL_LIM</code>, <code>RO_DECEL_LIM</code>,
+                  <code>RO_YAW_P</code>, <code>RO_YAW_RATE_P</code>,
+                  <code>RO_YAW_RATE_I</code>, <code>RO_YAW_RATE_LIM</code>
+                </td>
+                <td><span class="path">src/lib/rover_control/rovercontrol_params.yaml</span></td>
+              </tr>
+              <tr>
+                <td>Fixed-wing lateral/longitudinal</td>
+                <td>
+                  <code>FW_PN_R_SLEW_MAX</code>, <code>FW_GND_SPD_MIN</code>,
+                  <code>FW_THR_SLEW_MAX</code>, <code>FW_T_THR_DAMPING</code>,
+                  <code>FW_T_THR_INTEG</code>, <code>FW_T_I_GAIN_PIT</code>,
+                  <code>FW_T_ALT_TC</code>, <code>FW_T_VERT_ACC</code>
+                </td>
+                <td><span class="path">src/modules/fw_lateral_longitudinal_control/fw_lat_long_params.yaml</span></td>
+              </tr>
+              <tr>
+                <td>Fixed-wing rate loop</td>
+                <td>
+                  <code>FW_RR_P/I/D/FF</code>, <code>FW_PR_P/I/D/FF</code>,
+                  <code>FW_YR_P/I/D/FF</code>, <code>FW_RR_IMAX</code>,
+                  <code>FW_PR_IMAX</code>, <code>FW_YR_IMAX</code>
+                </td>
+                <td><span class="path">src/modules/fw_rate_control/fw_rate_control_params.yaml</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="warning note">
+            <strong>Tuning order:</strong> do not tune outer-loop position gains to hide a bad rate loop, bad motor geometry,
+            wrong motor direction, wrong hover thrust, or poor estimator state. Fix allocation, actuator behavior, and inner
+            loops first.
+          </div>
+        </div>
+
+        <div class="section" id="topics">
+          <h2>8. uORB Topic Flow</h2>
+          <p>
+            The controller modules communicate through uORB topics. This topic-level view is useful when debugging logs or
+            tracing data through PX4.
+          </p>
+
+          <pre><code>sensor_accel / sensor_gyro / sensor_baro / sensor_gps / sensor_mag
+  -> sensors
+  -> sensor_combined, vehicle_imu
+  -> ekf2
+  -> vehicle_attitude, vehicle_local_position, vehicle_global_position
+
+manual_control_setpoint / mission / offboard setpoints
+  -> commander, navigator, flight_mode_manager
+  -> vehicle_control_mode, trajectory_setpoint, vehicle_constraints
+
+vehicle_local_position + trajectory_setpoint
+  -> mc_pos_control
+  -> vehicle_attitude_setpoint + vehicle_local_position_setpoint
+
+vehicle_attitude + vehicle_attitude_setpoint
+  -> mc_att_control
+  -> vehicle_rates_setpoint
+
+vehicle_angular_velocity + vehicle_rates_setpoint
+  -> mc_rate_control
+  -> vehicle_torque_setpoint + vehicle_thrust_setpoint
+
+vehicle_torque_setpoint + vehicle_thrust_setpoint + actuator geometry
+  -> control_allocator
+  -> actuator_motors + actuator_servos
+  -> output driver
+  -> ESCs, motors, servos
+
+Ackermann rover command path:
+manual_control_setpoint / mission / offboard setpoints
+  -> rover_position_setpoint, rover_speed_setpoint, rover_attitude_setpoint, rover_rate_setpoint
+  -> rover_ackermann
+  -> rover_throttle_setpoint + rover_steering_setpoint
+  -> actuator_motors.control[0] + actuator_servos.control[0]
+  -> motor controller + steering servo</code></pre>
+        </div>
+
+        <div class="section" id="ackermann-build">
+          <h2>9. Ackermann Rover Build</h2>
+          <p>
+            A Land Rover style platform should normally be built as an Ackermann rover. PX4 already provides the generic
+            Ackermann airframe <code>51000_generic_rover_ackermann</code>. That airframe loads
+            <code>rc.rover_ackermann_defaults</code>, which sets <code>VEHICLE_TYPE=rover_ackermann</code>,
+            <code>MAV_TYPE=10</code>, and <code>CA_AIRFRAME=5</code>, then the vehicle setup starts
+            <code>rover_ackermann</code>.
+          </p>
+
+          <h3>Use an existing rover board target</h3>
+          <p>
+            Several PX4 board configurations already include rover modules. Pick the target matching the flight controller
+            hardware, then build the rover variant:
+          </p>
+          <pre><code>make px4_fmu-v6x_rover
+make px4_fmu-v5_rover
+make ark_fmu-v6x_rover</code></pre>
+          <p>
+            Those rover board variants enable <code>CONFIG_MODULES_ROVER_ACKERMANN</code>,
+            <code>CONFIG_MODULES_ROVER_DIFFERENTIAL</code>, and <code>CONFIG_MODULES_ROVER_MECANUM</code>, while disabling
+            unused multicopter and fixed-wing controller modules to save flash and RAM.
+          </p>
+
+          <h3>Build a Nucleo H753ZI rover variant</h3>
+          <p>
+            In this checkout, <span class="path">boards/st/nucleo-h753zi/default.px4board</span> currently enables the
+            multicopter controller modules and does not enable <code>CONFIG_MODULES_ROVER_ACKERMANN</code>. For a rover
+            build, create a dedicated board configuration such as
+            <span class="path">boards/st/nucleo-h753zi/rover.px4board</span> based on the default file, then enable the
+            Ackermann rover module.
+          </p>
+          <pre><code># Keep the core platform, estimator, commander, navigation, IO, and sensor options from default.px4board.
+CONFIG_MODULES_ROVER_ACKERMANN=y
+
+# Optional for a Land Rover style platform if flash/RAM are tight:
+CONFIG_MODULES_ROVER_DIFFERENTIAL=n
+CONFIG_MODULES_ROVER_MECANUM=n
+CONFIG_MODULES_MC_ATT_CONTROL=n
+CONFIG_MODULES_MC_POS_CONTROL=n
+CONFIG_MODULES_MC_RATE_CONTROL=n
+CONFIG_MODULES_MC_HOVER_THRUST_ESTIMATOR=n</code></pre>
+          <p>
+            Build the new variant with:
+          </p>
+          <pre><code>make st_nucleo-h753zi_rover</code></pre>
+          <p>
+            If you instead modify <span class="path">default.px4board</span> directly, the build command remains:
+          </p>
+          <pre><code>make st_nucleo-h753zi_default</code></pre>
+
+          <h3>Select the Ackermann airframe</h3>
+          <p>
+            After flashing, select the Generic Rover Ackermann airframe in QGroundControl, or set the airframe from the PX4
+            shell:
+          </p>
+          <pre><code>param set SYS_AUTOSTART 51000
+param save
+reboot</code></pre>
+
+          <h3>Configure the physical vehicle</h3>
+          <p>
+            Set the geometry and motion limits before tuning controller gains:
+          </p>
+          <pre><code>param set RA_WHEEL_BASE &lt;front_to_rear_axle_distance_m&gt;
+param set RA_MAX_STR_ANG &lt;max_steering_angle_rad&gt;
+param set RA_STR_RATE_LIM &lt;steering_rate_limit_deg_s&gt;
+param set RO_MAX_THR_SPEED &lt;speed_at_full_throttle_m_s&gt;
+param set RO_SPEED_LIM &lt;max_commanded_speed_m_s&gt;
+param set RO_ACCEL_LIM &lt;max_acceleration_m_s2&gt;
+param set RO_DECEL_LIM &lt;max_deceleration_m_s2&gt;
+param save</code></pre>
+
+          <div class="note">
+            <strong>Output expectation:</strong> for the Ackermann rover module in this tree,
+            <code>actuator_motors.control[0]</code> is the throttle output and
+            <code>actuator_servos.control[0]</code> is the steering output. The board output driver and actuator function
+            mapping must route those logical outputs to the actual motor controller and steering servo pins.
+          </div>
+        </div>
+
+        <div class="section" id="notes">
+          <h2>10. Notes and Caveats</h2>
+          <ul>
+            <li>
+              <code>MPC_*</code> parameters belong to multicopter position control. They do not imply model predictive
+              control.
+            </li>
+            <li>
+              PX4 has multiple vehicle-specific control stacks. Multicopter, fixed-wing, VTOL, rover, UUV, and spacecraft
+              controllers share some infrastructure but do not all use the same control law.
+            </li>
+            <li>
+              Offboard mode can bypass parts of the onboard guidance stack by sending lower-level setpoints, but the
+              onboard attitude, rate, and allocation loops may still run depending on the selected offboard control mode.
+            </li>
+            <li>
+              The control allocator feeds saturation status back to the rate controller. That feedback is part of
+              anti-windup behavior and is important when actuators saturate.
+            </li>
+            <li>
+              Estimator quality directly affects control quality. Position-control tuning should be evaluated together with
+              EKF innovations, local-position validity, vibration, and sensor timing.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

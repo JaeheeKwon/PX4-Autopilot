@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="mc_att_control.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>mc_att_control</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>This implements the multicopter attitude controller. It takes attitude setpoints (`vehicle_attitude_setpoint`) as inputs and outputs a rate setpoint. The controller has a P loop for angular error Publication documenting the implemented Quaternion Attitude Control: Nonlinear Quadrocopter Attitude Control (2013) by Dario Brescianini, Markus Hehn and Raffaello D&#x27;Andrea Institute for Dynamic Systems and Control (IDSC), ETH Zurich https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/154099/eth-7387-01.p</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/mc_att_control</code></div>
       <div><strong>Build target</strong><br><code>modules__mc_att_control</code></div>
@@ -108,6 +120,30 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Runs multicopter attitude control and converts attitude setpoints into body-rate setpoints.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.</li><li>Consume runtime inputs from uORB topics such as `autotune_attitude_control_status`, `hover_thrust_estimate`, `manual_control_setpoint`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_land_detected`, ... 2 more.</li><li>Publish outputs or status topics such as `mc_virtual_attitude_setpoint`, `vehicle_attitude_setpoint`, `vehicle_rates_setpoint`.</li><li>Use module configuration from `mc_att_control_params.yaml`.</li><li>Implement the main behavior in classes such as `AttitudeControl`, `AttitudeControlConvergenceTest`, `MulticopterAttitudeControl`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Multicopter attitude control is quaternion based. The reduced attitude error is converted to a body-rate setpoint; yaw can be weighted lower than roll/pitch.</p>
+    <pre class="math-block">q_err = inverse(q_body) * q_sp
+e_q = sign(q_err.w) * q_err.xyz
+rate_sp = 2 * K_att * e_q + yaw_feedforward
+rate_sp.xy = limit_tilt_priority(rate_sp.xy)
+rate_sp.z = yaw_weight * rate_sp.z</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`autotune_attitude_control_status`, `hover_thrust_estimate`, `manual_control_setpoint`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_local_position`, `vehicle_status`</td></tr><tr><td>Primary outputs</td><td>`mc_virtual_attitude_setpoint`, `vehicle_attitude_setpoint`, `vehicle_rates_setpoint`</td></tr><tr><td>Referenced topics</td><td>`autotune_attitude_control_status`, `hover_thrust_estimate`, `manual_control_setpoint`, `mc_virtual_attitude_setpoint`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_local_position`, ... 2 more</td></tr><tr><td>Parameters/config</td><td>mc_att_control_params.yaml</td></tr><tr><td>Key classes</td><td>`AttitudeControl`, `AttitudeControlConvergenceTest`, `MulticopterAttitudeControl`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>mc_att_control_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>AttitudeControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>mc_att_control_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>AttitudeControl/AttitudeControl.hpp</td><td>Defines `AttitudeControl` class</td></tr><tr><td>AttitudeControl/AttitudeControlTest.cpp</td><td>Defines `AttitudeControlConvergenceTest` class</td></tr><tr><td>mc_att_control.hpp</td><td>Defines `MulticopterAttitudeControl` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -145,7 +181,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/mc_att_control</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__mc_att_control</td></tr><tr><td>Runtime main</td><td>mc_att_control</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>mc_att_control_params.yaml</td></tr><tr><td>Detected sources</td><td>4</td></tr><tr><td>Detected headers</td><td>3</td></tr><tr><td>Detected configs</td><td>3</td></tr></tbody></table>
 

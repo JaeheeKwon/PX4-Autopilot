@@ -8,6 +8,60 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Estimates the hover thrust needed by the multicopter position controller.
+
+### Primary Responsibilities
+
+- Fuse, filter, or validate measurements into estimated state outputs for other modules.
+- Consume runtime inputs from uORB topics such as `control_allocator_status`, `hover_thrust_estimate`, `parameter_update`, `vehicle_attitude`, `vehicle_land_detected`, `vehicle_local_position`, `vehicle_status`, `vehicle_thrust_setpoint`.
+- Publish outputs or status topics such as `hover_thrust_estimate`.
+- Use module configuration from `hover_thrust_estimator_params.yaml`.
+- Implement the main behavior in classes such as `MulticopterHoverThrustEstimator`, `ZeroOrderHoverThrustEkf`, `ZeroOrderHoverThrustEkfTest`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+The hover-thrust estimator is a single-state EKF. The state is hover thrust, and vertical acceleration provides the measurement information.
+
+```text
+State: x = hover_thrust
+Prediction: x[k|k-1] = x[k-1|k-1]
+P[k|k-1] = P[k-1|k-1] + Q
+Measurement model: z_accel ~= g * (thrust_cmd / x - 1)
+H = d h(x) / dx = -g * thrust_cmd / x^2
+K = P*H / (H*P*H + R)
+x = x + K*(z - h(x))
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `control_allocator_status`, `hover_thrust_estimate`, `parameter_update`, `vehicle_attitude`, `vehicle_land_detected`, `vehicle_local_position`, `vehicle_status`, `vehicle_thrust_setpoint` |
+| Primary outputs | `hover_thrust_estimate` |
+| Referenced topics | `control_allocator_status`, `hover_thrust_estimate`, `parameter_update`, `vehicle_attitude`, `vehicle_land_detected`, `vehicle_local_position`, `vehicle_status`, `vehicle_thrust_setpoint` |
+| Parameters/config | hover_thrust_estimator_params.yaml |
+| Key classes | `MulticopterHoverThrustEstimator`, `ZeroOrderHoverThrustEkf`, `ZeroOrderHoverThrustEkfTest` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| MulticopterHoverThrustEstimator.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| hover_thrust_estimator_params.yaml | Build, parameter, or module configuration |
+| MulticopterHoverThrustEstimator.hpp | Defines `MulticopterHoverThrustEstimator` class |
+| zero_order_hover_thrust_ekf.hpp | Defines `ZeroOrderHoverThrustEkf` class |
+| zero_order_hover_thrust_ekf_test.cpp | Defines `ZeroOrderHoverThrustEkfTest` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

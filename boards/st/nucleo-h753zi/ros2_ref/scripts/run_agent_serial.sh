@@ -5,7 +5,7 @@ DEVICE="${1:-/dev/ttyUSB0}"
 BAUD="${2:-921600}"
 
 if ! command -v MicroXRCEAgent >/dev/null 2>&1; then
-  echo "MicroXRCEAgent not found. Build and install eProsima Micro-XRCE-DDS-Agent v2.4.3 first." >&2
+  echo "MicroXRCEAgent not found. Build and install eProsima Micro-XRCE-DDS-Agent v2.4.2 for ROS 2 Humble first." >&2
   exit 1
 fi
 
@@ -16,4 +16,3 @@ fi
 
 echo "Starting MicroXRCEAgent on ${DEVICE} at ${BAUD} baud"
 exec MicroXRCEAgent serial --dev "${DEVICE}" -b "${BAUD}"
-

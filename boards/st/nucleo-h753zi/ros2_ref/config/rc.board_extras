@@ -6,7 +6,7 @@
 #   boards/st/nucleo-h753zi/init/rc.board_extras
 # then rebuild and flash `st_nucleo-h753zi_default`.
 
-echo "[PX4] starting Nucleo-H753ZI uXRCE-DDS reference link"
+echo "[PX4] checking Nucleo-H753ZI uXRCE-DDS reference link"
 
 # ROS 2 defaults to DDS domain 0. Keep these as defaults so users can override
 # persisted parameters from QGC or the PX4 shell without editing this file.
@@ -14,7 +14,10 @@ param set-default UXRCE_DDS_DOM_ID 0
 param set-default UXRCE_DDS_KEY 1
 param set-default UXRCE_DDS_SYNCT 1
 
-# USART6 is exposed on CN10 D0/D1 and enumerates as /dev/ttyS1 in this board
-# configuration. CN13 USB remains reserved for MAVLink HITL and QGC.
-uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600
-
+# USART6 is exposed on the stock MB1364 Morpho headers: target PG14/CN12-61
+# (TX) and PG9/CN11-63 (RX). It needs no solder-bridge change and enumerates as
+# /dev/ttyS1. CN13 USB remains reserved for MAVLink HITL and QGC.
+if ! uxrce_dds_client status
+then
+    uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600
+fi

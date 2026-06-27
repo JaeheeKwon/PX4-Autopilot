@@ -8,6 +8,56 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Estimates relative landing-target position from target observations and vehicle state.
+
+### Primary Responsibilities
+
+- Fuse, filter, or validate measurements into estimated state outputs for other modules.
+- Consume runtime inputs from uORB topics such as `irlock_report`, `parameter_update`, `vehicle_acceleration`, `vehicle_attitude`, `vehicle_local_position`.
+- Publish outputs or status topics such as `landing_target_innovations`, `landing_target_pose`.
+- Use module configuration from `landing_target_estimator_params.yaml`.
+- Implement the main behavior in classes such as `KalmanFilter`, `LandingTargetEstimator`, `TargetMode`.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+
+## Background Theory
+
+The landing target estimator turns a relative sensor observation into a target position in the navigation frame and filters it over time.
+
+```text
+p_target_ned = p_vehicle_ned + R_body_to_ned * p_target_body
+innovation = z_target - H*x
+K = P*H^T * inverse(H*P*H^T + R)
+x = x + K*innovation
+P = (I - K*H)*P
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `irlock_report`, `parameter_update`, `vehicle_acceleration`, `vehicle_attitude`, `vehicle_local_position` |
+| Primary outputs | `landing_target_innovations`, `landing_target_pose` |
+| Referenced topics | `irlock_report`, `landing_target_innovations`, `landing_target_pose`, `parameter_update`, `vehicle_acceleration`, `vehicle_attitude`, `vehicle_local_position` |
+| Parameters/config | landing_target_estimator_params.yaml |
+| Key classes | `KalmanFilter`, `LandingTargetEstimator`, `TargetMode` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| landing_target_estimator_main.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| landing_target_estimator_params.yaml | Build, parameter, or module configuration |
+| KalmanFilter.h | Defines `KalmanFilter` class |
+| LandingTargetEstimator.h | Defines `LandingTargetEstimator` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

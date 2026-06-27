@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quaternion and NED Conversion Derivations</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --paper: #ffffff;
+      --ink: #1f2933;
+      --muted: #5f6b7a;
+      --line: #d8dee8;
+      --accent: #0f6f78;
+      --accent-soft: #e4f3f4;
+      --code-bg: #f1f4f8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.58 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 32px auto 64px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 45px rgba(31, 41, 51, 0.08);
+    }
+
+    .hero {
+      padding: 42px 48px 28px;
+      border-bottom: 1px solid var(--line);
+      border-radius: 8px 8px 0 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbfc 100%);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .index-sidebar {
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      padding: 24px 18px;
+      border-right: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .index-title {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .index-sidebar a {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 4px;
+      color: var(--ink);
+      font-size: 0.92rem;
+      line-height: 1.25;
+      text-decoration: none;
+    }
+
+    .index-sidebar a:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .section {
+      padding: 30px 48px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 2.1rem;
+      max-width: 820px;
+    }
+
+    h2 {
+      font-size: 1.42rem;
+      margin-bottom: 14px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin: 24px 0 8px;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code,
+    .path {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+      background: var(--code-bg);
+      border: 1px solid #e1e7ef;
+      border-radius: 4px;
+      padding: 0.08rem 0.28rem;
+    }
+
+    .lead {
+      color: var(--muted);
+      max-width: 880px;
+      margin-top: 14px;
+      font-size: 1.05rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 14px 16px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .equation {
+      overflow-x: auto;
+      padding: 12px 14px;
+      margin: 14px 0 18px;
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 14px 0 18px;
+      padding: 14px 16px;
+      background: #101820;
+      color: #eef6ff;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      display: block;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    ul {
+      margin: 0 0 18px 1.2rem;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .index-sidebar {
+        position: static;
+        max-height: none;
+        padding: 18px 20px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: 100%;
+        margin: 0;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+      }
+
+      .hero,
+      .section {
+        padding: 26px 20px;
+      }
+
+      h1 {
+        font-size: 1.7rem;
+      }
+    }
+  </style>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [["\\(", "\\)"]],
+        displayMath: [["\\[", "\\]"]]
+      },
+      svg: {fontCache: "global"}
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <h1>Quaternion, Euler, and NED Conversion Derivations</h1>
+    <p class="lead">
+      This page derives the attitude conversion equations used by the EKF2 notes: ZYX
+      roll-pitch-yaw to quaternion, quaternion back to Euler angles, and quaternion rotation
+      from aircraft body frame to local NED navigation frame.
+    </p>
+    <div class="meta">
+      <span class="pill">Convention: ZYX yaw-pitch-roll</span>
+      <span class="pill">Quaternion: <span class="path">[w, x, y, z]</span></span>
+      <span class="pill">Frames: body to NED</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="index-sidebar" role="navigation" aria-label="Document index">
+      <p class="index-title">Index</p>
+      <a href="#conventions">1. Conventions</a>
+      <a href="#euler-to-quaternion">2. Euler to Quaternion</a>
+      <a href="#quaternion-to-euler">3. Quaternion to Euler</a>
+      <a href="#body-to-ned">4. Body to NED</a>
+      <a href="#ekf2-usage">5. EKF2 Usage</a>
+      <a href="#links">6. Links</a>
+    </div>
+
+    <div class="content">
+      <div class="section" id="conventions">
+        <h2>1. Conventions</h2>
+        <p>
+          A quaternion is written as \(q=[w,x,y,z]\), where \(w\) is the scalar part and
+          \([x,y,z]\) is the vector part. This document uses Hamilton quaternion multiplication:
+        </p>
+        <div class="equation">
+          \[
+          q \otimes r =
+          \begin{bmatrix}
+          w_q w_r - v_q \cdot v_r\\
+          w_q v_r + w_r v_q + v_q \times v_r
+          \end{bmatrix}
+          \]
+        </div>
+        <p>
+          For a unit quaternion, the inverse is the conjugate:
+        </p>
+        <div class="equation">
+          \[
+          q^{-1}=q^*=[w,-x,-y,-z]
+          \]
+        </div>
+        <p>
+          The aircraft body frame has \(x_b\) forward, \(y_b\) right, and \(z_b\) down. The
+          NED navigation frame has \(x_n\) north, \(y_n\) east, and \(z_n\) down. Roll is
+          \(\phi\), pitch is \(\theta\), and yaw is \(\psi\).
+        </p>
+      </div>
+
+      <div class="section" id="euler-to-quaternion">
+        <h2>2. Euler to Quaternion</h2>
+        <p>
+          For the aerospace ZYX convention, the combined rotation is yaw about NED down,
+          then pitch, then roll:
+        </p>
+        <div class="equation">
+          \[
+          q = q_z(\psi)\otimes q_y(\theta)\otimes q_x(\phi)
+          \]
+        </div>
+        <p>
+          The three single-axis rotation quaternions are:
+        </p>
+        <div class="equation">
+          \[
+          q_x(\phi)=
+          \begin{bmatrix}
+          c_\phi\\s_\phi\\0\\0
+          \end{bmatrix},\quad
+          q_y(\theta)=
+          \begin{bmatrix}
+          c_\theta\\0\\s_\theta\\0
+          \end{bmatrix},\quad
+          q_z(\psi)=
+          \begin{bmatrix}
+          c_\psi\\0\\0\\s_\psi
+          \end{bmatrix}
+          \]
+          \[
+          c_\phi=\cos\frac{\phi}{2},\quad s_\phi=\sin\frac{\phi}{2},\quad
+          c_\theta=\cos\frac{\theta}{2},\quad s_\theta=\sin\frac{\theta}{2},\quad
+          c_\psi=\cos\frac{\psi}{2},\quad s_\psi=\sin\frac{\psi}{2}
+          \]
+        </div>
+        <p>
+          First multiply yaw and pitch:
+        </p>
+        <div class="equation">
+          \[
+          q_z\otimes q_y =
+          \begin{bmatrix}
+          c_\psi c_\theta\\
+          -s_\psi s_\theta\\
+          c_\psi s_\theta\\
+          s_\psi c_\theta
+          \end{bmatrix}
+          \]
+        </div>
+        <p>
+          Then multiply the result by the roll quaternion:
+        </p>
+        <div class="equation">
+          \[
+          q=(q_z\otimes q_y)\otimes q_x =
+          \begin{bmatrix}
+          w\\x\\y\\z
+          \end{bmatrix}
+          \]
+          \[
+          \begin{aligned}
+          w &amp;= c_\phi c_\theta c_\psi + s_\phi s_\theta s_\psi\\
+          x &amp;= s_\phi c_\theta c_\psi - c_\phi s_\theta s_\psi\\
+          y &amp;= c_\phi s_\theta c_\psi + s_\phi c_\theta s_\psi\\
+          z &amp;= c_\phi c_\theta s_\psi - s_\phi s_\theta c_\psi
+          \end{aligned}
+          \]
+        </div>
+      </div>
+
+      <div class="section" id="quaternion-to-euler">
+        <h2>3. Quaternion to Euler</h2>
+        <p>
+          To derive the inverse equations, compare the rotation matrix from a quaternion to
+          the ZYX Euler rotation matrix.
+        </p>
+        <div class="equation">
+          \[
+          R(q)=
+          \begin{bmatrix}
+          1 - 2(y^2 + z^2) &amp; 2(xy - wz) &amp; 2(xz + wy)\\
+          2(xy + wz) &amp; 1 - 2(x^2 + z^2) &amp; 2(yz - wx)\\
+          2(xz - wy) &amp; 2(yz + wx) &amp; 1 - 2(x^2 + y^2)
+          \end{bmatrix}
+          \]
+        </div>
+        <div class="equation">
+          \[
+          R_{ZYX}(\phi,\theta,\psi)=
+          \begin{bmatrix}
+          c_\psi c_\theta &amp; c_\psi s_\theta s_\phi - s_\psi c_\phi &amp; c_\psi s_\theta c_\phi + s_\psi s_\phi\\
+          s_\psi c_\theta &amp; s_\psi s_\theta s_\phi + c_\psi c_\phi &amp; s_\psi s_\theta c_\phi - c_\psi s_\phi\\
+          -s_\theta &amp; c_\theta s_\phi &amp; c_\theta c_\phi
+          \end{bmatrix}
+          \]
+        </div>
+        <p>
+          The pitch equation comes from the third row, first column:
+        </p>
+        <div class="equation">
+          \[
+          R_{31}=-\sin\theta=2(xz-wy)
+          \]
+          \[
+          \theta=\arcsin(2(wy-zx))
+          \]
+        </div>
+        <p>
+          Roll comes from \(R_{32}=c_\theta s_\phi\) and \(R_{33}=c_\theta c_\phi\):
+        </p>
+        <div class="equation">
+          \[
+          \phi=\operatorname{atan2}(R_{32},R_{33})
+          \]
+          \[
+          \phi = \operatorname{atan2}\left(2(w x + y z),\ 1 - 2(x^2 + y^2)\right)
+          \]
+        </div>
+        <p>
+          Yaw comes from \(R_{21}=s_\psi c_\theta\) and \(R_{11}=c_\psi c_\theta\):
+        </p>
+        <div class="equation">
+          \[
+          \psi=\operatorname{atan2}(R_{21},R_{11})
+          \]
+          \[
+          \psi = \operatorname{atan2}\left(2(w z + x y),\ 1 - 2(y^2 + z^2)\right)
+          \]
+        </div>
+        <div class="note">
+          Clamp the argument to <code>asin()</code> into <code>[-1, 1]</code> in software. A
+          unit quaternion can still produce a value slightly outside that range because of
+          floating-point roundoff.
+        </div>
+      </div>
+
+      <div class="section" id="body-to-ned">
+        <h2>4. Body Frame to NED Frame</h2>
+        <p>
+          A vector is rotated by treating it as a pure quaternion, applying the attitude
+          quaternion, and then dropping the scalar component:
+        </p>
+        <div class="equation">
+          \[
+          \bar v^b=[0,v_x,v_y,v_z]
+          \]
+          \[
+          \bar v^n = q\otimes \bar v^b \otimes q^*
+          \]
+        </div>
+        <p>
+          Expanding this multiplication for \(q=[w,x,y,z]\) gives the body-to-NED matrix:
+        </p>
+        <div class="equation">
+          \[
+          v^n = R^n_b(q)v^b
+          \]
+          \[
+          R^n_b =
+          \begin{bmatrix}
+          1 - 2(y^2 + z^2) &amp; 2(xy - wz) &amp; 2(xz + wy)\\
+          2(xy + wz) &amp; 1 - 2(x^2 + z^2) &amp; 2(yz - wx)\\
+          2(xz - wy) &amp; 2(yz + wx) &amp; 1 - 2(x^2 + y^2)
+          \end{bmatrix}
+          \]
+        </div>
+        <p>
+          Therefore:
+        </p>
+        <div class="equation">
+          \[
+          \begin{bmatrix}
+          v_N\\v_E\\v_D
+          \end{bmatrix}
+          =
+          R^n_b(q)
+          \begin{bmatrix}
+          v_x\\v_y\\v_z
+          \end{bmatrix}_b
+          \]
+        </div>
+        <p>
+          A free vector only needs rotation. A point attached to the body needs rotation plus
+          translation by the vehicle position in NED:
+        </p>
+        <div class="equation">
+          \[
+          p^n = p^n_{\text{vehicle}} + R^n_b(q)p^b
+          \]
+        </div>
+      </div>
+
+      <div class="section" id="ekf2-usage">
+        <h2>5. EKF2 Usage</h2>
+        <p>
+          EKF2 stores attitude as <code>quat_nominal</code>. The C++ code converts that
+          quaternion into <code>_R_to_earth</code>, then rotates corrected IMU delta velocity
+          from body frame into earth/NED frame:
+        </p>
+        <pre><code>_R_to_earth = Dcmf(_state.quat_nominal);
+const Vector3f corrected_delta_vel_ef = _R_to_earth * corrected_delta_vel;</code></pre>
+        <p>
+          This is a vector rotation, so no translation is applied. Position corrections are a
+          separate state update.
+        </p>
+      </div>
+
+      <div class="section" id="links">
+        <h2>6. Links</h2>
+        <ul>
+          <li><a href="ekf2_kalman_equations.html">Back to EKF2 Kalman Filter Equations and PX4 Implementation Map</a></li>
+          <li><a href="../../../../src/modules/ekf2/EKF/ekf.cpp"><code>src/modules/ekf2/EKF/ekf.cpp</code></a>: nominal state prediction and body-to-NED delta velocity rotation.</li>
+          <li><a href="../../../../src/modules/ekf2/EKF/python/ekf_derivation/generated/state.h"><code>generated/state.h</code></a>: EKF2 nominal state and tangent-state index definitions.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

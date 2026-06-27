@@ -8,6 +8,56 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Groups simulation-related module targets and shared simulation support.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Consume runtime inputs from uORB topics such as `actuator_outputs`, `actuator_outputs_sim`, `battery_status`, `gimbal_controls`, `gimbal_device_set_attitude`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_groundtruth`, ... 5 more.
+- Publish outputs or status topics such as `actuator_outputs_sim`, `airspeed`, `aux_global_position`, `differential_pressure`, `distance_sensor`, `esc_status`, `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, ... 20 more.
+- Use module configuration files such as `battery_simulator/battery_simulator_params.yaml`, `gz_bridge/module.yaml`, `gz_bridge/parameters.yaml`, `pwm_out_sim/module_hil.yaml`, `pwm_out_sim/module_sim.yaml`, `sensor_agp_sim/parameters.yaml`, ... 5 more.
+- Implement the main behavior in classes such as `BatterySimulator`, `GZBridge`, `GZGimbal`, `GZBridge`, `GZMixingInterfaceESC`, `GZBridge`, ... 47 more.
+- Organize nested module targets: `battery_simulator`, `gz_bridge`, `pwm_out_sim`, `sensor_agp_sim`, `sensor_airspeed_sim`, `sensor_baro_sim`, ... 5 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`, `rate_ctrl`.
+- Also contains explicit task-spawn code or helper task creation in this module tree.
+- Uses a `run()` loop style module body for repeated execution.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+- Creates an additional pthread helper context.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_outputs`, `actuator_outputs_sim`, `battery_status`, `gimbal_controls`, `gimbal_device_set_attitude`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_groundtruth`, `vehicle_command`, `vehicle_global_position_groundtruth`, ... 3 more |
+| Primary outputs | `actuator_outputs_sim`, `airspeed`, `aux_global_position`, `differential_pressure`, `distance_sensor`, `esc_status`, `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, `gimbal_device_attitude_status`, `gimbal_device_information`, ... 18 more |
+| Referenced topics | `actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `aux_global_position`, `battery_status`, `differential_pressure`, `distance_sensor`, `esc_report`, `esc_status`, `fiducial_marker_pos_report`, ... 32 more |
+| Parameters/config | `battery_simulator/battery_simulator_params.yaml`, `gz_bridge/module.yaml`, `gz_bridge/parameters.yaml`, `pwm_out_sim/module_hil.yaml`, `pwm_out_sim/module_sim.yaml`, `sensor_agp_sim/parameters.yaml`, `sensor_airspeed_sim/parameters.yaml`, `sensor_baro_sim/parameters.yaml`, `sensor_gps_sim/parameters.yaml`, `sensor_mag_sim/parameters.yaml`, ... 1 more |
+| Key classes | `BatterySimulator`, `GZBridge`, `GZGimbal`, `GZBridge`, `GZMixingInterfaceESC`, `GZBridge`, `GZMixingInterfaceServo`, `GZBridge`, `GZMixingInterfaceWheel`, `GZBridge`, ... 43 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| battery_simulator/BatterySimulator.cpp | Entry point, start command, or module lifecycle code |
+| gz_bridge/GZBridge.cpp | Entry point, start command, or module lifecycle code |
+| gz_bridge/GZGimbal.cpp | Work-item callback or main runtime update path |
+| gz_bridge/GZMixingInterfaceESC.cpp | Work-item callback or main runtime update path |
+| gz_bridge/GZMixingInterfaceServo.cpp | Work-item callback or main runtime update path |
+| battery_simulator/CMakeLists.txt | Build, parameter, or module configuration |
+| battery_simulator/battery_simulator_params.yaml | Build, parameter, or module configuration |
+| battery_simulator/BatterySimulator.hpp | Defines `BatterySimulator` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

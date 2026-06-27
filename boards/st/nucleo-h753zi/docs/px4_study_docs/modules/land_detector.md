@@ -6,7 +6,61 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Module to detect the freefall and landed state of the vehicle, and publishing the `vehicle_land_detected` topic. Each vehicle type (multirotor, fixedwing, vtol, ...) provides its own algorithm, taking into account various states, such as commanded thrust, arming state and vehicle motion. Every type is implemented in its own class with a common base class. The base class maintains a state (landed, maybe_landed, ground_contact). Each possible state is implemented in the derived classes. A hysteresis and a fixed prior
+
+## Description of Module
+
+Determines whether the vehicle is landed, maybe landed, or airborne for failsafe and controller behavior.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `actuator_armed`, `airspeed_validated`, `fixed_wing_runway_control`, `hover_thrust_estimate`, `launch_detection_status`, `parameter_update`, `position_setpoint_triplet`, `sensor_selection`, ... 10 more.
+- Publish outputs or status topics such as `vehicle_land_detected`.
+- Use module configuration from `land_detector_params.yaml`.
+- Implement the main behavior in classes such as `AirshipLandDetector`, `FixedwingLandDetector`, `LandDetector`, `MulticopterLandDetector`, `RoverLandDetector`, `VtolLandDetector`, ... 2 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Land detection is a threshold and hysteresis classifier over motion, thrust, and timing conditions.
+
+```text
+low_motion = |v_z| < v_z_thr and |omega| < omega_thr
+low_thrust = thrust < thrust_thr
+maybe_landed = low_motion and low_thrust for T_maybe
+landed = maybe_landed and no_takeoff_intent for T_landed
+freefall = |accel| < accel_thr for T_freefall
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_armed`, `airspeed_validated`, `fixed_wing_runway_control`, `hover_thrust_estimate`, `launch_detection_status`, `parameter_update`, `position_setpoint_triplet`, `sensor_selection`, `takeoff_status`, `trajectory_setpoint`, ... 8 more |
+| Primary outputs | `vehicle_land_detected` |
+| Referenced topics | `actuator_armed`, `airspeed_validated`, `fixed_wing_runway_control`, `hover_thrust_estimate`, `launch_detection_status`, `parameter_update`, `position_setpoint_triplet`, `sensor_selection`, `takeoff_status`, `trajectory_setpoint`, ... 9 more |
+| Parameters/config | land_detector_params.yaml |
+| Key classes | `AirshipLandDetector`, `FixedwingLandDetector`, `LandDetector`, `MulticopterLandDetector`, `RoverLandDetector`, `VtolLandDetector`, `with`, `maintains` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| LandDetector.cpp | Entry point, start command, or module lifecycle code |
+| land_detector_main.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| land_detector_params.yaml | Build, parameter, or module configuration |
+| land_detector_params_fw.yaml | Build, parameter, or module configuration |
+| land_detector_params_mc.yaml | Build, parameter, or module configuration |
+| AirshipLandDetector.h | Defines `AirshipLandDetector` class |
+| FixedwingLandDetector.h | Defines `FixedwingLandDetector` class |
 
 ## Architecture Overview
 

@@ -8,6 +8,49 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Contains multi-uORB transport support code and nested module targets.
+
+### Primary Responsibilities
+
+- Translate between PX4 uORB data and an external transport or companion-computer interface.
+- Operate without directly detected uORB topic dependencies in this source inventory.
+- Do not publish directly detected uORB outputs from this module directory.
+- Implement the main behavior in classes such as `Aggregator`, `AppsProtobufChannel`, `uORB`, `ProtobufChannel`, `uORB`.
+- Organize nested module targets: `apps`, `slpi`.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | none detected |
+| Referenced topics | none detected |
+| Parameters/config | none detected |
+| Key classes | `Aggregator`, `AppsProtobufChannel`, `uORB`, `ProtobufChannel`, `uORB` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| apps/muorb_main.cpp | Entry point, start command, or module lifecycle code |
+| apps/uORBAppsProtobufChannel.cpp | Entry point, start command, or module lifecycle code |
+| slpi/muorb_main.cpp | Entry point, start command, or module lifecycle code |
+| slpi/uORBProtobufChannel.cpp | Entry point, start command, or module lifecycle code |
+| apps/CMakeLists.txt | Build, parameter, or module configuration |
+| slpi/CMakeLists.txt | Build, parameter, or module configuration |
+| aggregator/mUORBAggregator.hpp | Defines `Aggregator` class |
+| apps/uORBAppsProtobufChannel.hpp | Defines `AppsProtobufChannel` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

@@ -6,7 +6,46 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+This module is used to replay ULog files. There are 2 environment variables used for configuration: `replay`, which must be set to an ULog file name - it's the log file to be replayed. The second is the mode, specified via `replay_mode`: - `replay_mode=ekf2`: specific EKF2 replay mode. It can only be used with the ekf2 module, but allows the replay to run as fast as possible. - Generic otherwise: this can be used to replay any module(s), but the replay will be done with the same speed as the log was recorded. The m
+
+## Description of Module
+
+Replays logged sensor and uORB data through PX4 modules for estimator and analysis workflows.
+
+### Primary Responsibilities
+
+- Provide persistence, replay, or data-recording services used by other PX4 modules.
+- Reference uORB topics such as `airspeed`, `airspeed_validated`, `aux_global_position`, `distance_sensor`, `ekf2_timestamps`, `landing_target_pose`, `ranging_beacon`, `sensor_combined`, ... 16 more.
+- Do not publish directly detected uORB outputs from this module directory.
+- Implement the main behavior in classes such as `Replay`, `Compatibility`, `to`, `CompatBase`, `CompatSensorCombinedDtType`, `ReadAndAndAddSubResult`, ... 1 more.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | none detected |
+| Referenced topics | `airspeed`, `airspeed_validated`, `aux_global_position`, `distance_sensor`, `ekf2_timestamps`, `landing_target_pose`, `ranging_beacon`, `sensor_combined`, `sensor_gps`, `uORBTopics`, ... 14 more |
+| Parameters/config | none detected |
+| Key classes | `Replay`, `Compatibility`, `to`, `CompatBase`, `CompatSensorCombinedDtType`, `ReadAndAndAddSubResult`, `ReplayEkf2` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| Replay.cpp | Entry point, start command, or module lifecycle code |
+| replay_main.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| Replay.hpp | Defines `Replay` class |
 
 ## Architecture Overview
 

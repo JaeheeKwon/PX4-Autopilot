@@ -8,6 +8,51 @@
 
 Architecture notes for the Commander module.
 
+## Description of Module
+
+Owns the high-level vehicle state machine: arming, mode transitions, safety checks, failsafe coordination, and operator commands.
+
+### Primary Responsibilities
+
+- Coordinate higher-level vehicle behavior rather than directly driving actuators.
+- Consume runtime inputs from uORB topics such as `action_request`, `actuator_armed`, `actuator_motors`, `airspeed_validated`, `arming_check_reply`, `battery_status`, `config_control_setpoints`, `config_overrides_request`, ... 49 more.
+- Publish outputs or status topics such as `actuator_armed`, `actuator_test`, `arming_check_request`, `config_overrides`, `event`, `failsafe_flags`, `failure_detector_status`, `health_report`, ... 13 more.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `Commander`, `PrearmedMode`, `RcOverrideBits`, `HealthAndArmingChecks`, `NavModes`, `HealthComponentIndex`, ... 89 more.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+- Creates an additional pthread helper context.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `action_request`, `actuator_armed`, `actuator_motors`, `airspeed_validated`, `arming_check_reply`, `battery_status`, `config_control_setpoints`, `config_overrides_request`, `cpuload`, `differential_pressure`, ... 47 more |
+| Primary outputs | `actuator_armed`, `actuator_test`, `arming_check_request`, `config_overrides`, `event`, `failsafe_flags`, `failure_detector_status`, `health_report`, `home_position`, `led_control`, ... 11 more |
+| Referenced topics | `action_request`, `actuator_armed`, `actuator_motors`, `actuator_test`, `airspeed`, `airspeed_validated`, `arming_check_reply`, `arming_check_request`, `battery_status`, `button_event`, ... 68 more |
+| Parameters/config | module.yaml |
+| Key classes | `Commander`, `PrearmedMode`, `RcOverrideBits`, `HealthAndArmingChecks`, `NavModes`, `HealthComponentIndex`, `Context`, `Report`, `ExternalChecks`, `HealthAndArmingCheckBase`, ... 85 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| Commander.cpp | Entry point, start command, or module lifecycle code |
+| Arming/ArmAuthorization/CMakeLists.txt | Build, parameter, or module configuration |
+| Arming/CMakeLists.txt | Build, parameter, or module configuration |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| HealthAndArmingChecks/CMakeLists.txt | Build, parameter, or module configuration |
+| HealthAndArmingChecks/esc_check_params.yaml | Build, parameter, or module configuration |
+| ModeUtil/CMakeLists.txt | Build, parameter, or module configuration |
+| Commander.hpp | Defines `Commander` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

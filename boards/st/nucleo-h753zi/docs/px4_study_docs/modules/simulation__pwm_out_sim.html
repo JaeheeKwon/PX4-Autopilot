@@ -98,7 +98,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="simulation__pwm_out_sim.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>simulation/pwm_out_sim</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Driver for simulated PWM outputs. Its only function is to take `actuator_control` uORB messages, mix them with any loaded mixer and output the result to the `actuator_output` uORB topic. It is used in SITL and HITL.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/simulation/pwm_out_sim</code></div>
       <div><strong>Build target</strong><br><code>modules__simulation__pwm_out_sim</code></div>
@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Simulates PWM output behavior for HIL and simulator actuator paths.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.</li><li>Consume runtime inputs from uORB topics such as `parameter_update`.</li><li>Publish outputs or status topics such as `actuator_outputs_sim`.</li><li>Use module configuration files such as `module_hil.yaml`, `module_sim.yaml`.</li><li>Implement the main behavior in classes such as `PWMSim`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `hp_default`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`parameter_update`</td></tr><tr><td>Primary outputs</td><td>`actuator_outputs_sim`</td></tr><tr><td>Referenced topics</td><td>`actuator_outputs_sim`, `parameter_update`</td></tr><tr><td>Parameters/config</td><td>`module_hil.yaml`, `module_sim.yaml`</td></tr><tr><td>Key classes</td><td>`PWMSim`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>PWMSim.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>module_hil.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>module_sim.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>PWMSim.hpp</td><td>Defines `PWMSim` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -131,9 +149,8 @@ classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
 classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
 classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
 classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
-
     <h2>Build and Entry Points</h2>
-    <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/simulation/pwm_out_sim</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__simulation__pwm_out_sim</td></tr><tr><td>Runtime main</td><td>pwm_out_sim</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>${module_config}</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>3</td></tr></tbody></table>
+    <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/simulation/pwm_out_sim</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__simulation__pwm_out_sim</td></tr><tr><td>Runtime main</td><td>pwm_out_sim</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>Not specified</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>3</td></tr></tbody></table>
 
     <h3>CMake Dependencies</h3>
     <ul><li><code>mixer_module</code></li></ul>

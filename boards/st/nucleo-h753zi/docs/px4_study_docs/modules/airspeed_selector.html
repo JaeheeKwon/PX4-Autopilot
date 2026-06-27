@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="airspeed_selector.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>airspeed_selector</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>This module provides a single airspeed_validated topic, containing indicated (IAS), calibrated (CAS), true airspeed (TAS) and the information if the estimation currently is invalid and if based sensor readings or on groundspeed minus windspeed. Supporting the input of multiple &quot;raw&quot; airspeed inputs, this module automatically switches to a valid sensor in case of failure detection. For failure detection as well as for the estimation of a scale factor from IAS to CAS, it runs several wind estimators and also publishe</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/airspeed_selector</code></div>
       <div><strong>Build target</strong><br><code>modules__airspeed_selector</code></div>
@@ -108,6 +120,29 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Selects, validates, and publishes the airspeed estimate that downstream fixed-wing control and navigation use.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `estimator_selector_status`, `estimator_status`, `flight_phase_estimation`, `launch_detection_status`, `parameter_update`, `position_setpoint`, `tecs_status`, `vehicle_acceleration`, ... 6 more.</li><li>Publish outputs or status topics such as `airspeed_validated`, `airspeed_wind`.</li><li>Use module configuration from `airspeed_selector_params.yaml`.</li><li>Implement the main behavior in classes such as `AirspeedValidator`, `AirspeedModule`, `AirspeedSource`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>The selector uses measurement validation and consistency checks. The mathematical idea is to score each airspeed source by health, timeout, and innovation before selecting the best valid source.</p>
+    <pre class="math-block">innovation_i = v_i - v_reference
+test_ratio_i = innovation_i^2 / innovation_variance_i
+valid_i = finite(v_i) and fresh_i and test_ratio_i &lt; gate^2
+selected = argmin_i(test_ratio_i) over valid_i</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`estimator_selector_status`, `estimator_status`, `flight_phase_estimation`, `launch_detection_status`, `parameter_update`, `position_setpoint`, `tecs_status`, `vehicle_acceleration`, `vehicle_air_data`, `vehicle_attitude`, ... 4 more</td></tr><tr><td>Primary outputs</td><td>`airspeed_validated`, `airspeed_wind`</td></tr><tr><td>Referenced topics</td><td>`airspeed`, `airspeed_validated`, `airspeed_wind`, `estimator_selector_status`, `estimator_status`, `flight_phase_estimation`, `launch_detection_status`, `mavlink_log`, `parameter_update`, `position_setpoint`, ... 8 more</td></tr><tr><td>Parameters/config</td><td>airspeed_selector_params.yaml</td></tr><tr><td>Key classes</td><td>`AirspeedValidator`, `AirspeedModule`, `AirspeedSource`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>airspeed_selector_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>airspeed_selector_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>AirspeedValidator.hpp</td><td>Defines `AirspeedValidator` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -143,7 +178,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/airspeed_selector</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__airspeed_selector</td></tr><tr><td>Runtime main</td><td>airspeed_selector</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>airspeed_selector_params.yaml</td></tr><tr><td>Detected sources</td><td>2</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -108,6 +120,29 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Runs multicopter attitude-control excitation and analysis for automatic tuning.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.</li><li>Consume runtime inputs from uORB topics such as `actuator_controls_status_0`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_command`, `vehicle_status`, `vehicle_torque_setpoint`.</li><li>Publish outputs or status topics such as `autotune_attitude_control_status`.</li><li>Use module configuration from `mc_autotune_attitude_control_params.yaml`.</li><li>Implement the main behavior in classes such as `McAutotuneAttitudeControl`, `state`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `hp_default`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Multicopter autotune excites one axis at a time, estimates the dynamic response, and updates attitude/rate gains for a target response.</p>
+    <pre class="math-block">u(t) = excitation amplitude * sin(w*t) or relay signal
+G(jw) = response(jw) / input(jw)
+Choose gains so |C(jw_c)G(jw_c)| ~= 1
+PID: u = Kp*e + Ki*integral(e) + Kd*de/dt</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`actuator_controls_status_0`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_command`, `vehicle_status`, `vehicle_torque_setpoint`</td></tr><tr><td>Primary outputs</td><td>`autotune_attitude_control_status`</td></tr><tr><td>Referenced topics</td><td>`actuator_controls_status`, `actuator_controls_status_0`, `autotune_attitude_control_status`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_command`, `vehicle_status`, `vehicle_torque_setpoint`</td></tr><tr><td>Parameters/config</td><td>mc_autotune_attitude_control_params.yaml</td></tr><tr><td>Key classes</td><td>`McAutotuneAttitudeControl`, `state`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>mc_autotune_attitude_control.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>mc_autotune_attitude_control_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>mc_autotune_attitude_control.hpp</td><td>Defines `McAutotuneAttitudeControl` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -141,7 +176,6 @@ classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
 classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
 classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
 classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/mc_autotune_attitude_control</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>mc_autotune_attitude_control</td></tr><tr><td>Runtime main</td><td>mc_autotune_attitude_control</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>mc_autotune_attitude_control_params.yaml</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

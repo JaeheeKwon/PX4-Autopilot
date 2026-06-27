@@ -6,7 +6,51 @@
 - Build kind: `px4 module`
 - Mermaid palette: `ash` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+This implements the setpoint generation for all PX4-internal fixed-wing modes, height-rate control and higher. It takes the current mode state of the vehicle as input and outputs setpoints consumed by the fixed-wing lateral-longitudinal controller and and controllers below that (attitude, rate).
+
+## Description of Module
+
+Selects fixed-wing mode behavior and generates fixed-wing trajectory or attitude setpoints.
+
+### Primary Responsibilities
+
+- Coordinate higher-level vehicle behavior rather than directly driving actuators.
+- Consume runtime inputs from uORB topics such as `airspeed_validated`, `parameter_update`, `position_setpoint_triplet`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_command`, ... 6 more.
+- Publish outputs or status topics such as `figure_eight_status`, `fixed_wing_lateral_guidance_status`, `fixed_wing_lateral_setpoint`, `fixed_wing_longitudinal_setpoint`, `fixed_wing_runway_control`, `flaps_setpoint`, `landing_gear`, `lateral_control_configuration`, ... 6 more.
+- Use module configuration from `fw_mode_manager_params.yaml`.
+- Implement the main behavior in classes such as `CombinedControllerConfigurationHandler`, `FixedWingModeManager`, `handling`, `at`, `FigureEight`, `FigureEightSegment`, ... 2 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `airspeed_validated`, `parameter_update`, `position_setpoint_triplet`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_command`, `vehicle_control_mode`, `vehicle_global_position`, ... 4 more |
+| Primary outputs | `figure_eight_status`, `fixed_wing_lateral_guidance_status`, `fixed_wing_lateral_setpoint`, `fixed_wing_longitudinal_setpoint`, `fixed_wing_runway_control`, `flaps_setpoint`, `landing_gear`, `lateral_control_configuration`, `launch_detection_status`, `longitudinal_control_configuration`, ... 4 more |
+| Referenced topics | `airspeed_validated`, `figure_eight_status`, `fixed_wing_lateral_guidance_status`, `fixed_wing_lateral_setpoint`, `fixed_wing_longitudinal_setpoint`, `fixed_wing_runway_control`, `flaps_setpoint`, `landing_gear`, `lateral_control_configuration`, `launch_detection_status`, ... 19 more |
+| Parameters/config | fw_mode_manager_params.yaml |
+| Key classes | `CombinedControllerConfigurationHandler`, `FixedWingModeManager`, `handling`, `at`, `FigureEight`, `FigureEightSegment`, `__EXPORT`, `__EXPORT` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| FixedWingModeManager.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| figure_eight/CMakeLists.txt | Build, parameter, or module configuration |
+| fw_mode_manager_params.yaml | Build, parameter, or module configuration |
+| launchdetection/CMakeLists.txt | Build, parameter, or module configuration |
+| launchdetection/launchdetection_params.yaml | Build, parameter, or module configuration |
+| runway_takeoff/CMakeLists.txt | Build, parameter, or module configuration |
+| ControllerConfigurationHandler.hpp | Defines `CombinedControllerConfigurationHandler` class |
 
 ## Architecture Overview
 

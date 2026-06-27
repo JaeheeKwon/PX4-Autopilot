@@ -8,6 +8,58 @@
 
 Architecture notes for the Rover Ackermann module.
 
+## Description of Module
+
+Controls Ackermann-steered rover motion from rover setpoints to actuator commands.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `actuator_motors`, `actuator_servos`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_controller_status`, `position_setpoint_triplet`, `rover_attitude_setpoint`, ... 11 more.
+- Publish outputs or status topics such as `actuator_motors`, `actuator_servos`, `position_controller_status`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 5 more.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `AckermannActControl`, `AckermannAttControl`, `AckermannAutoMode`, `AckermannManualMode`, `AckermannOffboardMode`, `AckermannPosControl`, ... 3 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `rate_ctrl`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Ackermann rover control uses car-like planar kinematics. Steering angle is related to path curvature and yaw rate by the wheelbase.
+
+```text
+curvature = yaw_rate_sp / max(speed_sp, epsilon)
+steering_angle = atan(wheelbase * curvature)
+yaw_rate = speed / wheelbase * tan(steering_angle)
+throttle = K_speed * (speed_sp - speed) + feedforward(speed_sp)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_motors`, `actuator_servos`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_controller_status`, `position_setpoint_triplet`, `rover_attitude_setpoint`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 9 more |
+| Primary outputs | `actuator_motors`, `actuator_servos`, `position_controller_status`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_rate_status`, `rover_speed_setpoint`, ... 3 more |
+| Referenced topics | `actuator_motors`, `actuator_servos`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_controller_status`, `position_setpoint_triplet`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, ... 13 more |
+| Parameters/config | module.yaml |
+| Key classes | `AckermannActControl`, `AckermannAttControl`, `AckermannAutoMode`, `AckermannManualMode`, `AckermannOffboardMode`, `AckermannPosControl`, `AckermannRateControl`, `AckermannSpeedControl`, `RoverAckermann` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| RoverAckermann.cpp | Entry point, start command, or module lifecycle code |
+| AckermannActControl/CMakeLists.txt | Build, parameter, or module configuration |
+| AckermannAttControl/CMakeLists.txt | Build, parameter, or module configuration |
+| AckermannDriveModes/AckermannAutoMode/CMakeLists.txt | Build, parameter, or module configuration |
+| AckermannDriveModes/AckermannManualMode/CMakeLists.txt | Build, parameter, or module configuration |
+| AckermannDriveModes/AckermannOffboardMode/CMakeLists.txt | Build, parameter, or module configuration |
+| AckermannDriveModes/CMakeLists.txt | Build, parameter, or module configuration |
+| AckermannActControl/AckermannActControl.hpp | Defines `AckermannActControl` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

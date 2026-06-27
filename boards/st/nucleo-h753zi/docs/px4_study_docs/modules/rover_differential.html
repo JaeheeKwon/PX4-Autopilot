@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -108,6 +120,30 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Controls differential-drive rover motion from rover setpoints to actuator commands.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `rover_attitude_setpoint`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 9 more.</li><li>Publish outputs or status topics such as `actuator_motors`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_rate_status`, `rover_speed_setpoint`, ... 3 more.</li><li>Use module configuration from `module.yaml`.</li><li>Implement the main behavior in classes such as `DifferentialActControl`, `DifferentialAttControl`, `DifferentialAutoMode`, `DifferentialManualMode`, `DifferentialOffboardMode`, `DrivingState`, ... 4 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `rate_ctrl`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Differential rover control maps desired forward speed and yaw rate into left and right wheel speeds.</p>
+    <pre class="math-block">v_left  = speed_sp - 0.5 * track_width * yaw_rate_sp
+v_right = speed_sp + 0.5 * track_width * yaw_rate_sp
+speed_sp = 0.5 * (v_left + v_right)
+yaw_rate_sp = (v_right - v_left) / track_width
+throttle_left/right = speed_controller(v_left/right - v_meas_left/right)</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `rover_attitude_setpoint`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_speed_setpoint`, `rover_steering_setpoint`, ... 7 more</td></tr><tr><td>Primary outputs</td><td>`actuator_motors`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_rate_status`, `rover_speed_setpoint`, `rover_speed_status`, `rover_steering_setpoint`, ... 1 more</td></tr><tr><td>Referenced topics</td><td>`actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 11 more</td></tr><tr><td>Parameters/config</td><td>module.yaml</td></tr><tr><td>Key classes</td><td>`DifferentialActControl`, `DifferentialAttControl`, `DifferentialAutoMode`, `DifferentialManualMode`, `DifferentialOffboardMode`, `DrivingState`, `DifferentialPosControl`, `DifferentialRateControl`, `DifferentialSpeedControl`, `RoverDifferential`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>RoverDifferential.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>DifferentialActControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>DifferentialAttControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>DifferentialDriveModes/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>DifferentialDriveModes/DifferentialAutoMode/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>DifferentialDriveModes/DifferentialManualMode/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>DifferentialActControl/DifferentialActControl.hpp</td><td>Defines `DifferentialActControl` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +187,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/rover_differential</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__rover_differential</td></tr><tr><td>Runtime main</td><td>rover_differential</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>9</td></tr><tr><td>Detected headers</td><td>9</td></tr><tr><td>Detected configs</td><td>11</td></tr></tbody></table>
 

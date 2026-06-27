@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Contains multi-uORB transport support code and nested module targets.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Translate between PX4 uORB data and an external transport or companion-computer interface.</li><li>Operate without directly detected uORB topic dependencies in this source inventory.</li><li>Do not publish directly detected uORB outputs from this module directory.</li><li>Implement the main behavior in classes such as `Aggregator`, `AppsProtobufChannel`, `uORB`, `ProtobufChannel`, `uORB`.</li><li>Organize nested module targets: `apps`, `slpi`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>none detected</td></tr><tr><td>Primary outputs</td><td>none detected</td></tr><tr><td>Referenced topics</td><td>none detected</td></tr><tr><td>Parameters/config</td><td>none detected</td></tr><tr><td>Key classes</td><td>`Aggregator`, `AppsProtobufChannel`, `uORB`, `ProtobufChannel`, `uORB`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>apps/muorb_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>apps/uORBAppsProtobufChannel.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>slpi/muorb_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>slpi/uORBProtobufChannel.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>apps/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>slpi/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>aggregator/mUORBAggregator.hpp</td><td>Defines `Aggregator` class</td></tr><tr><td>apps/uORBAppsProtobufChannel.hpp</td><td>Defines `AppsProtobufChannel` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -127,7 +145,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/muorb</td></tr><tr><td>Build kind</td><td>directory</td></tr><tr><td>Build target</td><td>muorb</td></tr><tr><td>Runtime main</td><td>muorb</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>Not specified</td></tr><tr><td>Detected sources</td><td>5</td></tr><tr><td>Detected headers</td><td>3</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

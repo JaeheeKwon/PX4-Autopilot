@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -108,6 +120,29 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Simulates system power status for simulation workflows.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.</li><li>Reference uORB topics such as `system_power`.</li><li>Publish outputs or status topics such as `system_power`.</li><li>Implement the main behavior in classes such as `SystemPowerSimulator`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `hp_default`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>The system power simulator derives rail voltage/current states from a simple battery and load model.</p>
+    <pre class="math-block">V_batt = V_oc(SOC) - I_load * R_internal
+P_load = V_batt * I_load
+rail_ok = V_batt &gt; V_min and I_load &lt; I_max
+SOC[k] = SOC[k-1] - I_load * dt / (3600 * capacity_Ah)</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>none detected</td></tr><tr><td>Primary outputs</td><td>`system_power`</td></tr><tr><td>Referenced topics</td><td>`system_power`</td></tr><tr><td>Parameters/config</td><td>none detected</td></tr><tr><td>Key classes</td><td>`SystemPowerSimulator`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>SystemPowerSimulator.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>SystemPowerSimulator.hpp</td><td>Defines `SystemPowerSimulator` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -131,7 +166,6 @@ classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
 classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
 classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
 classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/simulation/system_power_simulator</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__simulation__system_power_simulator</td></tr><tr><td>Runtime main</td><td>system_power_simulator</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>Not specified</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>1</td></tr></tbody></table>
 

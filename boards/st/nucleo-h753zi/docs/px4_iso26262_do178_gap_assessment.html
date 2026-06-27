@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Gap Assessment Against ISO 26262 and DO-178C</title>
+  <style>
+    :root {
+      --bg: #f5f7f9;
+      --paper: #ffffff;
+      --ink: #18232f;
+      --muted: #536273;
+      --line: #d8e0e8;
+      --accent: #006c67;
+      --accent-soft: #e5f4f2;
+      --warn: #fff1d3;
+      --critical: #fde8e8;
+      --code: #edf2f7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 40px 24px 64px;
+    }
+
+    header {
+      padding: 38px 0 30px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 930px;
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.35rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 900px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 1.12rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .meta span {
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--paper);
+    }
+
+    section {
+      padding: 30px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.45rem;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 20px 0 8px;
+      font-size: 1.06rem;
+      letter-spacing: 0;
+    }
+
+    p {
+      max-width: 900px;
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--code);
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    .callout {
+      max-width: 940px;
+      margin: 18px 0;
+      padding: 18px 20px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .warning {
+      border-left-color: #b77400;
+      background: var(--warn);
+    }
+
+    .critical {
+      border-left-color: #b42318;
+      background: var(--critical);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .tile {
+      min-height: 142px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+    }
+
+    .tile h3 {
+      margin-top: 0;
+    }
+
+    .tile p {
+      margin-bottom: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    table {
+      width: 100%;
+      margin: 18px 0 8px;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef3f7;
+      font-size: 0.88rem;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .status {
+      display: inline-block;
+      min-width: 88px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .status.gap {
+      color: #7a271a;
+      background: #ffdad5;
+    }
+
+    .status.partial {
+      color: #7a4a00;
+      background: #ffe3a3;
+    }
+
+    .status.useful {
+      color: #084c44;
+      background: #ccebe6;
+    }
+
+    ul,
+    ol {
+      max-width: 940px;
+      margin: 10px 0 0 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .refs {
+      columns: 2;
+      column-gap: 32px;
+      max-width: 1020px;
+    }
+
+    .refs li {
+      break-inside: avoid;
+    }
+
+    footer {
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 860px) {
+      main {
+        padding: 24px 16px 48px;
+      }
+
+      header {
+        padding-top: 28px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+
+      .refs {
+        columns: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Safety Standards Gap Assessment</p>
+      <h1>PX4 Gaps Against ISO 26262 and DO-178C</h1>
+      <p class="subtitle">
+        PX4 has strong architectural mechanisms for modular control, typed messages, failsafe handling, logging, and replay. Those mechanisms are useful inputs to a safety argument, but they are not the lifecycle evidence required for ISO 26262 automotive functional safety or DO-178C airborne software assurance.
+      </p>
+      <div class="meta">
+        <span>Repository: PX4-Autopilot</span>
+        <span>Scope: architecture and evidence gap review</span>
+        <span>Prepared: 2026-06-22</span>
+      </div>
+    </header>
+
+    <section>
+      <h2>Executive Summary</h2>
+      <div class="callout critical">
+        <strong>Primary finding:</strong> PX4 provides useful safety-related mechanisms, but it does not provide a certification-ready safety case for ISO 26262 or DO-178C. The largest gaps are hazard analysis, requirements traceability, independence, qualified verification, tool qualification, configuration control, and lifecycle work products.
+      </div>
+      <p>
+        ISO 26262 is an automotive functional safety standard for safety-related electrical and electronic systems in road vehicles. DO-178C is an aviation software assurance standard used as an acceptable means of compliance for airborne software. Both standards require explicit lifecycle evidence. A good architecture is necessary, but it is not sufficient.
+      </p>
+      <p>
+        PX4 should be treated as a reference architecture for a deterministic control supervisor, not as a compliant baseline. A project that wants ISO 26262 or DO-178C alignment would need to add the standards process around the software, then rework or constrain parts of the architecture where evidence cannot be produced.
+      </p>
+    </section>
+
+    <section>
+      <h2>What PX4 Already Helps With</h2>
+      <div class="grid">
+        <article class="tile">
+          <h3>Modular Components</h3>
+          <p>PX4 modules and work queues create a clear runtime structure that can support allocation of responsibilities.</p>
+        </article>
+        <article class="tile">
+          <h3>Typed Interfaces</h3>
+          <p><code>uORB</code> messages provide explicit data contracts that can become interface-control artifacts.</p>
+        </article>
+        <article class="tile">
+          <h3>Health and Failsafe</h3>
+          <p>Commander, health reports, and failsafe flags provide a practical pattern for mode gating and degraded behavior.</p>
+        </article>
+        <article class="tile">
+          <h3>Log and Replay</h3>
+          <p>Topic logging and replay can support regression testing, tuning, and failure reproduction.</p>
+        </article>
+        <article class="tile">
+          <h3>Parameterization</h3>
+          <p>Parameters support platform variation and calibration, but would need stronger configuration control.</p>
+        </article>
+        <article class="tile">
+          <h3>Simulation Hooks</h3>
+          <p>SITL and HITL support validation loops, but certification credit would require qualified environments and test evidence.</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>ISO 26262 Gap Table</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ISO 26262 Area</th>
+            <th>PX4 Status</th>
+            <th>Gap</th>
+            <th>Needed Work Product or Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Item definition and ODD</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>PX4 does not define a road-vehicle item, operating design domain, driver role, system boundary, or vehicle-level assumptions.</td>
+            <td>Item definition, ODD definition, external interfaces, assumptions, misuse cases, controllability assumptions.</td>
+          </tr>
+          <tr>
+            <td>HARA and ASIL classification</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No hazard analysis and risk assessment mapping hazardous events to safety goals and ASILs.</td>
+            <td>Hazard list, severity/exposure/controllability analysis, ASIL assignment, safety goals.</td>
+          </tr>
+          <tr>
+            <td>Functional Safety Concept</td>
+            <td><span class="status partial">Partial</span></td>
+            <td>PX4 has failsafe mechanisms, but they are not traced from safety goals or allocated as functional safety requirements.</td>
+            <td>Functional safety requirements, safe states, degraded modes, fallback timing, driver or remote-operator assumptions.</td>
+          </tr>
+          <tr>
+            <td>Technical Safety Concept</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No documented allocation of safety requirements to sensors, compute, actuators, watchdogs, diagnostics, and redundancy.</td>
+            <td>Technical safety requirements, architectural allocation, fault detection and reaction timing, interface safety requirements.</td>
+          </tr>
+          <tr>
+            <td>ASIL decomposition and independence</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No evidence of independence, freedom from interference, or decomposition constraints for redundant safety paths.</td>
+            <td>ASIL decomposition rationale, independence analysis, shared-resource analysis, common-cause failure analysis.</td>
+          </tr>
+          <tr>
+            <td>Hardware random failures</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>PX4 software architecture does not provide SPFM, LFM, PMHF, FMEDA, or diagnostic coverage for target hardware.</td>
+            <td>FMEDA, safety manual integration, diagnostic coverage evidence, hardware-software interface assumptions.</td>
+          </tr>
+          <tr>
+            <td>Software safety requirements</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>Source files and documentation are not organized as ASIL-specific software safety requirements.</td>
+            <td>Software safety requirements, architectural design, unit design, safety analyses, verification criteria.</td>
+          </tr>
+          <tr>
+            <td>Traceability</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No bidirectional trace from hazard to safety goal, requirement, architecture, code, unit test, integration test, and validation result.</td>
+            <td>Requirements database, trace matrix, verification coverage reports, change impact analysis.</td>
+          </tr>
+          <tr>
+            <td>Tool qualification</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>Compilers, message generators, build scripts, simulators, log tools, and coverage tools are not qualified for safety credit.</td>
+            <td>Tool classification, tool qualification plan, validation evidence, usage constraints, tool confidence argument.</td>
+          </tr>
+          <tr>
+            <td>Configuration and calibration control</td>
+            <td><span class="status partial">Partial</span></td>
+            <td>PX4 has parameters, but not a complete safety-controlled calibration lifecycle for production road vehicles.</td>
+            <td>Parameter safety classification, approved values, variant control, production release records, field update process.</td>
+          </tr>
+          <tr>
+            <td>Production, operation, service</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>Open-source project structure does not define production release, service, decommissioning, or field monitoring responsibilities.</td>
+            <td>Production safety plan, service instructions, anomaly handling, recall/update process, safety monitoring.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>DO-178C Gap Table</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>DO-178C Area</th>
+            <th>PX4 Status</th>
+            <th>Gap</th>
+            <th>Needed Work Product or Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Certification planning</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No Plan for Software Aspects of Certification, software development plan, verification plan, configuration plan, or quality assurance plan.</td>
+            <td>PSAC, SDP, SVP, SCMP, SQAP, software standards, certification liaison plan.</td>
+          </tr>
+          <tr>
+            <td>Software level allocation</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No aircraft or system safety assessment assigning DAL A through E to PX4 functions.</td>
+            <td>Functional hazard assessment, system safety assessment, software level assignment, failure-condition rationale.</td>
+          </tr>
+          <tr>
+            <td>High-level and low-level requirements</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>PX4 has source, docs, and message definitions, but not certification-grade high-level and low-level requirements.</td>
+            <td>Software requirements standards, HLRs, LLRs, derived requirements, design description.</td>
+          </tr>
+          <tr>
+            <td>Bidirectional traceability</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No complete trace from system requirements to software requirements, source code, tests, and coverage.</td>
+            <td>Trace matrix, source trace, test trace, requirement coverage, problem-report trace.</td>
+          </tr>
+          <tr>
+            <td>Verification independence</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No evidence that required verification objectives are performed with the independence expected for higher DALs.</td>
+            <td>Independence plan, review records, verification responsibility matrix, QA audit evidence.</td>
+          </tr>
+          <tr>
+            <td>Requirements-based testing</td>
+            <td><span class="status partial">Partial</span></td>
+            <td>PX4 has tests, SITL, and replay, but tests are not organized as complete normal-range and robustness tests against requirements.</td>
+            <td>Requirements-based test cases, procedures, expected results, pass/fail records, robustness test evidence.</td>
+          </tr>
+          <tr>
+            <td>Structural coverage</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>No DAL-specific statement, decision, or MC/DC coverage evidence.</td>
+            <td>Coverage analysis, coverage closure, justification of uncovered code, additional tests or code removal.</td>
+          </tr>
+          <tr>
+            <td>Data and control coupling</td>
+            <td><span class="status partial">Partial</span></td>
+            <td><code>uORB</code> helps expose data flow, but no certification analysis of data coupling and control coupling is present.</td>
+            <td>Interface design, coupling analysis, integration tests demonstrating coupling behavior.</td>
+          </tr>
+          <tr>
+            <td>Dead and deactivated code</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>Large configurable codebase contains many build variants and optional paths with no DO-178C-style dead/deactivated code argument.</td>
+            <td>Code reachability analysis, deactivated code rationale, configuration-specific code inventory.</td>
+          </tr>
+          <tr>
+            <td>Tool qualification</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>Generated messages, build tooling, simulators, test tools, and coverage tools would need DO-330 treatment if credited.</td>
+            <td>Tool qualification level, operational requirements, verification of tool outputs, tool qualification data.</td>
+          </tr>
+          <tr>
+            <td>COTS and third-party software</td>
+            <td><span class="status gap">Major gap</span></td>
+            <td>NuttX, DDS components, libraries, drivers, and generated code need a COTS/SOUP or qualification strategy.</td>
+            <td>COTS assessment, service history, source assessment, usage constraints, verification and integration evidence.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Important Architectural Risks</h2>
+      <ul>
+        <li>
+          <strong>Shared address space:</strong> PX4's runtime model is efficient, but safety standards often require stronger freedom-from-interference arguments for memory, timing, and resources.
+        </li>
+        <li>
+          <strong>Parameter-heavy behavior:</strong> Parameters are useful, but safety-critical parameter data must be classified, range-controlled, verified, and released under configuration control.
+        </li>
+        <li>
+          <strong>Generated interfaces:</strong> <code>.msg</code> files and generated topic code are powerful, but generators and generated outputs become part of the assurance argument.
+        </li>
+        <li>
+          <strong>Open-source change velocity:</strong> Rapid upstream evolution conflicts with certification baselines unless a controlled fork, change impact process, and release authority are established.
+        </li>
+        <li>
+          <strong>Simulation credit:</strong> SITL, HITL, and replay are valuable engineering tools, but they do not automatically count as qualified verification environments.
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Recommended Compliance-Oriented Path</h2>
+      <ol>
+        <li>
+          Define the target product, vehicle role, ODD, safety boundary, and operational assumptions before adapting PX4 concepts.
+        </li>
+        <li>
+          Perform HARA or aircraft/system safety assessment first. Let safety goals or failure-condition classifications drive architecture, not the other way around.
+        </li>
+        <li>
+          Create safety requirements and traceability before code changes. Use PX4 modules and topics as allocation targets.
+        </li>
+        <li>
+          Partition safety-critical control from non-critical telemetry, logging, simulation, and developer tooling.
+        </li>
+        <li>
+          Establish coding standards, static analysis, unit verification, integration verification, and coverage closure appropriate to ASIL or DAL.
+        </li>
+        <li>
+          Classify tools and generated code. Decide which tools are used only for engineering convenience and which are credited for safety evidence.
+        </li>
+        <li>
+          Freeze a controlled baseline. Treat upstream PX4 updates as supplier inputs requiring impact analysis and re-verification.
+        </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Bottom Line</h2>
+      <p>
+        PX4 is a useful architectural reference for a safety-aware control runtime, but it is not an ISO 26262 or DO-178C compliant software baseline by default. Its best assets are modularity, typed topics, centralized health/failsafe handling, logging, replay, and simulation support. Its missing pieces are the formal safety lifecycle, requirements structure, independent verification, traceability, tool qualification, hardware safety analysis, and controlled production process.
+      </p>
+      <p>
+        For a self-driving project, the right use is selective: borrow the control-supervisor pattern, then build an ISO 26262 safety case around a constrained and controlled implementation. For an aviation project, DO-178C requires a separate airborne software assurance program from the beginning.
+      </p>
+    </section>
+
+    <section>
+      <h2>References</h2>
+      <ul class="refs">
+        <li><a href="https://www.iso.org/standard/68383.html">ISO 26262-1:2018, Road vehicles - Functional safety - Part 1: Vocabulary</a></li>
+        <li><a href="https://www.faa.gov/regulations_policies/advisory_circulars/index.cfm/go/document.information/documentID/1032046">FAA AC 20-115D, Airborne Software Development Assurance Using EUROCAE ED-12 and RTCA DO-178</a></li>
+        <li><a href="docs/en/concept/architecture.md">PX4 architectural overview</a></li>
+        <li><a href="docs/en/middleware/uorb.md">PX4 uORB messaging</a></li>
+        <li><a href="docs/en/dev_log/logging.md">PX4 logging</a></li>
+        <li><a href="docs/en/debug/system_wide_replay.md">PX4 system-wide replay</a></li>
+        <li><a href="docs/en/concept/control_allocation.md">PX4 control allocation</a></li>
+        <li><a href="msg/FailsafeFlags.msg">PX4 failsafe flags message</a></li>
+        <li><a href="msg/HealthReport.msg">PX4 health report message</a></li>
+        <li><a href="px4_self_driving_architecture_findings.html">Previous PX4 self-driving architecture findings</a></li>
+      </ul>
+    </section>
+
+    <footer>
+      This document is an engineering gap assessment. It is not a certification claim, legal opinion, or substitute for review by an accredited functional safety assessor, certification authority, DER, or compliance organization.
+    </footer>
+  </main>
+</body>
+</html>

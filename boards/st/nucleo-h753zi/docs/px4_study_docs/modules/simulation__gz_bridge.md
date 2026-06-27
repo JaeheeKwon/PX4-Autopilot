@@ -8,6 +8,52 @@
 
 Architecture notes for the SIM_GZ module.
 
+## Description of Module
+
+Bridges PX4 uORB data with Gazebo transport for simulation.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Translate between PX4 uORB data and an external transport or companion-computer interface.
+- Consume runtime inputs from uORB topics such as `gimbal_controls`, `gimbal_device_set_attitude`, `parameter_update`, `vehicle_command`.
+- Publish outputs or status topics such as `differential_pressure`, `esc_status`, `gimbal_device_attitude_status`, `gimbal_device_information`, `obstacle_distance`, `sensor_gps`, `sensor_optical_flow`, `vehicle_angular_velocity_groundtruth`, ... 6 more.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `GZBridge`, `GZGimbal`, `GZBridge`, `GZMixingInterfaceESC`, `GZBridge`, `GZMixingInterfaceServo`, ... 3 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `rate_ctrl`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `gimbal_controls`, `gimbal_device_set_attitude`, `parameter_update`, `vehicle_command` |
+| Primary outputs | `differential_pressure`, `esc_status`, `gimbal_device_attitude_status`, `gimbal_device_information`, `obstacle_distance`, `sensor_gps`, `sensor_optical_flow`, `vehicle_angular_velocity_groundtruth`, `vehicle_attitude_groundtruth`, `vehicle_command_ack`, ... 4 more |
+| Referenced topics | `differential_pressure`, `esc_status`, `gimbal_controls`, `gimbal_device_attitude_status`, `gimbal_device_information`, `gimbal_device_set_attitude`, `obstacle_distance`, `parameter_update`, `sensor_gps`, `sensor_optical_flow`, ... 13 more |
+| Parameters/config | module.yaml |
+| Key classes | `GZBridge`, `GZGimbal`, `GZBridge`, `GZMixingInterfaceESC`, `GZBridge`, `GZMixingInterfaceServo`, `GZBridge`, `GZMixingInterfaceWheel`, `GZBridge` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| GZBridge.cpp | Entry point, start command, or module lifecycle code |
+| GZGimbal.cpp | Work-item callback or main runtime update path |
+| GZMixingInterfaceESC.cpp | Work-item callback or main runtime update path |
+| GZMixingInterfaceServo.cpp | Work-item callback or main runtime update path |
+| GZMixingInterfaceWheel.cpp | Work-item callback or main runtime update path |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| GZBridge.hpp | Defines `GZBridge` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

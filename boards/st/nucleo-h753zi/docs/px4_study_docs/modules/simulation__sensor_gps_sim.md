@@ -8,6 +8,55 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Simulates GPS data for simulation workflows.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Publish or condition sensor topics consumed by estimators and controllers.
+- Consume runtime inputs from uORB topics such as `parameter_update`, `vehicle_command`, `vehicle_global_position_groundtruth`, `vehicle_local_position_groundtruth`.
+- Publish outputs or status topics such as `sensor_gps`, `vehicle_command_ack`.
+- Use module configuration from `parameters.yaml`.
+- Implement the main behavior in classes such as `SensorGpsSim`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+The GPS simulator samples truth position/velocity and adds delay, noise, and validity flags.
+
+```text
+p_meas = p_truth(t - delay) + noise_pos
+v_meas = v_truth(t - delay) + noise_vel
+fix_valid = satellites >= sat_min and eph < eph_max and epv < epv_max
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update`, `vehicle_command`, `vehicle_global_position_groundtruth`, `vehicle_local_position_groundtruth` |
+| Primary outputs | `sensor_gps`, `vehicle_command_ack` |
+| Referenced topics | `parameter_update`, `sensor_gps`, `vehicle_command`, `vehicle_command_ack`, `vehicle_global_position`, `vehicle_global_position_groundtruth`, `vehicle_local_position`, `vehicle_local_position_groundtruth` |
+| Parameters/config | parameters.yaml |
+| Key classes | `SensorGpsSim` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| SensorGpsSim.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| parameters.yaml | Build, parameter, or module configuration |
+| SensorGpsSim.hpp | Defines `SensorGpsSim` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

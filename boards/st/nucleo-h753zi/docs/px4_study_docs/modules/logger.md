@@ -8,6 +8,52 @@
 
 Architecture notes for the logger module.
 
+## Description of Module
+
+Records selected uORB topics and system metadata into PX4 log files.
+
+### Primary Responsibilities
+
+- Provide persistence, replay, or data-recording services used by other PX4 modules.
+- Consume runtime inputs from uORB topics such as `battery_status`, `log_message`, `manual_control_setpoint`, `parameter_update`, `ulog_stream_ack`, `vehicle_command`, `vehicle_status`.
+- Publish outputs or status topics such as `logger_status`, `ulog_stream`, `vehicle_command_ack`.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `LogWriter`, `LogType`, `LogWriterFile`, `LogFileBuffer`, `LogWriterMavlink`, `SDLogProfileMask`, ... 7 more.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+- Creates an additional pthread helper context.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `battery_status`, `log_message`, `manual_control_setpoint`, `parameter_update`, `ulog_stream_ack`, `vehicle_command`, `vehicle_status` |
+| Primary outputs | `logger_status`, `ulog_stream`, `vehicle_command_ack` |
+| Referenced topics | `battery_status`, `log_message`, `logger_status`, `manual_control_setpoint`, `parameter_update`, `uORBTopics`, `ulog_stream`, `ulog_stream_ack`, `vehicle_command`, `vehicle_command_ack`, ... 1 more |
+| Parameters/config | module.yaml |
+| Key classes | `LogWriter`, `LogType`, `LogWriterFile`, `LogFileBuffer`, `LogWriterMavlink`, `SDLogProfileMask`, `MissionLogType`, `LoggedTopics`, `Logger`, `LogMode`, ... 3 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| log_writer_file.cpp | Dedicated task loop or repeated runtime path |
+| logger.cpp | Entry point, start command, or module lifecycle code |
+| watchdog.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| module_params_crypto.yaml | Build, parameter, or module configuration |
+| log_writer.h | Defines `LogWriter` class |
+| log_writer_file.h | Defines `LogType` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

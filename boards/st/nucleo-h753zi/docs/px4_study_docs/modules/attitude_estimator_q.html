@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="attitude_estimator_q.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>attitude_estimator_q</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Attitude estimator q.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/attitude_estimator_q</code></div>
       <div><strong>Build target</strong><br><code>modules__attitude_estimator_q</code></div>
@@ -108,6 +120,31 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Provides a lightweight quaternion attitude estimator using IMU and aiding data.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Fuse, filter, or validate measurements into estimated state outputs for other modules.</li><li>Consume runtime inputs from uORB topics such as `parameter_update`, `sensor_combined`, `vehicle_attitude`, `vehicle_gps_position`, `vehicle_local_position`, `vehicle_magnetometer`, `vehicle_mocap_odometry`, `vehicle_visual_odometry`.</li><li>Publish outputs or status topics such as `vehicle_attitude`.</li><li>Use module configuration from `attitude_estimator_q_params.yaml`.</li><li>Implement the main behavior in classes such as `AttitudeEstimatorQ`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>This module is a quaternion complementary attitude estimator. Gyro integration predicts attitude, while accelerometer, magnetometer, or external heading corrections slowly pull the quaternion back to observed gravity/heading.</p>
+    <pre class="math-block">q_pred = q[k-1] * exp(0.5 * (omega - bias) * dt)
+e_acc = normalize(accel_body) x gravity_body_pred
+e_mag = heading_measured - heading_pred
+omega_corr = omega + w_acc*e_acc + w_mag*e_mag
+bias[k] = bias[k-1] - w_bias * e_acc * dt
+q[k] = normalize(q[k-1] * exp(0.5 * omega_corr * dt))</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`parameter_update`, `sensor_combined`, `vehicle_attitude`, `vehicle_gps_position`, `vehicle_local_position`, `vehicle_magnetometer`, `vehicle_mocap_odometry`, `vehicle_visual_odometry`</td></tr><tr><td>Primary outputs</td><td>`vehicle_attitude`</td></tr><tr><td>Referenced topics</td><td>`parameter_update`, `sensor_combined`, `sensor_gps`, `vehicle_attitude`, `vehicle_gps_position`, `vehicle_local_position`, `vehicle_magnetometer`, `vehicle_mocap_odometry`, `vehicle_odometry`, `vehicle_visual_odometry`</td></tr><tr><td>Parameters/config</td><td>attitude_estimator_q_params.yaml</td></tr><tr><td>Key classes</td><td>`AttitudeEstimatorQ`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>attitude_estimator_q_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>attitude_estimator_q_params.yaml</td><td>Build, parameter, or module configuration</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -141,7 +178,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/attitude_estimator_q</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__attitude_estimator_q</td></tr><tr><td>Runtime main</td><td>attitude_estimator_q</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>attitude_estimator_q_params.yaml</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>0</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

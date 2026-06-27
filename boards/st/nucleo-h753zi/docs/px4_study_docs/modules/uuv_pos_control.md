@@ -6,7 +6,57 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Controls the attitude of an unmanned underwater vehicle (UUV). Publishes `attitude_setpoint` messages. Currently, this implementation supports only a few modes: * Full manual: Roll, pitch, yaw, and throttle controls are passed directly through to the actuators * Auto mission: The uuv runs missions CLI usage example: $ uuv_pos_control start $ uuv_pos_control status $ uuv_pos_control stop
+
+## Description of Module
+
+Runs underwater-vehicle position control.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_attitude`, `vehicle_control_mode`, `vehicle_local_position`.
+- Publish outputs or status topics such as `vehicle_attitude_setpoint`.
+- Use module configuration from `uuv_pos_control_params.yaml`.
+- Implement the main behavior in classes such as `UUVPOSControl`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+Underwater position control is cascaded position and velocity feedback that produces force setpoints.
+
+```text
+e_p = p_sp - p
+v_sp = v_ff + Kp_pos * e_p
+e_v = v_sp - v
+force_sp = Kp_vel*e_v + Ki_vel*integral(e_v) - Kd_vel*v_dot
+force_body = R_ned_to_body * force_sp
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_attitude`, `vehicle_control_mode`, `vehicle_local_position` |
+| Primary outputs | `vehicle_attitude_setpoint` |
+| Referenced topics | `manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_local_position`, `vehicle_rates_setpoint` |
+| Parameters/config | uuv_pos_control_params.yaml |
+| Key classes | `UUVPOSControl` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| uuv_pos_control.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| uuv_pos_control_params.yaml | Build, parameter, or module configuration |
+| uuv_pos_control.hpp | Defines `UUVPOSControl` class |
 
 ## Architecture Overview
 

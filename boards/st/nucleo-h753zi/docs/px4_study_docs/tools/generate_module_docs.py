@@ -16,9 +16,19 @@ from pathlib import Path
 from typing import Iterable
 
 
-ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def find_repo_root(start: Path) -> Path:
+    for parent in (start, *start.parents):
+        if (parent / ".git").exists() and (parent / "src" / "modules").is_dir():
+            return parent
+    raise RuntimeError("could not locate PX4 repository root")
+
+
+ROOT = find_repo_root(SCRIPT_DIR)
 SRC_ROOT = ROOT / "src" / "modules"
-OUT_ROOT = ROOT / "px4_study_docs"
+OUT_ROOT = SCRIPT_DIR.parent
 MODULE_OUT = OUT_ROOT / "modules"
 
 EXCLUDED_PARTS = {
@@ -87,6 +97,80 @@ PALETTES = [
         "text": "#222222",
     },
 ]
+
+ROLE_SUMMARIES = {
+    "airship_att_control": "Controls airship attitude and converts attitude or rate demands into actuator-facing control outputs.",
+    "airspeed_selector": "Selects, validates, and publishes the airspeed estimate that downstream fixed-wing control and navigation use.",
+    "attitude_estimator_q": "Provides a lightweight quaternion attitude estimator using IMU and aiding data.",
+    "battery_status": "Monitors battery measurements, estimates battery health and remaining energy, and publishes battery status.",
+    "camera_feedback": "Processes camera trigger or capture feedback and reports camera capture timing to the rest of PX4.",
+    "commander": "Owns the high-level vehicle state machine: arming, mode transitions, safety checks, failsafe coordination, and operator commands.",
+    "control_allocator": "Maps normalized torque and thrust requests into actuator motor and servo setpoints using the configured vehicle geometry.",
+    "dataman": "Provides persistent storage services for mission, geofence, rally point, and other structured data records.",
+    "ekf2": "Runs the EKF2 estimator stack for attitude, velocity, position, sensor bias, and estimator status outputs.",
+    "esc_battery": "Uses ESC telemetry to derive battery-like power status when ESC data is the available energy source.",
+    "events": "Collects and forwards PX4 event messages for logging, MAVLink, and ground-station visibility.",
+    "flight_mode_manager": "Selects and runs multicopter flight-mode tasks that generate trajectory and control setpoints.",
+    "fw_att_control": "Runs fixed-wing attitude control and produces fixed-wing torque or actuator control demands.",
+    "fw_autotune_attitude_control": "Injects and evaluates fixed-wing attitude-control excitation to support automatic gain tuning.",
+    "fw_lateral_longitudinal_control": "Runs fixed-wing lateral and longitudinal control from navigation setpoints to attitude and thrust requests.",
+    "fw_mode_manager": "Selects fixed-wing mode behavior and generates fixed-wing trajectory or attitude setpoints.",
+    "fw_rate_control": "Runs fixed-wing angular-rate control and publishes actuator-facing torque/control outputs.",
+    "gimbal": "Manages gimbal control commands, gimbal device status, and mount orientation setpoints.",
+    "gyro_calibration": "Coordinates gyro calibration data collection and calibration result publication.",
+    "gyro_fft": "Analyzes gyro vibration content using FFT processing and publishes diagnostic vibration information.",
+    "hardfault_stream": "Streams hardfault information so crash data can be retrieved after a fault.",
+    "internal_combustion_engine_control": "Controls internal-combustion-engine state and publishes engine status for vehicles that use an ICE.",
+    "land_detector": "Determines whether the vehicle is landed, maybe landed, or airborne for failsafe and controller behavior.",
+    "landing_target_estimator": "Estimates relative landing-target position from target observations and vehicle state.",
+    "load_mon": "Reports CPU and system load so runtime health can be monitored.",
+    "local_position_estimator": "Provides the legacy local-position estimator path using sensor and aiding inputs.",
+    "logger": "Records selected uORB topics and system metadata into PX4 log files.",
+    "mag_bias_estimator": "Estimates magnetometer bias and publishes bias corrections for estimator use.",
+    "manual_control": "Selects valid manual input sources and publishes normalized manual stick and switch setpoints.",
+    "mavlink": "Implements MAVLink telemetry, command, mission, parameter, and shell communication links.",
+    "mc_att_control": "Runs multicopter attitude control and converts attitude setpoints into body-rate setpoints.",
+    "mc_autotune_attitude_control": "Runs multicopter attitude-control excitation and analysis for automatic tuning.",
+    "mc_hover_thrust_estimator": "Estimates the hover thrust needed by the multicopter position controller.",
+    "mc_nn_control": "Runs an experimental neural-network multicopter control path.",
+    "mc_pos_control": "Runs multicopter position and velocity control and publishes attitude/thrust setpoints.",
+    "mc_raptor": "Runs an experimental multicopter Raptor control path for advanced setpoint generation.",
+    "mc_rate_control": "Runs the high-rate multicopter body-rate controller and publishes torque and thrust setpoints.",
+    "muorb": "Contains multi-uORB transport support code and nested module targets.",
+    "muorb/apps": "Provides the application-side multi-uORB bridge target.",
+    "muorb/slpi": "Provides the SLPI-side multi-uORB bridge target.",
+    "navigator": "Owns mission, geofence, return, takeoff, landing, and other autonomous navigation behaviors.",
+    "payload_deliverer": "Controls payload delivery or gripper-style release actions from vehicle commands.",
+    "px4iofirmware": "Builds PX4IO firmware support code for the IO co-processor path.",
+    "rc_update": "Converts raw RC input into calibrated manual-control input topics.",
+    "replay": "Replays logged sensor and uORB data through PX4 modules for estimator and analysis workflows.",
+    "rover_ackermann": "Controls Ackermann-steered rover motion from rover setpoints to actuator commands.",
+    "rover_differential": "Controls differential-drive rover motion from rover setpoints to actuator commands.",
+    "rover_mecanum": "Controls mecanum-drive rover motion from rover setpoints to wheel commands.",
+    "sensors": "Aggregates, validates, prioritizes, and republishes raw sensor data into vehicle sensor topics.",
+    "simulation": "Groups simulation-related module targets and shared simulation support.",
+    "simulation/battery_simulator": "Simulates battery behavior for software-in-the-loop and hardware-in-the-loop runs.",
+    "simulation/gz_bridge": "Bridges PX4 uORB data with Gazebo transport for simulation.",
+    "simulation/pwm_out_sim": "Simulates PWM output behavior for HIL and simulator actuator paths.",
+    "simulation/sensor_agp_sim": "Simulates airspeed or auxiliary pressure sensor data for simulation workflows.",
+    "simulation/sensor_airspeed_sim": "Simulates airspeed sensor data for simulation workflows.",
+    "simulation/sensor_baro_sim": "Simulates barometer data for simulation workflows.",
+    "simulation/sensor_gps_sim": "Simulates GPS data for simulation workflows.",
+    "simulation/sensor_mag_sim": "Simulates magnetometer data for simulation workflows.",
+    "simulation/simulator_mavlink": "Connects PX4 to a MAVLink-based simulator backend.",
+    "simulation/simulator_sih": "Runs the simple simulator-in-hardware vehicle dynamics model.",
+    "simulation/system_power_simulator": "Simulates system power status for simulation workflows.",
+    "spacecraft": "Runs spacecraft-specific attitude, rate, and actuator-control behavior.",
+    "task_watchdog": "Watches registered tasks for missed heartbeats or runtime stalls.",
+    "temperature_compensation": "Applies temperature compensation data to sensor correction paths.",
+    "time_persistor": "Persists time information across boots when supported by the platform.",
+    "uuv_att_control": "Runs underwater-vehicle attitude control.",
+    "uuv_pos_control": "Runs underwater-vehicle position control.",
+    "uxrce_dds_client": "Bridges PX4 uORB data to DDS through the Micro XRCE-DDS client.",
+    "vision_target_estimator": "Estimates visual target state from perception observations and vehicle motion.",
+    "vtol_att_control": "Coordinates VTOL attitude-control behavior and transitions between multicopter and fixed-wing control.",
+    "zenoh": "Bridges PX4 data through Zenoh transport.",
+}
 
 
 @dataclass
@@ -227,7 +311,7 @@ def parse_cmake(module_path: Path) -> CMakeInfo:
     main = first_value(sections["MAIN"], target)
     stack_main = first_value(sections["STACK_MAIN"], "")
     sources = [value for value in sections["SRCS"] if not value.startswith("${")]
-    module_config = first_value(sections["MODULE_CONFIG"], "")
+    module_config = first_value([value for value in sections["MODULE_CONFIG"] if not value.startswith("${")], "")
     depends = [value for value in sections["DEPENDS"] if value not in {"PRIVATE", "PUBLIC", "INTERFACE"}]
 
     return CMakeInfo(
@@ -285,6 +369,30 @@ def child_modules(module_path: Path, all_modules: Iterable[Path]) -> list[str]:
     return sorted(children)
 
 
+def clean_description_text(value: str, limit: int = 520) -> str:
+    text = value.replace("\r", "\n")
+    text = re.sub(r"^\s*#+\s*Description\s*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
+    text = re.sub(r"^\s*#+\s*[A-Za-z0-9 _/-]+\s*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:limit].strip()
+
+
+def description_from_print_macros(module_path: Path) -> str:
+    raw_re = re.compile(r'PRINT_MODULE_DESCRIPTION\s*\(\s*R"([A-Za-z0-9_]*)\((.*?)\)\1"', re.DOTALL)
+
+    for path in sorted(module_path.iterdir()):
+        if not path.is_file() or should_skip(path) or path.suffix not in {".c", ".cc", ".cpp", ".h", ".hpp", ".hh"}:
+            continue
+
+        text = read_text(path)
+        for match in raw_re.finditer(text):
+            description = clean_description_text(match.group(2))
+            if description:
+                return description
+
+    return ""
+
+
 def description_from_files(module_path: Path) -> str:
     module_yaml = module_path / "module.yaml"
     if module_yaml.exists():
@@ -297,6 +405,10 @@ def description_from_files(module_path: Path) -> str:
         if match:
             name = match.group(1).strip().strip('"')
             return f"Architecture notes for the {name} module."
+
+    print_description = description_from_print_macros(module_path)
+    if print_description:
+        return print_description
 
     readme = module_path / "README.md"
     if readme.exists():
@@ -754,6 +866,206 @@ def topic_rows(info: ModuleInfo) -> list[list[str]]:
     return rows
 
 
+def human_list(values: list[str], limit: int = 8) -> str:
+    if not values:
+        return "none detected"
+    shown = [f"`{value}`" for value in values[:limit]]
+    if len(values) > limit:
+        shown.append(f"... {len(values) - limit} more")
+    return ", ".join(shown)
+
+
+def source_text(info: ModuleInfo) -> str:
+    chunks: list[str] = []
+    for path in info.source_files + info.headers:
+        chunks.append(read_text(path))
+    return "\n".join(chunks)
+
+
+def role_summary(info: ModuleInfo) -> str:
+    if info.title in ROLE_SUMMARIES:
+        return ROLE_SUMMARIES[info.title]
+
+    if info.child_modules:
+        return f"Groups nested PX4 module targets under `{info.title}` and provides shared source or configuration context for those children."
+
+    useful_description = info.description
+    if useful_description and "Source-derived architecture notes" not in useful_description:
+        return useful_description
+
+    if "control" in info.title:
+        return f"Runs control logic for the `{info.title}` vehicle or subsystem path."
+    if "estimator" in info.title:
+        return f"Estimates state for the `{info.title}` subsystem from uORB inputs and configuration parameters."
+    if "sim" in info.title or "simulation" in info.title:
+        return f"Provides simulation support for the `{info.title}` path."
+
+    return f"Implements the PX4 `{info.title}` module and its runtime data-flow responsibilities."
+
+
+def inferred_domain_responsibilities(info: ModuleInfo) -> list[str]:
+    title = info.title.lower()
+    responsibilities: list[str] = []
+
+    if "control" in title or "_ctl" in title:
+        responsibilities.append("Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.")
+    if "estimator" in title or "ekf" in title:
+        responsibilities.append("Fuse, filter, or validate measurements into estimated state outputs for other modules.")
+    if "sim" in title or "simulation" in title:
+        responsibilities.append("Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.")
+    if any(token in title for token in ("mavlink", "uxrce", "zenoh", "muorb", "bridge")):
+        responsibilities.append("Translate between PX4 uORB data and an external transport or companion-computer interface.")
+    if "logger" in title or "replay" in title or "dataman" in title:
+        responsibilities.append("Provide persistence, replay, or data-recording services used by other PX4 modules.")
+    if "commander" in title or "navigator" in title or "mode_manager" in title:
+        responsibilities.append("Coordinate higher-level vehicle behavior rather than directly driving actuators.")
+    if "sensor" in title or title == "sensors":
+        responsibilities.append("Publish or condition sensor topics consumed by estimators and controllers.")
+
+    return responsibilities
+
+
+def responsibility_bullets(info: ModuleInfo) -> list[str]:
+    bullets = inferred_domain_responsibilities(info)
+
+    if info.subscriptions:
+        bullets.append(f"Consume runtime inputs from uORB topics such as {human_list(info.subscriptions)}.")
+    elif info.topics:
+        bullets.append(f"Reference uORB topics such as {human_list(info.topics)}.")
+    else:
+        bullets.append("Operate without directly detected uORB topic dependencies in this source inventory.")
+
+    if info.publications:
+        bullets.append(f"Publish outputs or status topics such as {human_list(info.publications)}.")
+    else:
+        bullets.append("Do not publish directly detected uORB outputs from this module directory.")
+
+    if info.parameters:
+        bullets.append(f"Use parameters or module configuration entries such as {human_list(info.parameters, limit=6)}.")
+    elif info.cmake.module_config:
+        bullets.append(f"Use module configuration from `{info.cmake.module_config}`.")
+    else:
+        config_files = [rel_to_module(info.path, path) for path in info.configs if path.suffix in {".yaml", ".yml"}]
+        if config_files:
+            bullets.append(f"Use module configuration files such as {human_list(config_files, limit=6)}.")
+
+    if info.classes:
+        bullets.append(f"Implement the main behavior in classes such as {human_list([item.name for item in info.classes], limit=6)}.")
+    elif info.source_files:
+        bullets.append("Implement behavior mostly in C/C++ source functions rather than detected C++ classes.")
+
+    if info.child_modules:
+        bullets.append(f"Organize nested module targets: {human_list(info.child_modules, limit=6)}.")
+
+    deduped: list[str] = []
+    for bullet in bullets:
+        if bullet not in deduped:
+            deduped.append(bullet)
+    return deduped[:8]
+
+
+def scheduling_bullets(info: ModuleInfo) -> list[str]:
+    text = source_text(info)
+    bullets: list[str] = []
+    wq_names = sorted(set(re.findall(r"wq_configurations::([A-Za-z0-9_]+)", text)))
+    uses_work_queue = any(token in text for token in ("ScheduledWorkItem", "WorkItem(", "OutputModuleInterface", "task_id_is_work_queue"))
+    uses_task = "px4_task_spawn_cmd" in text
+
+    if uses_work_queue:
+        if wq_names:
+            bullets.append(f"Runs work-queue callbacks on queue configurations such as {human_list(wq_names, limit=6)}.")
+        else:
+            bullets.append("Runs as a PX4 work item or output module on a shared work queue thread.")
+
+    if uses_task:
+        if uses_work_queue:
+            bullets.append("Also contains explicit task-spawn code or helper task creation in this module tree.")
+        else:
+            bullets.append("Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.")
+
+    if "run_trampoline_impl" in text or re.search(r"\bvoid\s+[A-Za-z0-9_:]+::run\s*\(", text):
+        bullets.append("Uses a `run()` loop style module body for repeated execution.")
+    if "registerCallback" in text:
+        bullets.append("Uses uORB callback registration so new topic data can schedule execution.")
+    if "ScheduleOnInterval" in text or "ScheduleDelayed" in text or "ScheduleNow" in text:
+        bullets.append("Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.")
+    if "px4_poll" in text:
+        bullets.append("Waits on file descriptors or uORB subscriptions with `px4_poll()`.")
+    if "pthread_create" in text:
+        bullets.append("Creates an additional pthread helper context.")
+
+    if not bullets:
+        bullets.append("Scheduling style was not explicit in the detected source inventory; inspect the entry source for runtime details.")
+
+    return bullets
+
+
+def interface_rows(info: ModuleInfo) -> list[list[str]]:
+    config_details = human_list(info.parameters, limit=10)
+    if not info.parameters:
+        config_files = [rel_to_module(info.path, path) for path in info.configs if path.suffix in {".yaml", ".yml"}]
+        config_details = info.cmake.module_config or human_list(config_files, limit=10)
+
+    rows = [
+        ["Primary inputs", human_list(info.subscriptions, limit=10)],
+        ["Primary outputs", human_list(info.publications, limit=10)],
+        ["Referenced topics", human_list(info.topics, limit=10)],
+        ["Parameters/config", config_details],
+        ["Key classes", human_list([item.name for item in info.classes], limit=10)],
+    ]
+    return rows
+
+
+def source_landmark_rows(info: ModuleInfo) -> list[list[str]]:
+    rows: list[list[str]] = []
+    seen: set[str] = set()
+    main = info.cmake.main
+
+    for path in info.source_files:
+        text = read_text(path)
+        reason = ""
+        if "ModuleBase::Descriptor" in text or "task_spawn" in text or f"{main}_main" in text:
+            reason = "Entry point, start command, or module lifecycle code"
+        elif "Run()" in text or "::Run(" in text:
+            reason = "Work-item callback or main runtime update path"
+        elif "run()" in text or "::run(" in text:
+            reason = "Dedicated task loop or repeated runtime path"
+
+        if reason:
+            path_rel = rel_to_module(info.path, path)
+            rows.append([path_rel, reason])
+            seen.add(path_rel)
+        if len(rows) >= 5:
+            break
+
+    for path in info.configs:
+        path_rel = rel_to_module(info.path, path)
+        if path_rel not in seen:
+            rows.append([path_rel, "Build, parameter, or module configuration"])
+            seen.add(path_rel)
+        if len(rows) >= 7:
+            break
+
+    for item in info.classes[:4]:
+        if item.file not in seen:
+            rows.append([item.file, f"Defines `{item.name}` class"])
+            seen.add(item.file)
+        if len(rows) >= 8:
+            break
+
+    return rows
+
+
+def markdown_bullets(values: list[str]) -> str:
+    return "\n".join(f"- {value}" for value in values) if values else "- None detected."
+
+
+def html_bullets(values: list[str]) -> str:
+    if not values:
+        return "<ul><li>None detected.</li></ul>"
+    return "<ul>" + "".join(f"<li>{html_escape(value)}</li>" for value in values) + "</ul>"
+
+
 def write_markdown(info: ModuleInfo) -> None:
     diagrams = {
         "Architecture": architecture_diagram(info),
@@ -788,6 +1100,26 @@ def write_markdown(info: ModuleInfo) -> None:
         "```mermaid",
         diagrams["Architecture"],
         "```",
+        "",
+        "## Role, Functions, and Responsibilities",
+        "",
+        role_summary(info),
+        "",
+        "### Primary Responsibilities",
+        "",
+        markdown_bullets(responsibility_bullets(info)),
+        "",
+        "### Runtime Behavior",
+        "",
+        markdown_bullets(scheduling_bullets(info)),
+        "",
+        "### Main Interfaces",
+        "",
+        md_table(["Area", "Details"], interface_rows(info)),
+        "",
+        "### Source Landmarks",
+        "",
+        md_table(["File", "Why it matters"], source_landmark_rows(info)),
         "",
         "## Build and Entry Points",
         "",
@@ -1009,6 +1341,21 @@ def write_html(info: ModuleInfo) -> None:
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     {diagram_block(diagrams['Architecture'])}
+
+    <h2>Role, Functions, and Responsibilities</h2>
+    <p>{html_escape(role_summary(info))}</p>
+
+    <h3>Primary Responsibilities</h3>
+    {html_bullets(responsibility_bullets(info))}
+
+    <h3>Runtime Behavior</h3>
+    {html_bullets(scheduling_bullets(info))}
+
+    <h3>Main Interfaces</h3>
+    {html_table(['Area', 'Details'], interface_rows(info))}
+
+    <h3>Source Landmarks</h3>
+    {html_table(['File', 'Why it matters'], source_landmark_rows(info))}
 
     <h2>Build and Entry Points</h2>
     {html_table(['Field', 'Value'], build_rows(info))}

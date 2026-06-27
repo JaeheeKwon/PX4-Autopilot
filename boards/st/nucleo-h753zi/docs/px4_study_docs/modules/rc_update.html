@@ -98,7 +98,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="rc_update.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>rc_update</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>The rc_update module handles RC channel mapping: read the raw input channels (`input_rc`), then apply the calibration, map the RC channels to the configured channels &amp; mode switches and then publish as `rc_channels` and `manual_control_input`. To reduce control latency, the module is scheduled on input_rc publications.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/rc_update</code></div>
       <div><strong>Build target</strong><br><code>modules__rc_update</code></div>
@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Converts raw RC input into calibrated manual-control input topics.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `input_rc`, `manual_control_switches`, `parameter_update`, `rc_parameter_map`.</li><li>Publish outputs or status topics such as `manual_control_input`, `manual_control_switches`, `rc_channels`.</li><li>Use module configuration from `params.yaml`.</li><li>Implement the main behavior in classes such as `TestRCUpdate`, `RCUpdateTest`, `RCUpdate`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `hp_default`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`input_rc`, `manual_control_switches`, `parameter_update`, `rc_parameter_map`</td></tr><tr><td>Primary outputs</td><td>`manual_control_input`, `manual_control_switches`, `rc_channels`</td></tr><tr><td>Referenced topics</td><td>`input_rc`, `manual_control_input`, `manual_control_setpoint`, `manual_control_switches`, `parameter_update`, `rc_channels`, `rc_parameter_map`</td></tr><tr><td>Parameters/config</td><td>params.yaml</td></tr><tr><td>Key classes</td><td>`TestRCUpdate`, `RCUpdateTest`, `RCUpdate`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>rc_update.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>params_deprecated.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>RCUpdateTest.cpp</td><td>Defines `TestRCUpdate` class</td></tr><tr><td>rc_update.h</td><td>Defines `RCUpdate` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -141,7 +159,6 @@ classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
 classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
 classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
 classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/rc_update</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__rc_update</td></tr><tr><td>Runtime main</td><td>rc_update</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>params.yaml</td></tr><tr><td>Detected sources</td><td>2</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>3</td></tr></tbody></table>
 

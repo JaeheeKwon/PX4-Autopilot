@@ -6,7 +6,57 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Attitude estimator q.
+
+## Description of Module
+
+Provides a lightweight quaternion attitude estimator using IMU and aiding data.
+
+### Primary Responsibilities
+
+- Fuse, filter, or validate measurements into estimated state outputs for other modules.
+- Consume runtime inputs from uORB topics such as `parameter_update`, `sensor_combined`, `vehicle_attitude`, `vehicle_gps_position`, `vehicle_local_position`, `vehicle_magnetometer`, `vehicle_mocap_odometry`, `vehicle_visual_odometry`.
+- Publish outputs or status topics such as `vehicle_attitude`.
+- Use module configuration from `attitude_estimator_q_params.yaml`.
+- Implement the main behavior in classes such as `AttitudeEstimatorQ`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+This module is a quaternion complementary attitude estimator. Gyro integration predicts attitude, while accelerometer, magnetometer, or external heading corrections slowly pull the quaternion back to observed gravity/heading.
+
+```text
+q_pred = q[k-1] * exp(0.5 * (omega - bias) * dt)
+e_acc = normalize(accel_body) x gravity_body_pred
+e_mag = heading_measured - heading_pred
+omega_corr = omega + w_acc*e_acc + w_mag*e_mag
+bias[k] = bias[k-1] - w_bias * e_acc * dt
+q[k] = normalize(q[k-1] * exp(0.5 * omega_corr * dt))
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update`, `sensor_combined`, `vehicle_attitude`, `vehicle_gps_position`, `vehicle_local_position`, `vehicle_magnetometer`, `vehicle_mocap_odometry`, `vehicle_visual_odometry` |
+| Primary outputs | `vehicle_attitude` |
+| Referenced topics | `parameter_update`, `sensor_combined`, `sensor_gps`, `vehicle_attitude`, `vehicle_gps_position`, `vehicle_local_position`, `vehicle_magnetometer`, `vehicle_mocap_odometry`, `vehicle_odometry`, `vehicle_visual_odometry` |
+| Parameters/config | attitude_estimator_q_params.yaml |
+| Key classes | `AttitudeEstimatorQ` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| attitude_estimator_q_main.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| attitude_estimator_q_params.yaml | Build, parameter, or module configuration |
 
 ## Architecture Overview
 

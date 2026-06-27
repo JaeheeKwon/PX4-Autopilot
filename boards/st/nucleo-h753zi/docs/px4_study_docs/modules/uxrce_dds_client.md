@@ -8,6 +8,49 @@
 
 Architecture notes for the UXRCE-DDS Client module.
 
+## Description of Module
+
+Bridges PX4 uORB data to DDS through the Micro XRCE-DDS client.
+
+### Primary Responsibilities
+
+- Translate between PX4 uORB data and an external transport or companion-computer interface.
+- Consume runtime inputs from uORB topics such as `message_format_request`, `vehicle_command_ack`.
+- Publish outputs or status topics such as `message_format_response`, `vehicle_command`.
+- Use parameters or module configuration entries such as `UXRCE_DDS_AG_IP`, `UXRCE_DDS_CFG`, `UXRCE_DDS_DOM_ID`, `UXRCE_DDS_FLCTRL`, `UXRCE_DDS_KEY`, `UXRCE_DDS_NS_IDX`, ... 6 more.
+- Implement the main behavior in classes such as `SrvBase`, `defines`, `UxrceddsClient`, `Transport`, `ParticipantConfig`, `VehicleCommandSrv`, ... 1 more.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `message_format_request`, `vehicle_command_ack` |
+| Primary outputs | `message_format_response`, `vehicle_command` |
+| Referenced topics | `message_format_request`, `message_format_response`, `uORBTopics`, `vehicle_command`, `vehicle_command_ack` |
+| Parameters/config | `UXRCE_DDS_AG_IP`, `UXRCE_DDS_CFG`, `UXRCE_DDS_DOM_ID`, `UXRCE_DDS_FLCTRL`, `UXRCE_DDS_KEY`, `UXRCE_DDS_NS_IDX`, `UXRCE_DDS_PRT`, `UXRCE_DDS_PTCFG`, `UXRCE_DDS_RX_TO`, `UXRCE_DDS_SYNCC`, ... 2 more |
+| Key classes | `SrvBase`, `defines`, `UxrceddsClient`, `Transport`, `ParticipantConfig`, `VehicleCommandSrv`, `implement` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| uxrce_dds_client.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| dds_topics.yaml | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| srv_base.h | Defines `SrvBase` class |
+| uxrce_dds_client.h | Defines `UxrceddsClient` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

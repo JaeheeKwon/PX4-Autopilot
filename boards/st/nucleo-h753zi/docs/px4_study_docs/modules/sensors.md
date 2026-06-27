@@ -8,6 +8,61 @@
 
 Architecture notes for the sensors module.
 
+## Description of Module
+
+Aggregates, validates, prioritizes, and republishes raw sensor data into vehicle sensor topics.
+
+### Primary Responsibilities
+
+- Publish or condition sensor topics consumed by estimators and controllers.
+- Consume runtime inputs from uORB topics such as `adc_report`, `battery_status`, `differential_pressure`, `esc_status`, `estimator_selector_status`, `estimator_sensor_bias`, `estimator_status_flags`, `magnetometer_bias_estimate`, ... 16 more.
+- Publish outputs or status topics such as `airspeed`, `differential_pressure`, `sensor_combined`, `sensor_preflight_mag`, `sensor_selection`, `sensors_status_baro`, `sensors_status_imu`, `sensors_status_mag`, ... 8 more.
+- Use parameters or module configuration entries such as `SENS_GPS_MASK`, `SENS_GPS_PRIME`, `SENS_GPS_TAU`.
+- Implement the main behavior in classes such as `Integrator`, `IntegratorConing`, `to`, `to`, `DataValidator`, `DataValidatorGroup`, ... 15 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `INS0`, `nav_and_controllers`, `rate_ctrl`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+The sensors module applies calibration, voting, and filtering before publishing combined sensor data.
+
+```text
+x_cal = scale * (x_raw - offset)
+y[k] = y[k-1] + alpha * (x_cal[k] - y[k-1])
+innovation_i = |x_i - median(x_all)|
+healthy_i = fresh_i and innovation_i < gate_i
+selected = voter(healthy_i, priority_i, innovation_i)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `adc_report`, `battery_status`, `differential_pressure`, `esc_status`, `estimator_selector_status`, `estimator_sensor_bias`, `estimator_status_flags`, `magnetometer_bias_estimate`, `parameter_update`, `pps_capture`, ... 14 more |
+| Primary outputs | `airspeed`, `differential_pressure`, `sensor_combined`, `sensor_preflight_mag`, `sensor_selection`, `sensors_status_baro`, `sensors_status_imu`, `sensors_status_mag`, `vehicle_acceleration`, `vehicle_air_data`, ... 6 more |
+| Referenced topics | `adc_report`, `airspeed`, `battery_status`, `differential_pressure`, `distance_sensor`, `esc_status`, `estimator_selector_status`, `estimator_sensor_bias`, `estimator_status_flags`, `magnetometer_bias_estimate`, ... 29 more |
+| Parameters/config | `SENS_GPS_MASK`, `SENS_GPS_PRIME`, `SENS_GPS_TAU` |
+| Key classes | `Integrator`, `IntegratorConing`, `to`, `to`, `DataValidator`, `DataValidatorGroup`, `to`, `Sensors`, `VehicleAcceleration`, `VehicleAirData`, ... 11 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| sensors.cpp | Entry point, start command, or module lifecycle code |
+| vehicle_acceleration/VehicleAcceleration.cpp | Work-item callback or main runtime update path |
+| vehicle_air_data/VehicleAirData.cpp | Work-item callback or main runtime update path |
+| vehicle_angular_velocity/VehicleAngularVelocity.cpp | Work-item callback or main runtime update path |
+| vehicle_gps_position/VehicleGPSPosition.cpp | Work-item callback or main runtime update path |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| data_validator/CMakeLists.txt | Build, parameter, or module configuration |
+| Integrator.hpp | Defines `Integrator` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

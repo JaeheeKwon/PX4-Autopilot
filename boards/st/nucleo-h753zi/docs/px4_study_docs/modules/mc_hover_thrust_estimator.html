@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -108,6 +120,32 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Estimates the hover thrust needed by the multicopter position controller.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Fuse, filter, or validate measurements into estimated state outputs for other modules.</li><li>Consume runtime inputs from uORB topics such as `control_allocator_status`, `hover_thrust_estimate`, `parameter_update`, `vehicle_attitude`, `vehicle_land_detected`, `vehicle_local_position`, `vehicle_status`, `vehicle_thrust_setpoint`.</li><li>Publish outputs or status topics such as `hover_thrust_estimate`.</li><li>Use module configuration from `hover_thrust_estimator_params.yaml`.</li><li>Implement the main behavior in classes such as `MulticopterHoverThrustEstimator`, `ZeroOrderHoverThrustEkf`, `ZeroOrderHoverThrustEkfTest`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>The hover-thrust estimator is a single-state EKF. The state is hover thrust, and vertical acceleration provides the measurement information.</p>
+    <pre class="math-block">State: x = hover_thrust
+Prediction: x[k|k-1] = x[k-1|k-1]
+P[k|k-1] = P[k-1|k-1] + Q
+Measurement model: z_accel ~= g * (thrust_cmd / x - 1)
+H = d h(x) / dx = -g * thrust_cmd / x^2
+K = P*H / (H*P*H + R)
+x = x + K*(z - h(x))</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`control_allocator_status`, `hover_thrust_estimate`, `parameter_update`, `vehicle_attitude`, `vehicle_land_detected`, `vehicle_local_position`, `vehicle_status`, `vehicle_thrust_setpoint`</td></tr><tr><td>Primary outputs</td><td>`hover_thrust_estimate`</td></tr><tr><td>Referenced topics</td><td>`control_allocator_status`, `hover_thrust_estimate`, `parameter_update`, `vehicle_attitude`, `vehicle_land_detected`, `vehicle_local_position`, `vehicle_status`, `vehicle_thrust_setpoint`</td></tr><tr><td>Parameters/config</td><td>hover_thrust_estimator_params.yaml</td></tr><tr><td>Key classes</td><td>`MulticopterHoverThrustEstimator`, `ZeroOrderHoverThrustEkf`, `ZeroOrderHoverThrustEkfTest`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>MulticopterHoverThrustEstimator.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>hover_thrust_estimator_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>MulticopterHoverThrustEstimator.hpp</td><td>Defines `MulticopterHoverThrustEstimator` class</td></tr><tr><td>zero_order_hover_thrust_ekf.hpp</td><td>Defines `ZeroOrderHoverThrustEkf` class</td></tr><tr><td>zero_order_hover_thrust_ekf_test.cpp</td><td>Defines `ZeroOrderHoverThrustEkfTest` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -141,7 +179,6 @@ classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
 classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
 classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
 classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/mc_hover_thrust_estimator</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__mc_hover_thrust_estimator</td></tr><tr><td>Runtime main</td><td>mc_hover_thrust_estimator</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>hover_thrust_estimator_params.yaml</td></tr><tr><td>Detected sources</td><td>3</td></tr><tr><td>Detected headers</td><td>2</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

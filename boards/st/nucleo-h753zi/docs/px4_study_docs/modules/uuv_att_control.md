@@ -6,7 +6,57 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Controls the attitude of an unmanned underwater vehicle (UUV). Publishes `vehicle_thrust_setpont` and `vehicle_torque_setpoint` messages at a constant 250Hz. Currently, this implementation supports only a few modes: * Full manual: Roll, pitch, yaw, and throttle controls are passed directly through to the actuators * Auto mission: The uuv runs missions CLI usage example: $ uuv_att_control start $ uuv_att_control status $ uuv_att_control stop
+
+## Description of Module
+
+Runs underwater-vehicle attitude control.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_rates_setpoint`.
+- Publish outputs or status topics such as `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`.
+- Use module configuration from `uuv_att_control_params.yaml`.
+- Implement the main behavior in classes such as `UUVAttitudeControl`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+Underwater attitude control is PID-style feedback on roll, pitch, yaw, and angular-rate errors, producing torque setpoints for allocation.
+
+```text
+q_err = inverse(q_body) * q_sp
+e_att = sign(q_err.w) * q_err.xyz
+rate_sp = K_att * e_att
+e_rate = rate_sp - omega_body
+torque_sp = Kp*e_rate + Ki*integral(e_rate) - Kd*omega_dot
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_rates_setpoint` |
+| Primary outputs | `vehicle_thrust_setpoint`, `vehicle_torque_setpoint` |
+| Referenced topics | `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_rates_setpoint`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint` |
+| Parameters/config | uuv_att_control_params.yaml |
+| Key classes | `UUVAttitudeControl` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| uuv_att_control.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| uuv_att_control_params.yaml | Build, parameter, or module configuration |
+| uuv_att_control.hpp | Defines `UUVAttitudeControl` class |
 
 ## Architecture Overview
 

@@ -6,7 +6,56 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Mount/gimbal Gimbal control driver. It maps several different input methods (eg. RC or MAVLink) to a configured output (eg. AUX channels or MAVLink). Documentation how to use it is on the [gimbal_control](../advanced/gimbal_control.md) page. Test the output by setting a angles (all omitted axes are set to 0): $ gimbal test pitch -45 yaw 30
+
+## Description of Module
+
+Manages gimbal control commands, gimbal device status, and mount orientation setpoints.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `gimbal_device_attitude_status`, `gimbal_device_information`, `gimbal_manager_set_attitude`, `gimbal_manager_set_manual_control`, `manual_control_setpoint`, `parameter_update`, `position_setpoint_triplet`, `vehicle_attitude`, ... 4 more.
+- Publish outputs or status topics such as `gimbal_controls`, `gimbal_device_attitude_status`, `gimbal_device_set_attitude`, `gimbal_manager_information`, `gimbal_manager_status`, `gimbal_v1_command`, `mount_orientation`, `vehicle_command`, ... 1 more.
+- Use module configuration from `gimbal_params.yaml`.
+- Implement the main behavior in classes such as `Type`, `Frame`, `InputBase`, `UpdateResult`, `InputFixed`, `InputMavlinkROI`, ... 9 more.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+
+## Background Theory
+
+Gimbal control is primarily a frame-transform problem: a requested pointing attitude is converted through vehicle, mount, and gimbal frames before actuator commands are produced.
+
+```text
+R_world_gimbal_sp = R_world_vehicle * R_vehicle_mount * R_mount_gimbal_sp
+q_err = inverse(q_gimbal) * q_gimbal_sp
+rate_sp = K_att * sign(q_err.w) * q_err.xyz
+actuator_cmd = map_axis(rate_sp or angle_sp)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `gimbal_device_attitude_status`, `gimbal_device_information`, `gimbal_manager_set_attitude`, `gimbal_manager_set_manual_control`, `manual_control_setpoint`, `parameter_update`, `position_setpoint_triplet`, `vehicle_attitude`, `vehicle_command`, `vehicle_global_position`, ... 2 more |
+| Primary outputs | `gimbal_controls`, `gimbal_device_attitude_status`, `gimbal_device_set_attitude`, `gimbal_manager_information`, `gimbal_manager_status`, `gimbal_v1_command`, `mount_orientation`, `vehicle_command`, `vehicle_command_ack` |
+| Referenced topics | `gimbal_controls`, `gimbal_device_attitude_status`, `gimbal_device_information`, `gimbal_device_set_attitude`, `gimbal_manager_information`, `gimbal_manager_set_attitude`, `gimbal_manager_set_manual_control`, `gimbal_manager_status`, `gimbal_v1_command`, `manual_control_setpoint`, ... 9 more |
+| Parameters/config | gimbal_params.yaml |
+| Key classes | `Type`, `Frame`, `InputBase`, `UpdateResult`, `InputFixed`, `InputMavlinkROI`, `InputMavlinkCmdMount`, `InputMavlinkGimbalV2`, `InputRC`, `InputTest`, ... 5 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| gimbal.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| gimbal_params.yaml | Build, parameter, or module configuration |
+| common.h | Defines `Type` class |
+| input.h | Defines `InputBase` class |
 
 ## Architecture Overview
 

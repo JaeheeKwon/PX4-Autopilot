@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Bridges PX4 uORB data to DDS through the Micro XRCE-DDS client.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Translate between PX4 uORB data and an external transport or companion-computer interface.</li><li>Consume runtime inputs from uORB topics such as `message_format_request`, `vehicle_command_ack`.</li><li>Publish outputs or status topics such as `message_format_response`, `vehicle_command`.</li><li>Use parameters or module configuration entries such as `UXRCE_DDS_AG_IP`, `UXRCE_DDS_CFG`, `UXRCE_DDS_DOM_ID`, `UXRCE_DDS_FLCTRL`, `UXRCE_DDS_KEY`, `UXRCE_DDS_NS_IDX`, ... 6 more.</li><li>Implement the main behavior in classes such as `SrvBase`, `defines`, `UxrceddsClient`, `Transport`, `ParticipantConfig`, `VehicleCommandSrv`, ... 1 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.</li><li>Uses a `run()` loop style module body for repeated execution.</li><li>Waits on file descriptors or uORB subscriptions with `px4_poll()`.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`message_format_request`, `vehicle_command_ack`</td></tr><tr><td>Primary outputs</td><td>`message_format_response`, `vehicle_command`</td></tr><tr><td>Referenced topics</td><td>`message_format_request`, `message_format_response`, `uORBTopics`, `vehicle_command`, `vehicle_command_ack`</td></tr><tr><td>Parameters/config</td><td>`UXRCE_DDS_AG_IP`, `UXRCE_DDS_CFG`, `UXRCE_DDS_DOM_ID`, `UXRCE_DDS_FLCTRL`, `UXRCE_DDS_KEY`, `UXRCE_DDS_NS_IDX`, `UXRCE_DDS_PRT`, `UXRCE_DDS_PTCFG`, `UXRCE_DDS_RX_TO`, `UXRCE_DDS_SYNCC`, ... 2 more</td></tr><tr><td>Key classes</td><td>`SrvBase`, `defines`, `UxrceddsClient`, `Transport`, `ParticipantConfig`, `VehicleCommandSrv`, `implement`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>uxrce_dds_client.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>dds_topics.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>module.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>srv_base.h</td><td>Defines `SrvBase` class</td></tr><tr><td>uxrce_dds_client.h</td><td>Defines `UxrceddsClient` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -135,7 +153,6 @@ classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
 classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
 classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
 classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/uxrce_dds_client</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__uxrce_dds_client</td></tr><tr><td>Runtime main</td><td>uxrce_dds_client</td></tr><tr><td>Stack main</td><td>9000</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>3</td></tr><tr><td>Detected headers</td><td>4</td></tr><tr><td>Detected configs</td><td>3</td></tr></tbody></table>
 

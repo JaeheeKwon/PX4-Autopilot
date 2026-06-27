@@ -6,7 +6,61 @@
 - Build kind: `px4 module`
 - Mermaid palette: `ash` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+The temperature compensation module allows all of the gyro(s), accel(s), and baro(s) in the system to be temperature compensated. The module monitors the data coming from the sensors and updates the associated sensor_correction topic whenever a change in temperature is detected. The module can also be configured to perform the coeffecient calculation routine at next boot, which allows the thermal calibration coeffecients to be calculated while the vehicle undergoes a temperature cycle.
+
+## Description of Module
+
+Applies temperature compensation data to sensor correction paths.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `parameter_update`, `sensor_accel`, `sensor_baro`, `sensor_gyro`, `sensor_mag`, `vehicle_command`.
+- Publish outputs or status topics such as `led_control`, `sensor_correction`, `vehicle_command`, `vehicle_command_ack`.
+- Use module configuration from `temp_comp_params_accel.yaml`.
+- Implement the main behavior in classes such as `TemperatureCompensation`, `TemperatureCompensationModule`, `TemperatureCalibrationAccel`, `TemperatureCalibrationBaro`, `TemperatureCalibrationBase`, `TemperatureCalibrationCommon`, ... 4 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Also contains explicit task-spawn code or helper task creation in this module tree.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+
+## Background Theory
+
+Temperature compensation removes temperature-dependent sensor bias using fitted polynomial coefficients.
+
+```text
+bias(T) = c0 + c1*T + c2*T^2 + c3*T^3
+scale(T) = s0 + s1*T + s2*T^2
+x_corrected = (x_raw - bias(T)) * scale(T)
+T may be filtered before evaluating the polynomial.
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update`, `sensor_accel`, `sensor_baro`, `sensor_gyro`, `sensor_mag`, `vehicle_command` |
+| Primary outputs | `led_control`, `sensor_correction`, `vehicle_command`, `vehicle_command_ack` |
+| Referenced topics | `led_control`, `parameter_update`, `sensor_accel`, `sensor_baro`, `sensor_correction`, `sensor_gyro`, `sensor_mag`, `vehicle_command`, `vehicle_command_ack` |
+| Parameters/config | temp_comp_params_accel.yaml |
+| Key classes | `TemperatureCompensation`, `TemperatureCompensationModule`, `TemperatureCalibrationAccel`, `TemperatureCalibrationBaro`, `TemperatureCalibrationBase`, `TemperatureCalibrationCommon`, `TemperatureCalibrationGyro`, `TemperatureCalibrationMag`, `polyfitter`, `TemperatureCalibration` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| TemperatureCompensationModule.cpp | Entry point, start command, or module lifecycle code |
+| temperature_calibration/task.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| temp_comp_params_accel.yaml | Build, parameter, or module configuration |
+| temp_comp_params_accel_0.yaml | Build, parameter, or module configuration |
+| temp_comp_params_accel_1.yaml | Build, parameter, or module configuration |
+| temp_comp_params_accel_2.yaml | Build, parameter, or module configuration |
+| TemperatureCompensation.h | Defines `TemperatureCompensation` class |
 
 ## Architecture Overview
 

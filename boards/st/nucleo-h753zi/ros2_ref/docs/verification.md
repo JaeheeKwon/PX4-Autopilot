@@ -44,8 +44,8 @@ Expected signs:
 
 If there is no session:
 
-- Confirm CN10 D0 PG9 goes to adapter TX.
-- Confirm CN10 D1 PG14 goes to adapter RX.
+- Confirm CN11 pin 63 / PG9 goes to adapter TX.
+- Confirm CN12 pin 61 / PG14 goes to adapter RX.
 - Confirm board ground and adapter ground are connected.
 - Confirm the adapter is 3.3 V logic.
 - Confirm both sides use `921600` baud.
@@ -120,8 +120,7 @@ are the conservative defaults.
 The reference keeps DDS and MAVLink on separate physical links:
 
 - MAVLink HITL: CN13 User USB, `/dev/ttyACM0` on PX4.
-- DDS: USART6 CN10 D0/D1, `/dev/ttyS1` on PX4.
+- DDS: USART6 on CN12-61 TX / CN11-63 RX, `/dev/ttyS1` on PX4.
 
 If HITL sensor data stops after enabling DDS, verify that DDS was not started
 on `/dev/ttyACM0` and that the simulator still owns the CN13 MAVLink link.
-

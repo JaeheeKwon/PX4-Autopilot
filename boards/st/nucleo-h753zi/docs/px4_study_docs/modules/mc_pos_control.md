@@ -6,7 +6,64 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+The controller has two loops: a P loop for position error and a PID loop for velocity error. Output of the velocity controller is thrust vector that is split to thrust direction (i.e. rotation matrix for multicopter orientation) and thrust scalar (i.e. multicopter thrust itself). The controller doesn't use Euler angles for its work, they are generated only for more human-friendly control and logging.
+
+## Description of Module
+
+Runs multicopter position and velocity control and publishes attitude/thrust setpoints.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `goto_setpoint`, `hover_thrust_estimate`, `parameter_update`, `trajectory_setpoint`, `vehicle_constraints`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_local_position`.
+- Publish outputs or status topics such as `mc_virtual_attitude_setpoint`, `takeoff_status`, `trajectory_setpoint`, `vehicle_attitude_setpoint`, `vehicle_constraints`, `vehicle_local_position_setpoint`.
+- Use module configuration from `multicopter_altitude_mode_params.yaml`.
+- Implement the main behavior in classes such as `which`, `GotoControl`, `MulticopterPositionControl`, `contains`, `PositionControl`, `PositionControlBasicTest`, ... 4 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Multicopter position control is a cascaded position-velocity controller. Position error creates a velocity setpoint, velocity error creates acceleration/thrust, and attitude setpoint aligns thrust with the desired acceleration.
+
+```text
+e_p = p_sp - p
+v_sp = v_ff + Kp_pos * e_p
+e_v = v_sp - v
+I_v[k] = constrain(I_v[k-1] + e_v*dt, -I_max, I_max)
+a_sp = a_ff + Kp_vel*e_v + Ki_vel*I_v - Kd_vel*a_meas
+thrust_ned = m * (a_sp - g_ned)
+body_z_sp = -normalize(thrust_ned)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `goto_setpoint`, `hover_thrust_estimate`, `parameter_update`, `trajectory_setpoint`, `vehicle_constraints`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_local_position` |
+| Primary outputs | `mc_virtual_attitude_setpoint`, `takeoff_status`, `trajectory_setpoint`, `vehicle_attitude_setpoint`, `vehicle_constraints`, `vehicle_local_position_setpoint` |
+| Referenced topics | `goto_setpoint`, `hover_thrust_estimate`, `mc_virtual_attitude_setpoint`, `parameter_update`, `takeoff_status`, `trajectory_setpoint`, `vehicle_attitude_setpoint`, `vehicle_constraints`, `vehicle_control_mode`, `vehicle_land_detected`, ... 2 more |
+| Parameters/config | multicopter_altitude_mode_params.yaml |
+| Key classes | `which`, `GotoControl`, `MulticopterPositionControl`, `contains`, `PositionControl`, `PositionControlBasicTest`, `PositionControlBasicDirectionTest`, `handling`, `TakeoffState`, `TakeoffHandling` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| MulticopterPositionControl.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| GotoControl/CMakeLists.txt | Build, parameter, or module configuration |
+| PositionControl/CMakeLists.txt | Build, parameter, or module configuration |
+| Takeoff/CMakeLists.txt | Build, parameter, or module configuration |
+| multicopter_altitude_mode_params.yaml | Build, parameter, or module configuration |
+| multicopter_autonomous_params.yaml | Build, parameter, or module configuration |
+| GotoControl/GotoControl.hpp | Defines `which` class |
 
 ## Architecture Overview
 

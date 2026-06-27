@@ -8,6 +8,51 @@
 
 Architecture notes for the MAVLink module.
 
+## Description of Module
+
+Implements MAVLink telemetry, command, mission, parameter, and shell communication links.
+
+### Primary Responsibilities
+
+- Translate between PX4 uORB data and an external transport or companion-computer interface.
+- Consume runtime inputs from uORB topics such as `actuator_armed`, `actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `airspeed_validated`, `autotune_attitude_control_status`, `battery_status`, `camera_capture`, ... 77 more.
+- Publish outputs or status topics such as `airspeed`, `aux_global_position`, `battery_status`, `camera_status`, `cellular_status`, `debug_array`, `debug_key_value`, `debug_value`, ... 56 more.
+- Use parameters or module configuration entries such as `MAV_S_FORWARD`, `MAV_S_MODE`.
+- Implement the main behavior in classes such as `MavlinkStatustextHandler`, `access`, `MsgMap`, `_T`, `MavlinkCommandSender`, `Mavlink`, ... 127 more.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+- Creates an additional pthread helper context.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_armed`, `actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `airspeed_validated`, `autotune_attitude_control_status`, `battery_status`, `camera_capture`, `camera_status`, `camera_trigger`, ... 75 more |
+| Primary outputs | `airspeed`, `aux_global_position`, `battery_status`, `camera_status`, `cellular_status`, `debug_array`, `debug_key_value`, `debug_value`, `debug_vect`, `differential_pressure`, ... 54 more |
+| Referenced topics | `actuator_armed`, `actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `airspeed_validated`, `autotune_attitude_control_status`, `aux_global_position`, `battery_info`, `battery_status`, `camera_capture`, ... 123 more |
+| Parameters/config | `MAV_S_FORWARD`, `MAV_S_MODE` |
+| Key classes | `MavlinkStatustextHandler`, `access`, `MsgMap`, `_T`, `MavlinkCommandSender`, `Mavlink`, `EventBuffer`, `SendProtocol`, `and`, `Mavlink`, ... 123 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| mavlink_events.cpp | Entry point, start command, or module lifecycle code |
+| mavlink_ftp.cpp | Entry point, start command, or module lifecycle code |
+| mavlink_log_handler.cpp | Entry point, start command, or module lifecycle code |
+| mavlink_main.cpp | Entry point, start command, or module lifecycle code |
+| mavlink_messages.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| mavlink/.github/dependabot.yml | Build, parameter, or module configuration |
+| MavlinkStatustextHandler.hpp | Defines `MavlinkStatustextHandler` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

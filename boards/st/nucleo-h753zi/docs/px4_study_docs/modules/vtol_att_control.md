@@ -6,7 +6,62 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+fw_att_control is the fixed wing attitude controller.
+
+## Description of Module
+
+Coordinates VTOL attitude-control behavior and transitions between multicopter and fixed-wing control.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `action_request`, `airspeed_validated`, `fw_virtual_attitude_setpoint`, `home_position`, `mc_virtual_attitude_setpoint`, `parameter_update`, `position_setpoint_triplet`, `tecs_status`, ... 12 more.
+- Publish outputs or status topics such as `flaps_setpoint`, `spoilers_setpoint`, `tiltrotor_extra_controls`, `vehicle_attitude_setpoint`, `vehicle_command_ack`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`, `vtol_vehicle_status`.
+- Use module configuration from `standard_params.yaml`.
+- Implement the main behavior in classes such as `Standard`, `vtol_mode`, `Tailsitter`, `vtol_mode`, `Tiltrotor`, `vtol_mode`, ... 7 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `rate_ctrl`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+VTOL attitude control blends multicopter and fixed-wing control paths during transition using a transition weight.
+
+```text
+alpha = constrain((t - t_start) / transition_time, 0, 1)
+u_transition = (1 - alpha) * u_mc + alpha * u_fw
+q_err = inverse(q_body) * q_sp
+rate_sp = K_att(alpha) * sign(q_err.w) * q_err.xyz
+actuator_sp = mixer(alpha, rate_sp, thrust_sp)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `action_request`, `airspeed_validated`, `fw_virtual_attitude_setpoint`, `home_position`, `mc_virtual_attitude_setpoint`, `parameter_update`, `position_setpoint_triplet`, `tecs_status`, `vehicle_air_data`, `vehicle_attitude`, ... 10 more |
+| Primary outputs | `flaps_setpoint`, `spoilers_setpoint`, `tiltrotor_extra_controls`, `vehicle_attitude_setpoint`, `vehicle_command_ack`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`, `vtol_vehicle_status` |
+| Referenced topics | `action_request`, `airspeed_validated`, `flaps_setpoint`, `fw_virtual_attitude_setpoint`, `home_position`, `mc_virtual_attitude_setpoint`, `normalized_unsigned_setpoint`, `parameter_update`, `position_setpoint_triplet`, `spoilers_setpoint`, ... 19 more |
+| Parameters/config | standard_params.yaml |
+| Key classes | `Standard`, `vtol_mode`, `Tailsitter`, `vtol_mode`, `Tiltrotor`, `vtol_mode`, `VtolAttitudeControl`, `mode`, `vtol_type`, `VtFwDifthrEnBits`, ... 3 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| standard.cpp | Entry point, start command, or module lifecycle code |
+| tailsitter.cpp | Entry point, start command, or module lifecycle code |
+| tiltrotor.cpp | Entry point, start command, or module lifecycle code |
+| vtol_att_control_main.cpp | Entry point, start command, or module lifecycle code |
+| vtol_type.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| standard_params.yaml | Build, parameter, or module configuration |
+| standard.h | Defines `Standard` class |
 
 ## Architecture Overview
 

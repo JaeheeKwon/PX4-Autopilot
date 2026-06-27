@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="land_detector.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>land_detector</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Module to detect the freefall and landed state of the vehicle, and publishing the `vehicle_land_detected` topic. Each vehicle type (multirotor, fixedwing, vtol, ...) provides its own algorithm, taking into account various states, such as commanded thrust, arming state and vehicle motion. Every type is implemented in its own class with a common base class. The base class maintains a state (landed, maybe_landed, ground_contact). Each possible state is implemented in the derived classes. A hysteresis and a fixed prior</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/land_detector</code></div>
       <div><strong>Build target</strong><br><code>modules__land_detector</code></div>
@@ -108,6 +120,30 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Determines whether the vehicle is landed, maybe landed, or airborne for failsafe and controller behavior.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `actuator_armed`, `airspeed_validated`, `fixed_wing_runway_control`, `hover_thrust_estimate`, `launch_detection_status`, `parameter_update`, `position_setpoint_triplet`, `sensor_selection`, ... 10 more.</li><li>Publish outputs or status topics such as `vehicle_land_detected`.</li><li>Use module configuration from `land_detector_params.yaml`.</li><li>Implement the main behavior in classes such as `AirshipLandDetector`, `FixedwingLandDetector`, `LandDetector`, `MulticopterLandDetector`, `RoverLandDetector`, `VtolLandDetector`, ... 2 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Land detection is a threshold and hysteresis classifier over motion, thrust, and timing conditions.</p>
+    <pre class="math-block">low_motion = |v_z| &lt; v_z_thr and |omega| &lt; omega_thr
+low_thrust = thrust &lt; thrust_thr
+maybe_landed = low_motion and low_thrust for T_maybe
+landed = maybe_landed and no_takeoff_intent for T_landed
+freefall = |accel| &lt; accel_thr for T_freefall</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`actuator_armed`, `airspeed_validated`, `fixed_wing_runway_control`, `hover_thrust_estimate`, `launch_detection_status`, `parameter_update`, `position_setpoint_triplet`, `sensor_selection`, `takeoff_status`, `trajectory_setpoint`, ... 8 more</td></tr><tr><td>Primary outputs</td><td>`vehicle_land_detected`</td></tr><tr><td>Referenced topics</td><td>`actuator_armed`, `airspeed_validated`, `fixed_wing_runway_control`, `hover_thrust_estimate`, `launch_detection_status`, `parameter_update`, `position_setpoint_triplet`, `sensor_selection`, `takeoff_status`, `trajectory_setpoint`, ... 9 more</td></tr><tr><td>Parameters/config</td><td>land_detector_params.yaml</td></tr><tr><td>Key classes</td><td>`AirshipLandDetector`, `FixedwingLandDetector`, `LandDetector`, `MulticopterLandDetector`, `RoverLandDetector`, `VtolLandDetector`, `with`, `maintains`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>LandDetector.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>land_detector_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>land_detector_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>land_detector_params_fw.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>land_detector_params_mc.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>AirshipLandDetector.h</td><td>Defines `AirshipLandDetector` class</td></tr><tr><td>FixedwingLandDetector.h</td><td>Defines `FixedwingLandDetector` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -141,7 +177,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/land_detector</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__land_detector</td></tr><tr><td>Runtime main</td><td>land_detector</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>land_detector_params.yaml</td></tr><tr><td>Detected sources</td><td>7</td></tr><tr><td>Detected headers</td><td>6</td></tr><tr><td>Detected configs</td><td>4</td></tr></tbody></table>
 

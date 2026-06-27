@@ -6,7 +6,60 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+fw_att_control is the fixed wing attitude controller.
+
+## Description of Module
+
+Runs fixed-wing attitude control and produces fixed-wing torque or actuator control demands.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `airspeed_validated`, `autotune_attitude_control_status`, `fixed_wing_runway_control`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, ... 4 more.
+- Publish outputs or status topics such as `fw_virtual_attitude_setpoint`, `landing_gear_wheel`, `vehicle_attitude_setpoint`, `vehicle_rates_setpoint`.
+- Use module configuration from `fw_att_control_params.yaml`.
+- Implement the main behavior in classes such as `FixedwingAttitudeControl`, `WheelController`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Fixed-wing attitude control converts attitude error into body-rate setpoints. The downstream rate controller then tracks those rates with control-surface torque commands.
+
+```text
+roll_error = wrap(roll_sp - roll)
+pitch_error = wrap(pitch_sp - pitch)
+yaw_coordination ~= g / max(airspeed, eps) * tan(roll_sp)
+roll_rate_sp = K_roll * roll_error + roll_rate_ff
+pitch_rate_sp = K_pitch * pitch_error + pitch_rate_ff
+yaw_rate_sp = yaw_coordination
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `airspeed_validated`, `autotune_attitude_control_status`, `fixed_wing_runway_control`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_land_detected`, ... 2 more |
+| Primary outputs | `fw_virtual_attitude_setpoint`, `landing_gear_wheel`, `vehicle_attitude_setpoint`, `vehicle_rates_setpoint` |
+| Referenced topics | `airspeed_validated`, `autotune_attitude_control_status`, `fixed_wing_runway_control`, `fw_virtual_attitude_setpoint`, `landing_gear_wheel`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, ... 5 more |
+| Parameters/config | fw_att_control_params.yaml |
+| Key classes | `FixedwingAttitudeControl`, `WheelController` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| FixedwingAttitudeControl.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| fw_att_control_params.yaml | Build, parameter, or module configuration |
+| FixedwingAttitudeControl.hpp | Defines `FixedwingAttitudeControl` class |
+| fw_wheel_controller.h | Defines `WheelController` class |
 
 ## Architecture Overview
 

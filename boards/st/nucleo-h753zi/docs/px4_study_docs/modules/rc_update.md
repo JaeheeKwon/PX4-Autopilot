@@ -6,7 +6,48 @@
 - Build kind: `px4 module`
 - Mermaid palette: `ash` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+The rc_update module handles RC channel mapping: read the raw input channels (`input_rc`), then apply the calibration, map the RC channels to the configured channels & mode switches and then publish as `rc_channels` and `manual_control_input`. To reduce control latency, the module is scheduled on input_rc publications.
+
+## Description of Module
+
+Converts raw RC input into calibrated manual-control input topics.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `input_rc`, `manual_control_switches`, `parameter_update`, `rc_parameter_map`.
+- Publish outputs or status topics such as `manual_control_input`, `manual_control_switches`, `rc_channels`.
+- Use module configuration from `params.yaml`.
+- Implement the main behavior in classes such as `TestRCUpdate`, `RCUpdateTest`, `RCUpdate`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `input_rc`, `manual_control_switches`, `parameter_update`, `rc_parameter_map` |
+| Primary outputs | `manual_control_input`, `manual_control_switches`, `rc_channels` |
+| Referenced topics | `input_rc`, `manual_control_input`, `manual_control_setpoint`, `manual_control_switches`, `parameter_update`, `rc_channels`, `rc_parameter_map` |
+| Parameters/config | params.yaml |
+| Key classes | `TestRCUpdate`, `RCUpdateTest`, `RCUpdate` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| rc_update.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| params.yaml | Build, parameter, or module configuration |
+| params_deprecated.yaml | Build, parameter, or module configuration |
+| RCUpdateTest.cpp | Defines `TestRCUpdate` class |
+| rc_update.h | Defines `RCUpdate` class |
 
 ## Architecture Overview
 

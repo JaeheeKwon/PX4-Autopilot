@@ -8,6 +8,57 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Analyzes gyro vibration content using FFT processing and publishes diagnostic vibration information.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `parameter_update`, `sensor_gyro`, `sensor_gyro_fifo`, `sensor_selection`, `vehicle_imu_status`.
+- Publish outputs or status topics such as `sensor_gyro_fft`.
+- Use module configuration from `parameters.yaml`.
+- Implement the main behavior in classes such as `classification`, `GyroFFT`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Gyro FFT estimates vibration frequency content. Peaks in the spectrum can be used to tune or drive notch filtering.
+
+```text
+Windowed samples: x_w[n] = w[n] * x[n]
+DFT: X[k] = sum_{n=0}^{N-1} x_w[n] * exp(-j*2*pi*k*n/N)
+Power: P[k] = |X[k]|^2
+f_peak = argmax_k P[k] * sample_rate / N
+Notch: H(s) = (s^2 + w0^2) / (s^2 + (w0/Q)*s + w0^2)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update`, `sensor_gyro`, `sensor_gyro_fifo`, `sensor_selection`, `vehicle_imu_status` |
+| Primary outputs | `sensor_gyro_fft` |
+| Referenced topics | `parameter_update`, `sensor_gyro`, `sensor_gyro_fft`, `sensor_gyro_fifo`, `sensor_selection`, `vehicle_imu_status` |
+| Parameters/config | parameters.yaml |
+| Key classes | `classification`, `GyroFFT` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| GyroFFT.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| parameters.yaml | Build, parameter, or module configuration |
+| CMSIS_5/CMSIS/DSP/Include/arm_math.h | Defines `classification` class |
+| GyroFFT.hpp | Defines `GyroFFT` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

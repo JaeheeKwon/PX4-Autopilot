@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Controls payload delivery or gripper-style release actions from vehicle commands.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `parameter_update`, `vehicle_command`.</li><li>Publish outputs or status topics such as `gripper`, `vehicle_command`, `vehicle_command_ack`.</li><li>Use parameters or module configuration entries such as `PD_GRIPPER_TO`, `PD_GRIPPER_TYPE`.</li><li>Implement the main behavior in classes such as `to`, `GripperType`, `GripperSensorType`, `GripperState`, `Gripper`, `PayloadDeliverer`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `lp_default`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`parameter_update`, `vehicle_command`</td></tr><tr><td>Primary outputs</td><td>`gripper`, `vehicle_command`, `vehicle_command_ack`</td></tr><tr><td>Referenced topics</td><td>`gripper`, `parameter_update`, `vehicle_command`, `vehicle_command_ack`</td></tr><tr><td>Parameters/config</td><td>`PD_GRIPPER_TO`, `PD_GRIPPER_TYPE`</td></tr><tr><td>Key classes</td><td>`to`, `GripperType`, `GripperSensorType`, `GripperState`, `Gripper`, `PayloadDeliverer`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>payload_deliverer.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>module.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>gripper.h</td><td>Defines `to` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -137,7 +155,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/payload_deliverer</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__payload_deliverer</td></tr><tr><td>Runtime main</td><td>payload_deliverer</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>2</td></tr><tr><td>Detected headers</td><td>2</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

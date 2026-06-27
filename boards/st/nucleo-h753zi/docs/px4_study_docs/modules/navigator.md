@@ -6,7 +6,62 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Module that is responsible for autonomous flight modes. This includes missions (read from dataman), takeoff and RTL. It is also responsible for geofence violation checking. The different internal modes are implemented as separate classes that inherit from a common base class `NavigatorMode`. The member `_navigation_mode` contains the current active mode. Navigator publishes position setpoint triplets (`position_setpoint_triplet_s`), which are then used by the position controller.
+
+## Description of Module
+
+Owns mission, geofence, return, takeoff, landing, and other autonomous navigation behaviors.
+
+### Primary Responsibilities
+
+- Coordinate higher-level vehicle behavior rather than directly driving actuators.
+- Consume runtime inputs from uORB topics such as `fixed_wing_lateral_guidance_status`, `geofence_status`, `home_position`, `landing_target_pose`, `mission`, `parameter_update`, `position_controller_landing_status`, `position_controller_status`, ... 10 more.
+- Publish outputs or status topics such as `distance_sensor_mode_change_request`, `geofence_result`, `geofence_status`, `home_position`, `mission`, `mission_result`, `mode_completed`, `navigator_status`, ... 10 more.
+- Use module configuration from `geofence_params.yaml`.
+- Implement the main behavior in classes such as `FeasibilityChecker`, `VehicleType`, `FeasibilityCheckerTest`, `TestFeasibilityChecker`, `Course`, `Navigator`, ... 67 more.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+
+## Background Theory
+
+Navigator uses geometric path following. It converts mission items into position, course, loiter, and acceptance-region setpoints.
+
+```text
+distance_to_wp = norm(p_current - p_wp)
+bearing = atan2(E_wp - E, N_wp - N)
+accepted = distance_to_wp < acceptance_radius
+cross_track_error = signed_distance(p_current, path_start, path_end)
+course_sp = path_bearing + atan(k_path * cross_track_error / ground_speed)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `fixed_wing_lateral_guidance_status`, `geofence_status`, `home_position`, `landing_target_pose`, `mission`, `parameter_update`, `position_controller_landing_status`, `position_controller_status`, `rtl_status`, `transponder_report`, ... 8 more |
+| Primary outputs | `distance_sensor_mode_change_request`, `geofence_result`, `geofence_status`, `home_position`, `mission`, `mission_result`, `mode_completed`, `navigator_status`, `position_setpoint_triplet`, `prec_land_status`, ... 8 more |
+| Referenced topics | `distance_sensor_mode_change_request`, `fixed_wing_lateral_guidance_status`, `geofence_result`, `geofence_status`, `gimbal_manager_set_attitude`, `home_position`, `landing_target_pose`, `mission`, `mission_result`, `mode_completed`, ... 24 more |
+| Parameters/config | geofence_params.yaml |
+| Key classes | `FeasibilityChecker`, `VehicleType`, `FeasibilityCheckerTest`, `TestFeasibilityChecker`, `Course`, `Navigator`, `Geofence`, `DatamanState`, `to`, `to`, ... 63 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| geofence.cpp | Dedicated task loop or repeated runtime path |
+| loiter.cpp | Entry point, start command, or module lifecycle code |
+| navigator_main.cpp | Entry point, start command, or module lifecycle code |
+| navigator_mode.cpp | Dedicated task loop or repeated runtime path |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| MissionFeasibility/CMakeLists.txt | Build, parameter, or module configuration |
+| geofence_params.yaml | Build, parameter, or module configuration |
+| MissionFeasibility/FeasibilityChecker.hpp | Defines `FeasibilityChecker` class |
 
 ## Architecture Overview
 

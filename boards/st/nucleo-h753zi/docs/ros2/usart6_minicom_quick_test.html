@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>USART6 Minicom Quick Test — Nucleo-H753ZI</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f8fa;--p:#fff;--t:#1f2328;--m:#59636e;--b:#d0d7de;--c:#f6f8fa;--a:#0969da;--g:#1a7f37;--w:#9a6700;--r:#cf222e}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--p:#161b22;--t:#e6edf3;--m:#9da7b3;--b:#30363d;--c:#0d1117;--a:#58a6ff;--g:#3fb950;--w:#d29922;--r:#f85149}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1080px;margin:auto;padding:28px 22px 70px}
+header,nav,section{background:var(--p);border:1px solid var(--b);border-radius:10px;padding:24px;margin-bottom:20px}h1{margin:0 0 8px}h2{border-bottom:1px solid var(--b);padding-bottom:8px}a{color:var(--a)}
+code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{background:var(--c);padding:.12em .34em;border-radius:4px}pre{background:var(--c);border:1px solid var(--b);border-radius:7px;padding:14px;overflow:auto}
+table{width:100%;border-collapse:collapse;display:block;overflow:auto}th,td{border:1px solid var(--b);padding:9px 11px;text-align:left;vertical-align:top}th{background:var(--c)}
+.note,.gate{border-left:5px solid var(--w);background:var(--c);padding:13px 16px;margin:18px 0}.gate{border-color:var(--a)}.danger{border-color:var(--r)}.pass{color:var(--g);font-weight:700}.fail{color:var(--r);font-weight:700}.meta{color:var(--m)}
+</style>
+</head>
+<body><main>
+<header><h1>USART6 Minicom Quick Test</h1>
+<p>Verify Nucleo-H753ZI USART6 transmit and receive independently of Micro XRCE-DDS using the PX4 <code>usart6_hello</code> command.</p>
+<p class="meta">Board: MB1364 · PX4 device: /dev/ttyS1 · Host tool: minicom · Default: 921600 8-N-1</p></header>
+
+<nav><h2>Fast path</h2><ol>
+<li>Build and flash the updated firmware.</li><li>Wire PG14→adapter RX, PG9←adapter TX, and GND↔GND.</li>
+<li>Open CN1 NSH console, stop <code>uxrce_dds_client</code>.</li><li>Open the adapter in minicom at 921600 8-N-1, no flow control.</li>
+<li>Run <code>usart6_hello -t 30</code> from NSH.</li><li>Observe hello lines, type characters, and confirm <code>PX4 RX</code> replies and a PASS result.</li>
+<li>Exit minicom and reboot PX4 to restore DDS.</li>
+</ol></nav>
+
+<section id="purpose"><h2>1. What this test proves</h2>
+<table><thead><tr><th>Observation</th><th>Proven path</th></tr></thead><tbody>
+<tr><td>Readable <code>PX4 hello</code> lines in minicom</td><td>STM32 USART6 TX → PG14/CN12-61 → adapter RX → host USB.</td></tr>
+<tr><td>Typing in minicom produces <code>PX4 RX 0x..</code></td><td>Host USB → adapter TX → PG9/CN11-63 → STM32 USART6 RX.</td></tr>
+<tr><td>NSH prints <code>PASS</code> and command exits 0</td><td>At least one byte was received and both directions worked.</td></tr>
+<tr><td>NSH warning and exit 2</td><td>TX ran, but PX4 received no host byte; investigate RX direction.</td></tr>
+</tbody></table>
+<div class="note danger"><strong>Exclusive-port rule:</strong> USART6 is normally owned by <code>uxrce_dds_client</code>. Stop it before this test. The Micro XRCE-DDS Agent and minicom must never open the same host serial device simultaneously.</div>
+</section>
+
+<section id="wiring"><h2>2. Wiring</h2>
+<pre><code>Nucleo-H753ZI (3.3 V)                         USB-UART adapter
+┌──────────────────────────┐                 ┌───────────────────────┐
+│ CN12-61  PG14 USART6_TX  ├────────────────►│ RX                    │
+│ CN11-63  PG9  USART6_RX  │◄────────────────┤ TX                    │
+│ CN12-63  GND             ├─────────────────┤ GND                   │
+│                          │        X        │ VCC / 5V / 3V3 OUT   │
+│ powered through CN1 USB  │     no wire     │ powered by host USB   │
+└──────────────────────────┘                 └───────────┬───────────┘
+                                                        │ USB
+                                             /dev/serial/by-id/...
+</code></pre>
+<ul>
+<li>Use a 3.3 V TTL/CMOS adapter, not a true ±RS-232 adapter.</li><li>Leave VCC, RTS, CTS, DTR, and DSR disconnected.</li>
+<li>No MB1364 solder-bridge change is required for USART6.</li><li>Keep SB12/SB19 ON; those belong to the separate USART3 ST-LINK console.</li>
+<li>Do not use Arduino D0/D1. PG14 is also D2, but PG9 RX is on CN11-63.</li>
+</ul>
+<p>See the <a href="ros2_integration_test_runbook.html#wiring">signal-level connection diagram</a> for full electrical and interface detail.</p>
+</section>
+
+<section id="customization"><h2>3. Why board customization is required</h2>
+<p>An STM32 UART does not appear merely because application code opens a device name. Four configuration layers must agree.</p>
+<h3>3.1 NuttX peripheral and device configuration</h3>
+<p><a href="../../nuttx-config/nsh/defconfig"><code>nuttx-config/nsh/defconfig</code></a> enables the hardware driver and sets its initial properties:</p>
+<pre><code>CONFIG_STM32H7_USART3=y
+CONFIG_STM32H7_USART6=y
+CONFIG_STM32H7_SERIAL_DISABLE_REORDERING=y
+CONFIG_USART3_SERIAL_CONSOLE=y
+CONFIG_USART6_BAUD=921600
+CONFIG_USART6_RXBUFSIZE=512
+CONFIG_USART6_TXBUFSIZE=512</code></pre>
+<p>USART3 is the console and USART6 is the second enabled hardware USART. With serial reordering disabled, numeric peripheral ordering gives USART3 <code>/dev/ttyS0</code> and USART6 <code>/dev/ttyS1</code>. Enabling another lower-numbered USART can change that assumption; recheck generated NuttX configuration and boot output after such a change.</p>
+
+<h3>3.2 NuttX board pin selection</h3>
+<p><a href="../../nuttx-config/include/board.h"><code>nuttx-config/include/board.h</code></a> selects the actual MCU alternate-function pins:</p>
+<pre><code>#define GPIO_USART6_RX  GPIO_USART6_RX_2   /* PG9,  CN11-63 */
+#define GPIO_USART6_TX  GPIO_USART6_TX_2   /* PG14, CN12-61 / D2 */</code></pre>
+<p>For STM32H753, these pin-map macros expand to alternate function AF7. The RX definition enables a pull-up; TX is push-pull with pull-up. A different custom baseboard may expose different legal USART6 pins, requiring different <code>GPIO_USART6_RX_n</code>/<code>TX_n</code> selections.</p>
+
+<h3>3.3 PX4 logical serial mapping and command inclusion</h3>
+<p><a href="../../default.px4board"><code>default.px4board</code></a> maps the NuttX device into PX4's serial configuration and includes this diagnostic:</p>
+<pre><code>CONFIG_BOARD_SERIAL_TEL1="/dev/ttyS1"
+CONFIG_MODULES_UXRCE_DDS_CLIENT=y
+CONFIG_SYSTEMCMDS_USART6_HELLO=y</code></pre>
+<p>The first line gives PX4 the TEL1-to-device relationship. The test command itself can open <code>/dev/ttyS1</code> without TEL1, but DDS parameter-driven startup requires the logical mapping.</p>
+
+<h3>3.4 Runtime ownership</h3>
+<p><a href="../../init/rc.board_defaults"><code>init/rc.board_defaults</code></a> assigns TEL1 to DDS:</p>
+<pre><code>UXRCE_DDS_CFG = 101
+SER_TEL1_BAUD = 921600</code></pre>
+<p>This does not enable the STM32 peripheral or choose pins; NuttX does that. It tells PX4 startup which already-created serial device the DDS client should own. Therefore the DDS client must be stopped temporarily for the raw minicom test.</p>
+
+<h3>3.5 Checklist when porting to another custom board</h3>
+<ol>
+<li>Choose MCU pins with the correct USART alternate function and confirm header availability.</li>
+<li>Define the selected GPIO macros in the board header.</li><li>Enable the USART and buffers in the NuttX defconfig.</li>
+<li>Confirm the resulting <code>/dev/ttySx</code> number; do not assume it.</li><li>Map a PX4 logical port to that device in the board <code>.px4board</code>.</li>
+<li>Ensure only one runtime consumer owns the port.</li><li>Match voltage, framing, baud, and flow control on both ends.</li>
+</ol>
+</section>
+
+<section id="build"><h2>4. Build and flash</h2>
+<pre><code>make st_nucleo-h753zi_default
+make st_nucleo-h753zi_default upload</code></pre>
+<p>The build containing <code>usart6_hello</code> uses 1,348,928 / 1,441,792 bytes (93.56%), leaving 92,864 bytes.</p>
+<p>After boot, confirm the command exists on the CN1 NSH console:</p>
+<pre><code>nsh&gt; usart6_hello -h</code></pre>
+<p>If NSH says command not found, the new image was not built/flashed or <code>CONFIG_SYSTEMCMDS_USART6_HELLO</code> is absent.</p>
+</section>
+
+<section id="host"><h2>5. Configure minicom on the host</h2>
+<h3>5.1 Install and obtain serial permission</h3>
+<pre><code>sudo apt update
+sudo apt install -y minicom
+sudo usermod -aG dialout "$USER"</code></pre>
+<p>Log out and in after changing groups. Identify the adapter:</p>
+<pre><code>ls -l /dev/serial/by-id/
+udevadm info --query=all --name=/dev/ttyUSB0</code></pre>
+
+<h3>5.2 Recommended saved minicom profile</h3>
+<pre><code>minicom -s</code></pre>
+<p>Under <strong>Serial port setup</strong>, configure:</p>
+<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<tr><td>Serial device</td><td><code>/dev/serial/by-id/&lt;usb-uart-adapter&gt;</code></td></tr>
+<tr><td>Bps/Par/Bits</td><td><code>921600 8N1</code></td></tr><tr><td>Hardware flow control</td><td>No</td></tr>
+<tr><td>Software flow control</td><td>No</td></tr><tr><td>Local echo</td><td>Off; PX4 will echo received bytes explicitly.</td></tr>
+</tbody></table>
+<p>Save as <code>usart6_px4</code>, then run:</p>
+<pre><code>minicom usart6_px4</code></pre>
+<p>One-time command-line alternative:</p>
+<pre><code>minicom -o -8 -b 921600 \
+  -D /dev/serial/by-id/&lt;usb-uart-adapter&gt;</code></pre>
+<p>Verify flow control is disabled with Ctrl-A, Z, O if the saved/default configuration is uncertain. Exit minicom with Ctrl-A, X.</p>
+</section>
+
+<section id="procedure"><h2>6. Test procedure</h2>
+<h3>6.1 Open the independent CN1 NSH console</h3>
+<p>Use a second terminal and the ST-LINK VCP at 57600. For example:</p>
+<pre><code>minicom -o -8 -b 57600 \
+  -D /dev/serial/by-id/&lt;stlink-vcp&gt;</code></pre>
+<p>Press Enter until <code>nsh&gt;</code> appears.</p>
+
+<h3>6.2 Stop DDS and release USART6</h3>
+<pre><code>nsh&gt; uxrce_dds_client status
+nsh&gt; uxrce_dds_client stop
+nsh&gt; uxrce_dds_client status</code></pre>
+<p>Also stop <code>MicroXRCEAgent</code> on the host. If minicom shows binary-looking data before the stop, that is XRCE framing, not a UART failure.</p>
+
+<h3>6.3 Open adapter minicom</h3>
+<pre><code>minicom usart6_px4</code></pre>
+<p>The screen should be quiet after DDS is stopped.</p>
+
+<h3>6.4 Run the PX4 hello/echo test</h3>
+<p>On the CN1 NSH console:</p>
+<pre><code>nsh&gt; usart6_hello -d /dev/ttyS1 -b 921600 -t 30 -i 1000</code></pre>
+<p>Expected adapter-minicom output:</p>
+<pre><code>PX4 USART6 HELLO
+device=/dev/ttyS1 baud=921600 format=8N1 flow=none
+Type characters in minicom; PX4 reports each received byte.
+PX4 hello #0 uptime_us=...
+PX4 hello #1 uptime_us=...</code></pre>
+<p>Type <code>abc</code> in the adapter minicom window. Expected replies:</p>
+<pre><code>PX4 RX 0x61 'a'
+PX4 RX 0x62 'b'
+PX4 RX 0x63 'c'</code></pre>
+<p>At timeout:</p>
+<pre><code>PX4 USART6 TEST PASS rx_bytes=3 tx_bytes=...</code></pre>
+<p>The CN1 console prints:</p>
+<pre><code>INFO  [usart6_hello] PASS: USART TX and RX worked (3 received bytes)</code></pre>
+<div class="gate"><span class="pass">PASS:</span> periodic hello is readable, typed bytes are reported, and the command returns 0.</div>
+</section>
+
+<section id="options"><h2>7. Command options</h2>
+<pre><code>usart6_hello [-d device] [-b baud] [-t seconds] [-i milliseconds]
+
+-d  UART device; default /dev/ttyS1
+-b  57600, 115200, 230400, 460800, or 921600
+-t  test duration 1..600 seconds; default 30
+-i  hello interval 100..10000 ms; default 1000</code></pre>
+<p>To debug an adapter that cannot reliably operate at 921600, test both ends at 115200:</p>
+<pre><code># Minicom profile/CLI must also use 115200
+nsh&gt; usart6_hello -b 115200 -t 30</code></pre>
+<p>This proves the physical UART at 115200 but does not prove that the adapter/wiring is reliable at the DDS operating rate. Repeat at 921600 for final acceptance.</p>
+</section>
+
+<section id="restore"><h2>8. Restore Micro XRCE-DDS</h2>
+<ol><li>Exit adapter minicom with Ctrl-A, X so it releases the serial device.</li><li>Reboot PX4 from CN1; generated startup will reclaim TEL1 for DDS.</li><li>Start the host Micro XRCE-DDS Agent, not minicom, on the adapter.</li></ol>
+<pre><code>nsh&gt; reboot
+
+# Host after reboot
+boards/st/nucleo-h753zi/host/scripts/run_agent.sh \
+  /dev/serial/by-id/&lt;usb-uart-adapter&gt; 921600</code></pre>
+<p>Verify with <code>uxrce_dds_client status</code>. Never leave minicom open when starting the agent.</p>
+</section>
+
+<section id="troubleshooting"><h2>9. Result interpretation</h2>
+<table><thead><tr><th>Result</th><th>Most likely cause</th><th>Check</th></tr></thead><tbody>
+<tr><td>No minicom output</td><td>Board TX path</td><td>PG14→RX, common GND, correct adapter, correct by-id path, matching baud, DDS stopped.</td></tr>
+<tr><td>Garbage characters</td><td>Baud/electrical mismatch</td><td>Both sides 921600 8N1, 3.3 V TTL rather than RS-232, stable ground, short wires.</td></tr>
+<tr><td>Hello readable, typed data never reported</td><td>Board RX path</td><td>Adapter TX→PG9/CN11-63, software/hardware flow disabled, local device not read-only.</td></tr>
+<tr><td>Typed characters appear but no <code>PX4 RX</code> lines</td><td>Minicom local echo is on</td><td>Turn local echo off with Ctrl-A, E; only PX4 responses prove RX.</td></tr>
+<tr><td>Open/device busy failure</td><td>Another owner</td><td>Stop DDS client, XRCE agent, minicom, ModemManager/other terminal as applicable.</td></tr>
+<tr><td>TX-only summary / exit 2</td><td>No host→board bytes</td><td>Type before timeout; then inspect PG9 RX path.</td></tr>
+<tr><td>Works at 115200, fails at 921600</td><td>Adapter/cabling signal integrity</td><td>Use a better adapter, shorter wires, stable USB/power, and retest operating rate.</td></tr>
+<tr><td>DDS does not reconnect afterward</td><td>Minicom still owns adapter or PX4 not restarted</td><td>Exit minicom, reboot PX4, then start only MicroXRCEAgent.</td></tr>
+</tbody></table>
+</section>
+
+<section id="files"><h2>10. Implemented files</h2>
+<ul>
+<li><a href="../../../../../src/systemcmds/usart6_hello/usart6_hello.cpp"><code>src/systemcmds/usart6_hello/usart6_hello.cpp</code></a> — hello, periodic TX, RX byte reporting, PASS/TX-only result.</li>
+<li><a href="../../../../../src/systemcmds/usart6_hello/CMakeLists.txt"><code>CMakeLists.txt</code></a> and <a href="../../../../../src/systemcmds/usart6_hello/Kconfig"><code>Kconfig</code></a> — PX4 module build integration.</li>
+<li><a href="../../default.px4board"><code>boards/st/nucleo-h753zi/default.px4board</code></a> — enables the diagnostic only for this target.</li>
+<li><a href="../../nuttx-config/include/board.h"><code>board.h</code></a> and <a href="../../nuttx-config/nsh/defconfig"><code>defconfig</code></a> — USART6 pins and NuttX driver/device configuration.</li>
+</ul>
+</section>
+</main></body></html>

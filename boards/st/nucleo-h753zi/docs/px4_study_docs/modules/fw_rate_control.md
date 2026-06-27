@@ -6,7 +6,57 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+fw_rate_control is the fixed-wing rate controller.
+
+## Description of Module
+
+Runs fixed-wing angular-rate control and publishes actuator-facing torque/control outputs.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `airspeed_validated`, `battery_status`, `launch_detection_status`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_control_mode`, `vehicle_land_detected`, ... 2 more.
+- Publish outputs or status topics such as `actuator_controls_status_0`, `actuator_controls_status_1`, `flaps_setpoint`, `rate_ctrl_status`, `spoilers_setpoint`, `vehicle_rates_setpoint`, `vehicle_thrust_setpoint`, `vehicle_thrust_setpoint_virtual_fw`, ... 2 more.
+- Use module configuration from `fw_rate_control_params.yaml`.
+- Implement the main behavior in classes such as `FixedwingRateControl`, `VTOLFixedWingDifferentialThrustEnabledBit`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Fixed-wing rate control tracks body-rate setpoints with PID-style feedback and feed-forward terms before publishing torque/control-surface requests.
+
+```text
+e_rate = rate_sp - rate_body
+I[k] = constrain(I[k-1] + e_rate * dt, -I_max, I_max)
+u = K * (P*e_rate + I_gain*I - D*rate_dot) + FF*rate_sp
+u = constrain(u, u_min, u_max)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `airspeed_validated`, `battery_status`, `launch_detection_status`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_rates_setpoint`, `vehicle_status` |
+| Primary outputs | `actuator_controls_status_0`, `actuator_controls_status_1`, `flaps_setpoint`, `rate_ctrl_status`, `spoilers_setpoint`, `vehicle_rates_setpoint`, `vehicle_thrust_setpoint`, `vehicle_thrust_setpoint_virtual_fw`, `vehicle_torque_setpoint`, `vehicle_torque_setpoint_virtual_fw` |
+| Referenced topics | `actuator_controls_status`, `actuator_controls_status_0`, `actuator_controls_status_1`, `airspeed_validated`, `battery_status`, `control_allocator_status`, `flaps_setpoint`, `launch_detection_status`, `manual_control_setpoint`, `normalized_unsigned_setpoint`, ... 12 more |
+| Parameters/config | fw_rate_control_params.yaml |
+| Key classes | `FixedwingRateControl`, `VTOLFixedWingDifferentialThrustEnabledBit` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| FixedwingRateControl.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| fw_rate_control_params.yaml | Build, parameter, or module configuration |
+| FixedwingRateControl.hpp | Defines `FixedwingRateControl` class |
 
 ## Architecture Overview
 

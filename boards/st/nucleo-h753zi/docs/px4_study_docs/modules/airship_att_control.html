@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="airship_att_control.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>airship_att_control</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>This implements the airship attitude and rate controller. Ideally it would take attitude setpoints (`vehicle_attitude_setpoint`) or rate setpoints (in acro mode via `manual_control_setpoint` topic) as inputs and outputs actuator control messages. Currently it is feeding the `manual_control_setpoint` topic directly to the actuators. To reduce control latency, the module directly polls on the gyro topic published by the IMU driver.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/airship_att_control</code></div>
       <div><strong>Build target</strong><br><code>modules__airship_att_control</code></div>
@@ -108,6 +120,29 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Controls airship attitude and converts attitude or rate demands into actuator-facing control outputs.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.</li><li>Consume runtime inputs from uORB topics such as `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_status`.</li><li>Publish outputs or status topics such as `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`.</li><li>Implement the main behavior in classes such as `AirshipAttitudeControl`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `rate_ctrl`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Airship attitude control is represented as attitude-error feedback that maps the desired orientation into body-rate or torque-style setpoints.</p>
+    <pre class="math-block">q_err = inverse(q_body) * q_sp
+e_att = sign(q_err.w) * q_err.xyz
+rate_sp = K_att * e_att + rate_ff
+torque_sp = K_rate * (rate_sp - rate_body) + D * (d/dt)(rate_sp - rate_body)</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_status`</td></tr><tr><td>Primary outputs</td><td>`vehicle_thrust_setpoint`, `vehicle_torque_setpoint`</td></tr><tr><td>Referenced topics</td><td>`manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_status`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`</td></tr><tr><td>Parameters/config</td><td>none detected</td></tr><tr><td>Key classes</td><td>`AirshipAttitudeControl`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>airship_att_control_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>airship_att_control.hpp</td><td>Defines `AirshipAttitudeControl` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -139,7 +174,6 @@ classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
 classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
 classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
 classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/airship_att_control</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__airship_att_control</td></tr><tr><td>Runtime main</td><td>airship_att_control</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>Not specified</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>1</td></tr></tbody></table>
 

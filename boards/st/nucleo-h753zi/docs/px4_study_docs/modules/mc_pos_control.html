@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="mc_pos_control.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>mc_pos_control</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>The controller has two loops: a P loop for position error and a PID loop for velocity error. Output of the velocity controller is thrust vector that is split to thrust direction (i.e. rotation matrix for multicopter orientation) and thrust scalar (i.e. multicopter thrust itself). The controller doesn&#x27;t use Euler angles for its work, they are generated only for more human-friendly control and logging.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/mc_pos_control</code></div>
       <div><strong>Build target</strong><br><code>modules__mc_pos_control</code></div>
@@ -108,6 +120,32 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Runs multicopter position and velocity control and publishes attitude/thrust setpoints.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.</li><li>Consume runtime inputs from uORB topics such as `goto_setpoint`, `hover_thrust_estimate`, `parameter_update`, `trajectory_setpoint`, `vehicle_constraints`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_local_position`.</li><li>Publish outputs or status topics such as `mc_virtual_attitude_setpoint`, `takeoff_status`, `trajectory_setpoint`, `vehicle_attitude_setpoint`, `vehicle_constraints`, `vehicle_local_position_setpoint`.</li><li>Use module configuration from `multicopter_altitude_mode_params.yaml`.</li><li>Implement the main behavior in classes such as `which`, `GotoControl`, `MulticopterPositionControl`, `contains`, `PositionControl`, `PositionControlBasicTest`, ... 4 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Multicopter position control is a cascaded position-velocity controller. Position error creates a velocity setpoint, velocity error creates acceleration/thrust, and attitude setpoint aligns thrust with the desired acceleration.</p>
+    <pre class="math-block">e_p = p_sp - p
+v_sp = v_ff + Kp_pos * e_p
+e_v = v_sp - v
+I_v[k] = constrain(I_v[k-1] + e_v*dt, -I_max, I_max)
+a_sp = a_ff + Kp_vel*e_v + Ki_vel*I_v - Kd_vel*a_meas
+thrust_ned = m * (a_sp - g_ned)
+body_z_sp = -normalize(thrust_ned)</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`goto_setpoint`, `hover_thrust_estimate`, `parameter_update`, `trajectory_setpoint`, `vehicle_constraints`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_local_position`</td></tr><tr><td>Primary outputs</td><td>`mc_virtual_attitude_setpoint`, `takeoff_status`, `trajectory_setpoint`, `vehicle_attitude_setpoint`, `vehicle_constraints`, `vehicle_local_position_setpoint`</td></tr><tr><td>Referenced topics</td><td>`goto_setpoint`, `hover_thrust_estimate`, `mc_virtual_attitude_setpoint`, `parameter_update`, `takeoff_status`, `trajectory_setpoint`, `vehicle_attitude_setpoint`, `vehicle_constraints`, `vehicle_control_mode`, `vehicle_land_detected`, ... 2 more</td></tr><tr><td>Parameters/config</td><td>multicopter_altitude_mode_params.yaml</td></tr><tr><td>Key classes</td><td>`which`, `GotoControl`, `MulticopterPositionControl`, `contains`, `PositionControl`, `PositionControlBasicTest`, `PositionControlBasicDirectionTest`, `handling`, `TakeoffState`, `TakeoffHandling`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>MulticopterPositionControl.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>GotoControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>PositionControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>Takeoff/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>multicopter_altitude_mode_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>multicopter_autonomous_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>GotoControl/GotoControl.hpp</td><td>Defines `which` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +189,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/mc_pos_control</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__mc_pos_control</td></tr><tr><td>Runtime main</td><td>mc_pos_control</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>multicopter_altitude_mode_params.yaml</td></tr><tr><td>Detected sources</td><td>8</td></tr><tr><td>Detected headers</td><td>5</td></tr><tr><td>Detected configs</td><td>14</td></tr></tbody></table>
 

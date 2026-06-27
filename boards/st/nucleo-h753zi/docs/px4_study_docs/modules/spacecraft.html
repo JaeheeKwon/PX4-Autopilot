@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="spacecraft.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>spacecraft</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>This implements control allocation for spacecraft vehicles. It takes torque and thrust setpoints as inputs and outputs actuator setpoint messages.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/spacecraft</code></div>
       <div><strong>Build target</strong><br><code>modules__spacecraft</code></div>
@@ -108,6 +120,29 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Runs spacecraft-specific attitude, rate, and actuator-control behavior.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `actuator_motors`, `battery_status`, `control_allocator_status`, `manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_angular_velocity`, `vehicle_attitude`, ... 6 more.</li><li>Publish outputs or status topics such as `actuator_controls_status_0`, `actuator_motors`, `rate_ctrl_status`, `vehicle_attitude_setpoint`, `vehicle_local_position_setpoint`, `vehicle_rates_setpoint`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`.</li><li>Use module configuration from `spacecraft_attitude_params.yaml`.</li><li>Implement the main behavior in classes such as `ScAttitudeControl`, `ScAttitudeControlConvergenceTest`, `SpacecraftAttitudeControl`, `SpacecraftHandler`, `contains`, `ScPositionControl`, ... 4 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `rate_ctrl`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Spacecraft control uses rigid-body attitude and rate feedback where torques are generated from quaternion attitude error and angular-rate error.</p>
+    <pre class="math-block">q_err = inverse(q_body) * q_sp
+e_q = sign(q_err.w) * q_err.xyz
+e_w = omega_sp - omega_body
+torque_sp = Kq * e_q + Kw * e_w + omega_body x (I * omega_body)</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`actuator_motors`, `battery_status`, `control_allocator_status`, `manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, ... 4 more</td></tr><tr><td>Primary outputs</td><td>`actuator_controls_status_0`, `actuator_motors`, `rate_ctrl_status`, `vehicle_attitude_setpoint`, `vehicle_local_position_setpoint`, `vehicle_rates_setpoint`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`</td></tr><tr><td>Referenced topics</td><td>`actuator_controls_status`, `actuator_controls_status_0`, `actuator_motors`, `actuator_servos`, `actuator_servos_trim`, `autotune_attitude_control_status`, `battery_status`, `control_allocator_status`, `failure_detector_status`, `manual_control_setpoint`, ... 14 more</td></tr><tr><td>Parameters/config</td><td>spacecraft_attitude_params.yaml</td></tr><tr><td>Key classes</td><td>`ScAttitudeControl`, `ScAttitudeControlConvergenceTest`, `SpacecraftAttitudeControl`, `SpacecraftHandler`, `contains`, `ScPositionControl`, `PositionControlBasicTest`, `PositionControlBasicDirectionTest`, `SpacecraftPositionControl`, `SpacecraftRateControl`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>SpacecraftHandler.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>SpacecraftAttitudeControl/AttitudeControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>SpacecraftAttitudeControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>SpacecraftPositionControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>SpacecraftPositionControl/PositionControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>SpacecraftRateControl/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>SpacecraftAttitudeControl/AttitudeControl/AttitudeControl.hpp</td><td>Defines `ScAttitudeControl` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +186,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/spacecraft</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__spacecraft</td></tr><tr><td>Runtime main</td><td>spacecraft</td></tr><tr><td>Stack main</td><td>3000</td></tr><tr><td>Module config</td><td>spacecraft_attitude_params.yaml</td></tr><tr><td>Detected sources</td><td>11</td></tr><tr><td>Detected headers</td><td>8</td></tr><tr><td>Detected configs</td><td>9</td></tr></tbody></table>
 

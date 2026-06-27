@@ -289,40 +289,40 @@ flowchart LR
 │  CN13 (User USB)    ──── USB ──────────────────────────► Linux PC /dev/ttyACM0 (or ttyACM1)
 │    USB-OTG / ttyACM0      MAVLink + HIL sensor stream    │
 │                                                          │
-│  CN10 Arduino D0 (PG9  RX) ─┐                           │
-│  CN10 Arduino D1 (PG14 TX) ─┤── USB-UART adapter ─────► Linux PC /dev/ttyUSB0
-│  GND                       ─┘   USART6/ttyS1 921600      Micro XRCE-DDS Agent
+│  CN11 Morpho 63 (PG9  RX) ─┐                            │
+│  CN12 Morpho 61 (PG14 TX) ─┤── USB-UART adapter ─────► Linux PC /dev/ttyUSB0
+│  GND                      ─┘   USART6/ttyS1 921600      Micro XRCE-DDS Agent
 └──────────────────────────────────────────────────────────┘
 </code></pre>
 <p><strong>Required hardware:</strong>
 - ST Nucleo-H753ZI with PX4 bootloader + application flashed
 - Two USB cables (one for CN1, one for CN13)
 - USB-to-UART adapter (3.3 V logic: e.g. CP2102, FT232, CH340) for ROS2/uXRCE-DDS</p>
-<p><strong>CN10 Arduino header pin assignments for USART6:</strong></p>
+<p><strong>Morpho header pin assignments for USART6 (no solder-bridge changes required):</strong></p>
 <table>
 <thead>
 <tr>
-<th>Arduino label</th>
-<th>Nucleo pin</th>
+<th>Connector</th>
+<th>MCU pin</th>
 <th>USART6 signal</th>
 <th>Connect to adapter</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>D0</td>
+<td>CN11 pin 63</td>
 <td>PG9</td>
 <td>RX</td>
 <td>adapter TX</td>
 </tr>
 <tr>
-<td>D1</td>
+<td>CN12 pin 61 (also D2)</td>
 <td>PG14</td>
 <td>TX</td>
 <td>adapter RX</td>
 </tr>
 <tr>
-<td>GND</td>
+<td>CN12 pin 63 or another GND</td>
 <td>GND</td>
 <td>GND</td>
 <td>adapter GND</td>
@@ -432,7 +432,7 @@ colcon build
 source install/setup.bash
 </code></pre>
 <h3 id="25-run-the-micro-xrce-dds-agent">2.5 Run the Micro XRCE-DDS Agent<a class="headerlink" href="#25-run-the-micro-xrce-dds-agent" title="Permanent link">&para;</a></h3>
-<p>Connect the USB-UART adapter (USART6/CN10) to the Linux PC. Identify the port:</p>
+<p>Connect the USB-UART adapter to USART6 on CN12-61/CN11-63 and then to the Linux PC. Identify the port:</p>
 <pre><code class="language-bash">dmesg | grep ttyUSB
 # example: [ 1234.5] usb 1-3: cp210x converter now attached to ttyUSB0
 </code></pre>
@@ -606,7 +606,7 @@ nsh&gt; ps               # look for any task holding ttyS1
 </tr>
 <tr>
 <td>ROS2 / DDS</td>
-<td>USART6 → CN10 D0/D1 → USB-UART</td>
+<td>USART6 → CN12-61/CN11-63 → USB-UART</td>
 <td><code>/dev/ttyUSB0</code></td>
 <td>Micro XRCE-DDS Agent, 921600 baud</td>
 </tr>

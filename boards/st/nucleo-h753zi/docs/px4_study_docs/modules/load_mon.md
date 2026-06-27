@@ -6,7 +6,46 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Background process running periodically on the low priority work queue to calculate the CPU load and RAM usage and publish the `cpuload` topic. On NuttX it also checks the stack usage of each process and if it falls below 300 bytes, a warning is output, which will also appear in the log file.
+
+## Description of Module
+
+Reports CPU and system load so runtime health can be monitored.
+
+### Primary Responsibilities
+
+- Reference uORB topics such as `cpuload`, `task_stack_info`.
+- Publish outputs or status topics such as `cpuload`, `task_stack_info`.
+- Use module configuration from `params.yaml`.
+- Implement the main behavior in classes such as `LoadMon`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | `cpuload`, `task_stack_info` |
+| Referenced topics | `cpuload`, `task_stack_info` |
+| Parameters/config | params.yaml |
+| Key classes | `LoadMon` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| LoadMon.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| params.yaml | Build, parameter, or module configuration |
+| LoadMon.hpp | Defines `LoadMon` class |
 
 ## Architecture Overview
 

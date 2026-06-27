@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="mag_bias_estimator.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>mag_bias_estimator</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Online magnetometer bias estimator.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/mag_bias_estimator</code></div>
       <div><strong>Build target</strong><br><code>modules__mag_bias_estimator</code></div>
@@ -108,6 +120,29 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Estimates magnetometer bias and publishes bias corrections for estimator use.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Fuse, filter, or validate measurements into estimated state outputs for other modules.</li><li>Consume runtime inputs from uORB topics such as `parameter_update`, `vehicle_angular_velocity`, `vehicle_status`.</li><li>Publish outputs or status topics such as `magnetometer_bias_estimate`.</li><li>Use module configuration from `params.yaml`.</li><li>Implement the main behavior in classes such as `MagBiasEstimator`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `lp_default`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Magnetic bias estimation compares measured magnetic field with the field predicted from attitude and world magnetic model.</p>
+    <pre class="math-block">m_pred_body = R_ned_to_body * m_world
+innovation = m_meas_body - (m_pred_body + bias)
+bias[k] = bias[k-1] + K_bias * innovation
+P_bias[k] = (I - K_bias*H) * P_bias[k-1]</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`parameter_update`, `vehicle_angular_velocity`, `vehicle_status`</td></tr><tr><td>Primary outputs</td><td>`magnetometer_bias_estimate`</td></tr><tr><td>Referenced topics</td><td>`magnetometer_bias_estimate`, `parameter_update`, `sensor_mag`, `vehicle_angular_velocity`, `vehicle_status`</td></tr><tr><td>Parameters/config</td><td>params.yaml</td></tr><tr><td>Key classes</td><td>`MagBiasEstimator`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>MagBiasEstimator.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>MagBiasEstimator.hpp</td><td>Defines `MagBiasEstimator` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -135,7 +170,6 @@ classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
 classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
 classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
 classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/mag_bias_estimator</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__mag_bias_estimator</td></tr><tr><td>Runtime main</td><td>mag_bias_estimator</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>params.yaml</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

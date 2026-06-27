@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Dataman, Navigator, and Commander Interaction</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #f8f9fa;
+      --soft: #f1f3f5;
+      --soft-2: #e9ecef;
+      --line: #6c757d;
+      --text: #212529;
+      --muted: #5f666d;
+      --dark: #343a40;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    header {
+      background: var(--soft);
+      border-bottom: 1px solid var(--line);
+      padding: 28px min(6vw, 56px);
+    }
+    main {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 28px min(5vw, 44px) 64px;
+    }
+    h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: 0; }
+    h2 { margin-top: 36px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+    h3 { margin-top: 24px; }
+    a { color: #2f4f6f; }
+    code {
+      background: var(--soft-2);
+      border: 1px solid #cfd4d8;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.92em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 24px;
+      table-layout: auto;
+    }
+    th, td {
+      border: 1px solid #d6dadd;
+      padding: 8px 10px;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    th { background: var(--soft-2); text-align: left; }
+    tr:nth-child(even) td { background: #fafafa; }
+    ul, ol { padding-left: 22px; }
+    .topnav { margin-bottom: 12px; color: var(--muted); }
+    .topnav a { margin-right: 14px; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin: 20px 0 26px;
+    }
+    .summary div {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .diagram {
+      border: 1px solid #d6dadd;
+      background: #fff;
+      border-radius: 6px;
+      padding: 16px;
+      margin: 14px 0 24px;
+      overflow-x: auto;
+    }
+    .mermaid { min-width: 760px; }
+    .note {
+      color: var(--muted);
+      max-width: 960px;
+    }
+    .callout {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-left: 4px solid var(--dark);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 16px 0 24px;
+    }
+  </style>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+  </script>
+</head>
+<body>
+  <header>
+    <div class="topnav">
+      <a href="index.html">PX4 Study Index</a>
+      <a href="modules/dataman.html">dataman</a>
+      <a href="modules/navigator.html">navigator</a>
+      <a href="modules/commander.html">commander</a>
+    </div>
+    <h1>Dataman, Navigator, and Commander Interaction</h1>
+    <p>How persistent mission storage, autonomous navigation, and vehicle mode management cooperate in PX4.</p>
+  </header>
+
+  <main>
+    <h2>Short Answer</h2>
+    <div class="summary">
+      <div><strong>Dataman</strong><br>Stores mission, geofence, safe-point, and mission-state records. It is a persistence service, not a navigation decision maker.</div>
+      <div><strong>Navigator</strong><br>Reads mission/geofence records through <code>DatamanClient</code>, selects autonomous behavior from commander state, and publishes setpoints plus mission/geofence status.</div>
+      <div><strong>Commander</strong><br>Owns arming, mode selection, health checks, and failsafe decisions. It publishes <code>vehicle_status</code> and reacts to navigator feedback.</div>
+    </div>
+
+    <p>
+      The coupling is mostly asynchronous through uORB topics. Dataman is accessed through request/response messages.
+      Navigator and MAVLink mission handling use those services. Commander does not normally read mission items directly
+      from dataman; it consumes navigator's mission and geofence results and decides whether automatic modes are allowed
+      or should be changed.
+    </p>
+
+    <h2>System View</h2>
+    <div class="diagram"><pre class="mermaid">%%{init: {"theme":"base","themeVariables":{"primaryColor":"#f1f3f5","secondaryColor":"#e9ecef","tertiaryColor":"#f8f9fa","primaryBorderColor":"#6c757d","primaryTextColor":"#212529","lineColor":"#6c757d","fontFamily":"Inter, Arial, sans-serif"}}}%%
+flowchart LR
+  GCS["GCS / MAVLink mission upload"]
+  Mavlink["mavlink MissionManager"]
+  ClientA["DatamanClient"]
+  Dataman["dataman<br/>DM_READ / DM_WRITE<br/>mission, fence, safe points"]
+  Navigator["navigator<br/>mission, RTL, geofence, takeoff, land"]
+  Commander["commander<br/>arming, nav_state, health, failsafe"]
+  Controllers["position / attitude controllers"]
+
+  GCS --> Mavlink
+  Mavlink --> ClientA
+  ClientA &lt;--&gt; Dataman
+  Mavlink -- "mission topic" --> Navigator
+  Navigator -- "DatamanClient reads mission items" --> Dataman
+  Commander -- "vehicle_status<br/>vehicle_control_mode" --> Navigator
+  Commander -- "home_position" --> Navigator
+  Navigator -- "mission_result<br/>geofence_result<br/>rtl_status" --> Commander
+  Navigator -- "position_setpoint_triplet" --> Controllers
+
+classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
+classDef data fill:#e9ecef,stroke:#6c757d,color:#212529;
+class GCS,Mavlink,ClientA,Dataman,Navigator,Commander,Controllers module;</pre></div>
+
+    <h2>Responsibility Boundaries</h2>
+    <table>
+      <thead><tr><th>Module</th><th>Owns</th><th>Consumes</th><th>Publishes / returns</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>dataman</code></td>
+          <td>Persistent or RAM-backed record storage. Key spaces include <code>DM_KEY_WAYPOINTS_OFFBOARD_0/1</code>, <code>DM_KEY_MISSION_STATE</code>, fence points, and safe points.</td>
+          <td><code>dataman_request</code> for <code>DM_GET_ID</code>, <code>DM_READ</code>, <code>DM_WRITE</code>, and <code>DM_CLEAR</code>.</td>
+          <td><code>dataman_response</code> with success/failure and record payload.</td>
+        </tr>
+        <tr>
+          <td><code>navigator</code></td>
+          <td>Autonomous navigation behavior: mission traversal, RTL, takeoff, landing, loiter, geofence checking, and setpoint generation.</td>
+          <td><code>vehicle_status</code>, <code>home_position</code>, <code>mission</code>, position estimates, and dataman mission/geofence records.</td>
+          <td><code>position_setpoint_triplet</code>, <code>mission_result</code>, <code>geofence_result</code>, <code>rtl_status</code>, <code>navigator_status</code>.</td>
+        </tr>
+        <tr>
+          <td><code>commander</code></td>
+          <td>Vehicle state machine, arming, user mode intention, preflight checks, failsafe state, and final <code>nav_state</code>.</td>
+          <td><code>mission_result</code>, <code>geofence_result</code>, estimator/vehicle health, manual input, commands, and many status topics.</td>
+          <td><code>vehicle_status</code>, <code>vehicle_control_mode</code>, <code>failsafe_flags</code>, <code>actuator_armed</code>, <code>home_position</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Mission Upload And Storage</h2>
+    <p>
+      Mission upload is not performed by navigator or commander. MAVLink mission handling writes mission items into dataman,
+      then updates the active mission state. PX4 uses two offboard waypoint banks,
+      <code>DM_KEY_WAYPOINTS_OFFBOARD_0</code> and <code>DM_KEY_WAYPOINTS_OFFBOARD_1</code>, so a new mission can be received
+      into the inactive bank and then atomically selected by updating <code>DM_KEY_MISSION_STATE</code>.
+    </p>
+
+    <div class="diagram"><pre class="mermaid">%%{init: {"theme":"base","themeVariables":{"primaryColor":"#f1f3f5","secondaryColor":"#e9ecef","tertiaryColor":"#f8f9fa","primaryBorderColor":"#6c757d","primaryTextColor":"#212529","lineColor":"#6c757d","fontFamily":"Inter, Arial, sans-serif"}}}%%
+sequenceDiagram
+  participant GCS as GCS
+  participant MM as mavlink MissionManager
+  participant DC as DatamanClient
+  participant DM as dataman
+  participant NAV as navigator
+
+  GCS->>MM: MISSION_COUNT / MISSION_ITEM messages
+  MM->>DC: write mission_item_s into inactive waypoint bank
+  DC->>DM: dataman_request DM_WRITE
+  DM-->>DC: dataman_response success/failure
+  MM->>DC: write mission_s to DM_KEY_MISSION_STATE
+  DC->>DM: dataman_request DM_WRITE
+  DM-->>DC: dataman_response success/failure
+  MM-->>NAV: publish mission_s on mission topic
+  NAV->>DC: read mission items for feasibility and execution
+  DC->>DM: dataman_request DM_READ
+  DM-->>DC: dataman_response mission_item_s
+  NAV-->>NAV: check mission feasible and cache needed items</pre></div>
+
+    <h3>Important Storage Records</h3>
+    <table>
+      <thead><tr><th>Dataman key</th><th>Purpose</th><th>Main users</th></tr></thead>
+      <tbody>
+        <tr><td><code>DM_KEY_WAYPOINTS_OFFBOARD_0/1</code></td><td>Mission item arrays. Only one bank is active at a time.</td><td>MAVLink mission manager writes; navigator reads.</td></tr>
+        <tr><td><code>DM_KEY_MISSION_STATE</code></td><td>Active mission metadata: active bank, count, current sequence, mission ID, geofence ID, safe-point ID, landing indexes.</td><td>MAVLink mission manager writes; navigator reads and may update current sequence when disarmed.</td></tr>
+        <tr><td><code>DM_KEY_FENCE_POINTS_0/1</code></td><td>Geofence vertices and circles.</td><td>MAVLink mission/fence handling writes; navigator geofence reads.</td></tr>
+        <tr><td><code>DM_KEY_SAFE_POINTS_0/1</code></td><td>RTL safe points / rally-style records.</td><td>MAVLink mission/fence handling writes; navigator RTL reads.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Runtime Control Loop</h2>
+    <p>
+      Commander controls the selected high-level mode by publishing <code>vehicle_status.nav_state</code>.
+      Navigator reads that state and chooses an internal <code>NavigatorMode</code>. If the state is
+      <code>NAVIGATION_STATE_AUTO_MISSION</code>, navigator activates mission mode, loads the relevant dataman-backed mission
+      items, and generates setpoints. If commander switches to RTL, takeoff, land, or loiter, navigator changes its active
+      mode accordingly.
+    </p>
+
+    <div class="diagram"><pre class="mermaid">%%{init: {"theme":"base","themeVariables":{"primaryColor":"#f1f3f5","secondaryColor":"#e9ecef","tertiaryColor":"#f8f9fa","primaryBorderColor":"#6c757d","primaryTextColor":"#212529","lineColor":"#6c757d","fontFamily":"Inter, Arial, sans-serif"}}}%%
+stateDiagram-v2
+  [*] --> CommanderModeDecision
+  CommanderModeDecision --> VehicleStatus: publish nav_state
+  VehicleStatus --> NavigatorModeSwitch
+  NavigatorModeSwitch --> Mission: AUTO_MISSION
+  NavigatorModeSwitch --> RTL: AUTO_RTL
+  NavigatorModeSwitch --> Takeoff: AUTO_TAKEOFF
+  NavigatorModeSwitch --> Loiter: AUTO_LOITER
+  NavigatorModeSwitch --> Inactive: manual/offboard/disarmed
+  Mission --> DatamanRead: load mission item
+  DatamanRead --> MissionFeasibility
+  MissionFeasibility --> PositionSetpoint: mission valid
+  MissionFeasibility --> MissionResultInvalid: mission invalid
+  RTL --> PositionSetpoint
+  Takeoff --> PositionSetpoint
+  Loiter --> PositionSetpoint
+  PositionSetpoint --> Controllers
+  MissionResultInvalid --> CommanderModeDecision: mission_result feedback
+  Controllers --> [*]</pre></div>
+
+    <h2>Navigator Feedback To Commander</h2>
+    <p>
+      Navigator is the module that knows whether a mission is feasible, where it is in the mission, and whether geofence
+      limits are violated. Commander is the module that decides how those facts affect the vehicle state.
+    </p>
+
+    <table>
+      <thead><tr><th>Navigator output</th><th>What it means</th><th>Commander use</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>mission_result.valid</code></td>
+          <td>Mission feasibility checker passed for the current mission ID, geofence ID, and home-position update count.</td>
+          <td>Commander treats auto mission as available only when the result is current and valid.</td>
+        </tr>
+        <tr>
+          <td><code>mission_result.finished</code></td>
+          <td>Mission, takeoff, or landing mode has completed its current autonomous task.</td>
+          <td>Commander changes from auto takeoff or auto mission into auto loiter when appropriate.</td>
+        </tr>
+        <tr>
+          <td><code>mission_result.seq_current</code> / <code>seq_reached</code></td>
+          <td>Navigator's current and reached mission item indexes.</td>
+          <td>Used for operator visibility, mission progress, and mission state reasoning.</td>
+        </tr>
+        <tr>
+          <td><code>geofence_result</code></td>
+          <td>Navigator's geofence checks against max distance, max altitude, and custom fence geometry.</td>
+          <td>Commander health checks set <code>failsafe_flags.geofence_breached</code>; failsafe then applies the configured <code>GF_ACTION</code>.</td>
+        </tr>
+        <tr>
+          <td><code>rtl_status</code></td>
+          <td>Navigator's RTL planning state and safe-point status.</td>
+          <td>Commander uses RTL/failsafe context when evaluating mode outcomes and remaining flight behavior.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Geofence Path</h2>
+    <p>
+      Geofence configuration can be stored in dataman, but the actual breach test is performed by navigator. Commander does
+      not run the polygon/circle checks itself. Commander receives <code>geofence_result</code>, reports the health check
+      condition, and routes the final action through failsafe logic.
+    </p>
+
+    <div class="diagram"><pre class="mermaid">%%{init: {"theme":"base","themeVariables":{"primaryColor":"#f1f3f5","secondaryColor":"#e9ecef","tertiaryColor":"#f8f9fa","primaryBorderColor":"#6c757d","primaryTextColor":"#212529","lineColor":"#6c757d","fontFamily":"Inter, Arial, sans-serif"}}}%%
+flowchart TD
+  FenceStore["dataman fence records"]
+  Geo["navigator Geofence"]
+  Pos["vehicle_global_position or GPS"]
+  Result["geofence_result"]
+  Checks["commander HealthAndArmingChecks"]
+  Flags["failsafe_flags.geofence_breached"]
+  Failsafe["commander failsafe"]
+  Action["Warn / Hold / RTL / Land / Terminate"]
+
+  FenceStore --> Geo
+  Pos --> Geo
+  Geo --> Result
+  Result --> Checks
+  Checks --> Flags
+  Flags --> Failsafe
+  Failsafe --> Action</pre></div>
+
+    <h2>Home Position Dependency</h2>
+    <p>
+      Home position is a key shared fact. Commander normally owns setting and publishing <code>home_position</code> from
+      estimator/global/local position validity and arming state. Navigator uses home position for mission feasibility,
+      RTL planning, takeoff/landing reference altitudes, and geofence distance/altitude checks. When the home-position
+      update count changes, navigator revalidates mission feasibility because relative altitudes and home-based constraints
+      may have changed.
+    </p>
+
+    <h2>Failure And Edge Cases</h2>
+    <table>
+      <thead><tr><th>Case</th><th>Where detected</th><th>Resulting behavior</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Dataman read fails for a mission item.</td>
+          <td>Navigator mission cache/client or mission feasibility checker.</td>
+          <td>Navigator marks the mission invalid or failed through <code>mission_result</code>; commander does not treat the mission as a valid auto mission.</td>
+        </tr>
+        <tr>
+          <td>Mission upload changes active mission ID.</td>
+          <td>MAVLink mission manager writes <code>DM_KEY_MISSION_STATE</code> and publishes <code>mission</code>.</td>
+          <td>Navigator reloads/revalidates; commander sees the new <code>mission_result.mission_id</code>.</td>
+        </tr>
+        <tr>
+          <td>Geofence breach.</td>
+          <td>Navigator geofence check.</td>
+          <td>Navigator publishes <code>geofence_result</code>; commander sets failsafe flags and applies <code>GF_ACTION</code>.</td>
+        </tr>
+        <tr>
+          <td>Mission finishes while armed in auto mission.</td>
+          <td>Navigator mission mode sets <code>mission_result.finished</code>.</td>
+          <td>Commander moves the user mode intention to auto loiter if no other mode change is pending.</td>
+        </tr>
+        <tr>
+          <td>Vehicle is disarmed.</td>
+          <td>Commander publishes disarmed state in <code>vehicle_status</code>.</td>
+          <td>Navigator does not execute its autonomous mode state machine while disarmed.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong>Key design point:</strong> dataman is durable storage, navigator is autonomous navigation logic, and commander is
+      authority over vehicle mode and safety. The modules stay decoupled by passing mission metadata, status, and commands
+      through uORB instead of direct cross-module ownership.
+    </div>
+
+    <h2>Source Map</h2>
+    <table>
+      <thead><tr><th>Source file</th><th>What to inspect</th></tr></thead>
+      <tbody>
+        <tr><td><code>src/modules/dataman/dataman.h</code></td><td>Dataman key definitions and storage record sizes.</td></tr>
+        <tr><td><code>src/modules/dataman/dataman.cpp</code></td><td>Request/response worker loop and backend initialization.</td></tr>
+        <tr><td><code>src/lib/dataman_client/DatamanClient.cpp</code></td><td>Client-side synchronous and asynchronous dataman requests.</td></tr>
+        <tr><td><code>src/modules/mavlink/mavlink_mission.cpp</code></td><td>Mission upload, active mission-state write, and mission-topic publication.</td></tr>
+        <tr><td><code>src/modules/navigator/mission_base.cpp</code></td><td>Mission reload, feasibility checks, mission result fields, and mission-item caching.</td></tr>
+        <tr><td><code>src/modules/navigator/navigator_main.cpp</code></td><td>Mode selection from <code>vehicle_status.nav_state</code>, setpoint publication, and geofence breach publication.</td></tr>
+        <tr><td><code>src/modules/commander/Commander.cpp</code></td><td>Mission-result handling, nav-state publication, and mode transition decisions.</td></tr>
+        <tr><td><code>src/modules/commander/HealthAndArmingChecks/checks/geofenceCheck.cpp</code></td><td>How commander converts navigator geofence output into failsafe flags and health messages.</td></tr>
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

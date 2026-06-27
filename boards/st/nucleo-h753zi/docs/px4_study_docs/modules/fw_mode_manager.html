@@ -98,7 +98,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="fw_mode_manager.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>fw_mode_manager</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>This implements the setpoint generation for all PX4-internal fixed-wing modes, height-rate control and higher. It takes the current mode state of the vehicle as input and outputs setpoints consumed by the fixed-wing lateral-longitudinal controller and and controllers below that (attitude, rate).</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/fw_mode_manager</code></div>
       <div><strong>Build target</strong><br><code>modules__fw_mode_manager</code></div>
@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Selects fixed-wing mode behavior and generates fixed-wing trajectory or attitude setpoints.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Coordinate higher-level vehicle behavior rather than directly driving actuators.</li><li>Consume runtime inputs from uORB topics such as `airspeed_validated`, `parameter_update`, `position_setpoint_triplet`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_command`, ... 6 more.</li><li>Publish outputs or status topics such as `figure_eight_status`, `fixed_wing_lateral_guidance_status`, `fixed_wing_lateral_setpoint`, `fixed_wing_longitudinal_setpoint`, `fixed_wing_runway_control`, `flaps_setpoint`, `landing_gear`, `lateral_control_configuration`, ... 6 more.</li><li>Use module configuration from `fw_mode_manager_params.yaml`.</li><li>Implement the main behavior in classes such as `CombinedControllerConfigurationHandler`, `FixedWingModeManager`, `handling`, `at`, `FigureEight`, `FigureEightSegment`, ... 2 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`airspeed_validated`, `parameter_update`, `position_setpoint_triplet`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_command`, `vehicle_control_mode`, `vehicle_global_position`, ... 4 more</td></tr><tr><td>Primary outputs</td><td>`figure_eight_status`, `fixed_wing_lateral_guidance_status`, `fixed_wing_lateral_setpoint`, `fixed_wing_longitudinal_setpoint`, `fixed_wing_runway_control`, `flaps_setpoint`, `landing_gear`, `lateral_control_configuration`, `launch_detection_status`, `longitudinal_control_configuration`, ... 4 more</td></tr><tr><td>Referenced topics</td><td>`airspeed_validated`, `figure_eight_status`, `fixed_wing_lateral_guidance_status`, `fixed_wing_lateral_setpoint`, `fixed_wing_longitudinal_setpoint`, `fixed_wing_runway_control`, `flaps_setpoint`, `landing_gear`, `lateral_control_configuration`, `launch_detection_status`, ... 19 more</td></tr><tr><td>Parameters/config</td><td>fw_mode_manager_params.yaml</td></tr><tr><td>Key classes</td><td>`CombinedControllerConfigurationHandler`, `FixedWingModeManager`, `handling`, `at`, `FigureEight`, `FigureEightSegment`, `__EXPORT`, `__EXPORT`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>FixedWingModeManager.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>figure_eight/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>fw_mode_manager_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>launchdetection/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>launchdetection/launchdetection_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>runway_takeoff/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>ControllerConfigurationHandler.hpp</td><td>Defines `CombinedControllerConfigurationHandler` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +169,6 @@ classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
 classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
 classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
 classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/fw_mode_manager</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__fw_mode_manager</td></tr><tr><td>Runtime main</td><td>fw_mode_manager</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>fw_mode_manager_params.yaml</td></tr><tr><td>Detected sources</td><td>5</td></tr><tr><td>Detected headers</td><td>5</td></tr><tr><td>Detected configs</td><td>7</td></tr></tbody></table>
 

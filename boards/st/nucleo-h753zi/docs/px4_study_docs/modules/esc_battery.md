@@ -6,7 +6,44 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+This implements using information from the ESC status and publish it as battery status.
+
+## Description of Module
+
+Uses ESC telemetry to derive battery-like power status when ESC data is the available energy source.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `esc_status`, `parameter_update`.
+- Do not publish directly detected uORB outputs from this module directory.
+- Implement the main behavior in classes such as `EscBattery`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `esc_status`, `parameter_update` |
+| Primary outputs | none detected |
+| Referenced topics | `esc_status`, `parameter_update` |
+| Parameters/config | none detected |
+| Key classes | `EscBattery` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| EscBattery.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| EscBattery.hpp | Defines `EscBattery` class |
 
 ## Architecture Overview
 

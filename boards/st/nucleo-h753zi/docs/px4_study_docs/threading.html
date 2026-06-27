@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Flight Controller Threading</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --text: #1f2933;
+      --muted: #5d6975;
+      --line: #cfd8df;
+      --panel: #ffffff;
+      --band: #f4f6f8;
+      --code: #eef2f5;
+      --blue: #2f5f8f;
+      --teal: #26756f;
+      --amber: #a86b12;
+      --red: #9b3a38;
+      --green: #3f7b42;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    header {
+      background: var(--band);
+      border-bottom: 1px solid var(--line);
+      padding: 30px min(6vw, 58px);
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px min(5vw, 44px) 64px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 24px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    p { margin: 0 0 12px; }
+    ul { margin: 8px 0 18px; padding-left: 22px; }
+    li { margin: 5px 0; }
+
+    a { color: var(--blue); }
+
+    code {
+      background: var(--code);
+      border: 1px solid #d5dde4;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+
+    pre {
+      margin: 12px 0 18px;
+      padding: 14px 16px;
+      overflow: auto;
+      background: #18212b;
+      color: #edf2f7;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    pre code {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    .lede {
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .nav a {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 6px 10px;
+      background: #fff;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin: 20px 0 26px;
+    }
+
+    .summary > div, .note, .diagram, .compare, .callout {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    .summary > div {
+      padding: 16px;
+    }
+
+    .summary strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #111827;
+    }
+
+    .note, .callout {
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+
+    .note {
+      border-left: 4px solid var(--teal);
+      color: #26323d;
+    }
+
+    .callout {
+      border-left: 4px solid var(--amber);
+      background: #fff9ef;
+    }
+
+    .diagram {
+      margin: 18px 0 26px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .diagram-title {
+      margin: 0 0 10px;
+      color: #111827;
+      font-weight: 650;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      min-width: 760px;
+      height: auto;
+    }
+
+    .box { fill: #ffffff; stroke: #9fb0bf; stroke-width: 1.5; rx: 6; }
+    .box-blue { fill: #edf5fb; stroke: #2f5f8f; }
+    .box-teal { fill: #edf8f6; stroke: #26756f; }
+    .box-amber { fill: #fff4e3; stroke: #a86b12; }
+    .box-red { fill: #fff0f0; stroke: #9b3a38; }
+    .box-green { fill: #eef8ef; stroke: #3f7b42; }
+    .lane { fill: #f7f9fb; stroke: #cfd8df; stroke-width: 1.2; rx: 6; }
+    .arrow { stroke: #536475; stroke-width: 1.7; fill: none; marker-end: url(#arrow); }
+    .arrow-blue { stroke: #2f5f8f; }
+    .arrow-teal { stroke: #26756f; }
+    .arrow-red { stroke: #9b3a38; }
+    .thin { stroke-width: 1.1; }
+    .label { fill: #1f2933; font-size: 13px; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .small { fill: #52606d; font-size: 11px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .title-label { fill: #111827; font-size: 14px; font-weight: 700; }
+
+    .compare {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      margin: 14px 0 24px;
+    }
+
+    .compare th, .compare td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .compare th {
+      background: #e9eef2;
+      color: #111827;
+    }
+
+    .compare tr:nth-child(even) td {
+      background: #fafbfc;
+    }
+
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      background: #f7f9fb;
+      color: #33404d;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      margin-top: 36px;
+      padding-top: 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 820px) {
+      h1 { font-size: 29px; }
+      .summary { grid-template-columns: 1fr; }
+      main { padding-bottom: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PX4 Flight Controller Threading</h1>
+    <p class="lede">A study note for the Nucleo H753ZI PX4 checkout: how modules start, when PX4 creates normal tasks, and how work-queue modules share execution threads.</p>
+    <nav class="nav" aria-label="Page sections">
+      <a href="#startup">Startup Path</a>
+      <a href="#dedicated">Dedicated Threads</a>
+      <a href="#workqueue">Work Queues</a>
+      <a href="#blocking">Blocking</a>
+      <a href="#choose">Choosing</a>
+      <a href="#inspect">Inspecting Runtime</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="summary" aria-label="Threading summary">
+      <div>
+        <strong>Dedicated task/thread</strong>
+        Created with <code>px4_task_spawn_cmd()</code>. The module owns a scheduler context, stack, priority, and usually a blocking or polling loop.
+      </div>
+      <div>
+        <strong>Work queue item</strong>
+        Created as a <code>WorkItem</code> or <code>ScheduledWorkItem</code>. The module runs short <code>Run()</code> callbacks on a shared queue thread.
+      </div>
+    </section>
+
+    <section id="startup">
+      <h2>Startup Path</h2>
+      <p>Most PX4 modules are started from an init script or shell command. The shared <code>ModuleBase</code> code dispatches the command, but each module's own <code>task_spawn()</code> decides how execution is created.</p>
+
+      <div class="diagram">
+        <p class="diagram-title">Module start command dispatch</p>
+        <svg viewBox="0 0 980 230" role="img" aria-labelledby="startup-title">
+          <title id="startup-title">PX4 module startup flow</title>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#536475"></path>
+            </marker>
+          </defs>
+          <rect class="box box-blue" x="30" y="52" width="150" height="66"></rect>
+          <text class="title-label mono" x="54" y="82">&lt;module&gt; start</text>
+          <text class="small" x="56" y="103">rc script or shell</text>
+
+          <rect class="box" x="238" y="52" width="148" height="66"></rect>
+          <text class="title-label mono" x="272" y="82">module_main()</text>
+          <text class="small" x="270" y="103">C entry point</text>
+
+          <rect class="box" x="444" y="52" width="158" height="66"></rect>
+          <text class="title-label mono" x="476" y="82">ModuleBase</text>
+          <text class="small mono" x="477" y="103">main() / start</text>
+
+          <rect class="box box-teal" x="660" y="52" width="178" height="66"></rect>
+          <text class="title-label mono" x="700" y="82">task_spawn()</text>
+          <text class="small" x="695" y="103">module-specific</text>
+
+          <path class="arrow" d="M 180 85 H 236"></path>
+          <path class="arrow" d="M 386 85 H 442"></path>
+          <path class="arrow" d="M 602 85 H 658"></path>
+
+          <rect class="box box-amber" x="590" y="158" width="150" height="44"></rect>
+          <text class="label mono" x="617" y="185">normal task</text>
+          <rect class="box box-green" x="780" y="158" width="160" height="44"></rect>
+          <text class="label mono" x="813" y="185">work item</text>
+          <path class="arrow arrow-blue" d="M 714 118 C 704 136 688 143 665 156"></path>
+          <path class="arrow arrow-teal" d="M 779 118 C 794 137 819 143 852 156"></path>
+        </svg>
+      </div>
+
+      <p>For work-queue modules, <code>init()</code> is a module convention, not a base-class virtual function. The module's own <code>task_spawn()</code> calls it after constructing the object.</p>
+    </section>
+
+    <section id="dedicated">
+      <h2>Dedicated Thread Approach</h2>
+      <p>A dedicated-thread module creates an OS scheduling context with <code>px4_task_spawn_cmd()</code>. This is suitable for blocking loops, <code>px4_poll()</code>, serial I/O, long-latency work, or code that should not delay unrelated modules.</p>
+
+      <div class="diagram">
+        <p class="diagram-title">Dedicated task lifecycle</p>
+        <svg viewBox="0 0 980 260" role="img" aria-labelledby="dedicated-title">
+          <title id="dedicated-title">Dedicated PX4 task lifecycle</title>
+          <defs>
+            <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#536475"></path>
+            </marker>
+          </defs>
+          <rect class="lane" x="34" y="34" width="912" height="188"></rect>
+          <text class="title-label" x="56" y="62">OS task/thread owned by one module</text>
+
+          <rect class="box box-blue" x="76" y="92" width="150" height="58"></rect>
+          <text class="label mono" x="105" y="119">instantiate</text>
+          <text class="small" x="99" y="139">construct object</text>
+
+          <rect class="box box-teal" x="284" y="92" width="160" height="58"></rect>
+          <text class="label mono" x="343" y="119">run()</text>
+          <text class="small" x="313" y="139">module main loop</text>
+
+          <rect class="box box-amber" x="502" y="84" width="186" height="74"></rect>
+          <text class="label mono" x="546" y="112">px4_poll()</text>
+          <text class="small" x="533" y="133">sleep, block, read I/O</text>
+          <text class="small" x="536" y="148">allowed here</text>
+
+          <rect class="box box-green" x="746" y="92" width="146" height="58"></rect>
+          <text class="label mono" x="779" y="119">cleanup</text>
+          <text class="small" x="783" y="139">delete object</text>
+
+          <path class="arrow" marker-end="url(#arrow2)" d="M 226 121 H 282"></path>
+          <path class="arrow" marker-end="url(#arrow2)" d="M 444 121 H 500"></path>
+          <path class="arrow" marker-end="url(#arrow2)" d="M 688 121 H 744"></path>
+
+          <path class="arrow thin" marker-end="url(#arrow2)" d="M 620 158 C 620 190 362 191 362 160"></path>
+          <text class="small" x="426" y="200">loop until should_exit()</text>
+        </svg>
+      </div>
+
+      <pre><code class="language-cpp">int MyModule::task_spawn(int argc, char *argv[])
+{
+    desc.task_id = px4_task_spawn_cmd("my_module",
+                                      SCHED_DEFAULT,
+                                      SCHED_PRIORITY_DEFAULT,
+                                      1200,
+                                      (px4_main_t)&run_trampoline,
+                                      (char *const *)argv);
+
+    return desc.task_id &lt; 0 ? -errno : 0;
+}</code></pre>
+    </section>
+
+    <section id="workqueue">
+      <h2>Work Queue Approach</h2>
+      <p>A work-queue module does not create a private thread. It attaches a <code>WorkItem</code> to a named queue. The work queue manager lazily creates the queue's backing thread if it does not already exist.</p>
+
+      <div class="diagram">
+        <p class="diagram-title">One queue thread, many work items</p>
+        <svg viewBox="0 0 980 380" role="img" aria-labelledby="wq-title">
+          <title id="wq-title">PX4 work queue manager and work items</title>
+          <defs>
+            <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#536475"></path>
+            </marker>
+          </defs>
+
+          <rect class="box box-blue" x="60" y="36" width="160" height="64"></rect>
+          <text class="label mono" x="98" y="64">wq:manager</text>
+          <text class="small" x="91" y="84">creates queues</text>
+
+          <rect class="lane" x="318" y="28" width="598" height="100"></rect>
+          <text class="title-label mono" x="342" y="56">wq:rate_ctrl thread</text>
+          <rect class="box box-teal" x="352" y="78" width="148" height="34"></rect>
+          <text class="small mono" x="372" y="100">mc_rate_control</text>
+          <rect class="box box-teal" x="520" y="78" width="154" height="34"></rect>
+          <text class="small mono" x="543" y="100">control_allocator</text>
+          <rect class="box box-teal" x="694" y="78" width="154" height="34"></rect>
+          <text class="small mono" x="730" y="100">pwm_out_sim</text>
+
+          <rect class="lane" x="318" y="154" width="598" height="100"></rect>
+          <text class="title-label mono" x="342" y="182">wq:nav_and_controllers thread</text>
+          <rect class="box box-green" x="352" y="204" width="116" height="34"></rect>
+          <text class="small mono" x="378" y="226">sensors</text>
+          <rect class="box box-green" x="488" y="204" width="130" height="34"></rect>
+          <text class="small mono" x="509" y="226">mc_att_ctl</text>
+          <rect class="box box-green" x="638" y="204" width="130" height="34"></rect>
+          <text class="small mono" x="660" y="226">mc_pos_ctl</text>
+          <rect class="box box-green" x="788" y="204" width="94" height="34"></rect>
+          <text class="small mono" x="808" y="226">ekf sel</text>
+
+          <rect class="lane" x="318" y="280" width="598" height="70"></rect>
+          <text class="title-label mono" x="342" y="308">wq:hp_default / wq:lp_default / wq:INS0...</text>
+          <text class="small" x="344" y="332">Additional queue threads exist only when a module attaches to them.</text>
+
+          <path class="arrow" marker-end="url(#arrow3)" d="M 220 68 H 316"></path>
+          <path class="arrow thin" marker-end="url(#arrow3)" d="M 220 68 C 276 90 274 198 316 204"></path>
+          <path class="arrow thin" marker-end="url(#arrow3)" d="M 220 68 C 276 112 274 308 316 315"></path>
+
+          <text class="small" x="60" y="136">WorkItem constructor calls</text>
+          <text class="small mono" x="60" y="154">WorkQueueFindOrCreate()</text>
+        </svg>
+      </div>
+
+      <pre><code class="language-cpp">class MyWorkItem : public ModuleBase, public px4::ScheduledWorkItem
+{
+public:
+    MyWorkItem() :
+        ScheduledWorkItem("my_work_item", px4::wq_configurations::hp_default)
+    {}
+
+    bool init()
+    {
+        ScheduleOnInterval(10_ms);
+        return true;
+    }
+
+private:
+    void Run() override
+    {
+        // Do one bounded unit of work and return.
+    }
+};</code></pre>
+    </section>
+
+    <section id="blocking">
+      <h2>Run-to-Completion and Blocking</h2>
+      <p><code>Run()</code> is run-to-completion with respect to its queue. PX4 will not run another item on the same queue until the current item returns. The OS can still preempt the queue thread with interrupts or higher-priority tasks.</p>
+
+      <div class="diagram">
+        <p class="diagram-title">Same queue: serial execution</p>
+        <svg viewBox="0 0 980 250" role="img" aria-labelledby="rtc-title">
+          <title id="rtc-title">Run to completion on one work queue</title>
+          <defs>
+            <marker id="arrow4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#536475"></path>
+            </marker>
+          </defs>
+          <text class="title-label mono" x="44" y="48">wq:rate_ctrl timeline</text>
+          <line class="arrow thin" marker-end="url(#arrow4)" x1="44" y1="104" x2="916" y2="104"></line>
+
+          <rect class="box box-teal" x="92" y="72" width="210" height="64"></rect>
+          <text class="label mono" x="132" y="99">A::Run()</text>
+          <text class="small" x="128" y="120">must return first</text>
+
+          <rect class="box box-amber" x="330" y="72" width="210" height="64"></rect>
+          <text class="label mono" x="370" y="99">B::Run()</text>
+          <text class="small" x="366" y="120">runs after A</text>
+
+          <rect class="box box-green" x="568" y="72" width="210" height="64"></rect>
+          <text class="label mono" x="608" y="99">C::Run()</text>
+          <text class="small" x="605" y="120">runs after B</text>
+
+          <rect class="box box-red" x="92" y="166" width="330" height="48"></rect>
+          <text class="label mono" x="122" y="196">If A blocks, B and C are delayed</text>
+          <path class="arrow arrow-red" marker-end="url(#arrow4)" d="M 258 166 C 260 148 268 140 288 130"></path>
+        </svg>
+      </div>
+
+      <div class="callout">
+        A work item can technically block because it is ordinary C++ running in an OS thread. In normal flight-control code it should not block, because every other item on the same queue waits behind it.
+      </div>
+
+      <p><code>Run()</code> does not have its own private stack. It runs on the queue thread's stack. Local variables disappear when <code>Run()</code> returns; persistent state should live in member variables.</p>
+
+      <pre><code class="language-cpp">void MyController::Run()
+{
+    float error = compute_error();  // temporary stack variable
+    _integrator += error * _dt;     // persistent object member
+    publish_output(_integrator);
+}</code></pre>
+    </section>
+
+    <section id="choose">
+      <h2>Choosing the Execution Model</h2>
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Need</th>
+            <th>Prefer</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Short periodic control update</td>
+            <td><span class="pill">Work queue</span></td>
+            <td>Lower thread count and predictable callback runtime.</td>
+          </tr>
+          <tr>
+            <td>React to uORB publication</td>
+            <td><span class="pill">Work queue</span></td>
+            <td>uORB callback subscriptions can enqueue <code>Run()</code> directly.</td>
+          </tr>
+          <tr>
+            <td>Blocking <code>px4_poll()</code>, serial read, file I/O, or sleep loop</td>
+            <td><span class="pill">Dedicated thread</span></td>
+            <td>Blocking one module should not stall unrelated work items.</td>
+          </tr>
+          <tr>
+            <td>Long or variable-latency computation</td>
+            <td><span class="pill">Dedicated thread</span></td>
+            <td>The module gets an independent scheduler context and stack.</td>
+          </tr>
+          <tr>
+            <td>High-rate control with bounded work</td>
+            <td><span class="pill">Work queue</span></td>
+            <td>PX4 commonly uses queues such as <code>wq:rate_ctrl</code> for this path.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="inspect">
+      <h2>Inspecting Runtime</h2>
+      <p>Use these commands on a running PX4 target:</p>
+      <pre><code class="language-sh">top
+work_queue status
+&lt;module&gt; status</code></pre>
+
+      <ul>
+        <li><code>top</code> shows OS tasks and threads, including dedicated module tasks and active work queue threads.</li>
+        <li><code>work_queue status</code> shows the active PX4 queues and attached work items.</li>
+        <li><code>&lt;module&gt; status</code> shows module-specific status output.</li>
+      </ul>
+
+      <p class="note">The total task/thread count is target- and runtime-dependent. Startup parameters, active sensors, MAVLink links, and simulation mode can change which dedicated tasks and queue threads exist.</p>
+    </section>
+
+    <footer>
+      Source study note: <a href="threading.md"><code>threading.md</code></a>. Key code paths: <code>platforms/common/module_base.cpp</code>, <code>platforms/common/px4_work_queue/WorkQueueManager.cpp</code>, and <code>platforms/common/px4_work_queue/WorkQueue.cpp</code>.
+    </footer>
+  </main>
+</body>
+</html>

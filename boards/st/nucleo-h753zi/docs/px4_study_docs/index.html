@@ -9,11 +9,24 @@
     header { background: #f1f3f5; border-bottom: 1px solid #6c757d; padding: 28px min(6vw, 56px); }
     main { max-width: 1180px; margin: 0 auto; padding: 28px min(5vw, 44px) 64px; }
     h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: 0; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    h2 { margin: 0 0 10px; font-size: 22px; letter-spacing: 0; }
+    .study-links { margin: 0 0 32px; padding-bottom: 18px; border-bottom: 1px solid #d6dadd; }
+    .study-links h2 { margin-bottom: 8px; font-size: 20px; }
+    .study-links ul { margin: 0; padding-left: 20px; }
+    .module-group { margin-top: 34px; }
+    .module-group:first-child { margin-top: 0; }
+    .study-links + .module-group { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th, td { border: 1px solid #d6dadd; padding: 8px 10px; vertical-align: top; overflow-wrap: anywhere; }
+    th:nth-child(1), td:nth-child(1) { width: 24%; }
+    th:nth-child(2), td:nth-child(2) { width: 38%; }
+    th:nth-child(3), td:nth-child(3) { width: 24%; }
+    th:nth-child(4), td:nth-child(4) { width: 14%; }
     th { background: #e9ecef; text-align: left; }
     tr:nth-child(even) td { background: #fafafa; }
     code { background: #e9ecef; border: 1px solid #cfd4d8; border-radius: 4px; padding: 1px 5px; }
+    tbody td:first-child a code { background: transparent; border: 0; border-radius: 0; padding: 0; }
+    .config-note { color: #6c757d; font-style: italic; }
     a { color: #2f4f6f; }
   </style>
 </head>
@@ -24,10 +37,155 @@
     <p>Targets: <strong>71</strong>. Scope: all immediate <code>src/modules/*</code> directories plus nested directories that declare <code>px4_add_module(...)</code>.</p>
   </header>
   <main>
-    <table>
-      <thead><tr><th>Module</th><th>Build kind</th><th>Target</th><th>Topics</th><th>Classes</th></tr></thead>
-      <tbody><tr><td><a href="modules/airship_att_control.html"><code>airship_att_control</code></a></td><td>px4 module</td><td>modules__airship_att_control</td><td>6</td><td>1</td></tr><tr><td><a href="modules/airspeed_selector.html"><code>airspeed_selector</code></a></td><td>px4 module</td><td>modules__airspeed_selector</td><td>18</td><td>3</td></tr><tr><td><a href="modules/attitude_estimator_q.html"><code>attitude_estimator_q</code></a></td><td>px4 module</td><td>modules__attitude_estimator_q</td><td>10</td><td>1</td></tr><tr><td><a href="modules/battery_status.html"><code>battery_status</code></a></td><td>px4 module</td><td>modules__battery_status</td><td>2</td><td>2</td></tr><tr><td><a href="modules/camera_feedback.html"><code>camera_feedback</code></a></td><td>px4 module</td><td>modules__camera_feedback</td><td>5</td><td>1</td></tr><tr><td><a href="modules/commander.html"><code>commander</code></a></td><td>px4 module</td><td>modules__commander</td><td>78</td><td>95</td></tr><tr><td><a href="modules/control_allocator.html"><code>control_allocator</code></a></td><td>px4 module</td><td>modules__control_allocator</td><td>21</td><td>25</td></tr><tr><td><a href="modules/dataman.html"><code>dataman</code></a></td><td>px4 module</td><td>modules__dataman</td><td>3</td><td>0</td></tr><tr><td><a href="modules/ekf2.html"><code>ekf2</code></a></td><td>px4 module</td><td>modules__ekf2</td><td>76</td><td>51</td></tr><tr><td><a href="modules/esc_battery.html"><code>esc_battery</code></a></td><td>px4 module</td><td>modules__esc_battery</td><td>2</td><td>1</td></tr><tr><td><a href="modules/events.html"><code>events</code></a></td><td>px4 module</td><td>modules__events</td><td>8</td><td>5</td></tr><tr><td><a href="modules/flight_mode_manager.html"><code>flight_mode_manager</code></a></td><td>px4 module</td><td>modules__flight_mode_manager</td><td>26</td><td>26</td></tr><tr><td><a href="modules/fw_att_control.html"><code>fw_att_control</code></a></td><td>px4 module</td><td>modules__fw_att_control</td><td>15</td><td>2</td></tr><tr><td><a href="modules/fw_autotune_attitude_control.html"><code>fw_autotune_attitude_control</code></a></td><td>px4 module</td><td>fw_autotune_attitude_control</td><td>10</td><td>4</td></tr><tr><td><a href="modules/fw_lateral_longitudinal_control.html"><code>fw_lateral_longitudinal_control</code></a></td><td>px4 module</td><td>modules__fw_lateral_longitudinal_control</td><td>20</td><td>1</td></tr><tr><td><a href="modules/fw_mode_manager.html"><code>fw_mode_manager</code></a></td><td>px4 module</td><td>modules__fw_mode_manager</td><td>29</td><td>8</td></tr><tr><td><a href="modules/fw_rate_control.html"><code>fw_rate_control</code></a></td><td>px4 module</td><td>modules__fw_rate_control</td><td>22</td><td>2</td></tr><tr><td><a href="modules/gimbal.html"><code>gimbal</code></a></td><td>px4 module</td><td>drivers__gimbal</td><td>19</td><td>15</td></tr><tr><td><a href="modules/gyro_calibration.html"><code>gyro_calibration</code></a></td><td>px4 module</td><td>modules__gyro_calibration</td><td>4</td><td>1</td></tr><tr><td><a href="modules/gyro_fft.html"><code>gyro_fft</code></a></td><td>px4 module</td><td>modules__gyro_fft</td><td>6</td><td>2</td></tr><tr><td><a href="modules/hardfault_stream.html"><code>hardfault_stream</code></a></td><td>px4 module</td><td>modules__hardfault_stream</td><td>2</td><td>2</td></tr><tr><td><a href="modules/internal_combustion_engine_control.html"><code>internal_combustion_engine_control</code></a></td><td>px4 module</td><td>modules__internal_combustion_engine_control</td><td>7</td><td>5</td></tr><tr><td><a href="modules/land_detector.html"><code>land_detector</code></a></td><td>px4 module</td><td>modules__land_detector</td><td>19</td><td>8</td></tr><tr><td><a href="modules/landing_target_estimator.html"><code>landing_target_estimator</code></a></td><td>px4 module</td><td>modules__landing_target_estimator</td><td>7</td><td>3</td></tr><tr><td><a href="modules/load_mon.html"><code>load_mon</code></a></td><td>px4 module</td><td>modules__load_mon</td><td>2</td><td>1</td></tr><tr><td><a href="modules/local_position_estimator.html"><code>local_position_estimator</code></a></td><td>px4 module</td><td>modules__local_position_estimator</td><td>25</td><td>1</td></tr><tr><td><a href="modules/logger.html"><code>logger</code></a></td><td>px4 module</td><td>modules__logger</td><td>11</td><td>13</td></tr><tr><td><a href="modules/mag_bias_estimator.html"><code>mag_bias_estimator</code></a></td><td>px4 module</td><td>modules__mag_bias_estimator</td><td>5</td><td>1</td></tr><tr><td><a href="modules/manual_control.html"><code>manual_control</code></a></td><td>px4 module</td><td>modules__manual_control</td><td>8</td><td>7</td></tr><tr><td><a href="modules/mavlink.html"><code>mavlink</code></a></td><td>px4 module</td><td>modules__mavlink</td><td>133</td><td>133</td></tr><tr><td><a href="modules/mc_att_control.html"><code>mc_att_control</code></a></td><td>px4 module</td><td>modules__mc_att_control</td><td>12</td><td>3</td></tr><tr><td><a href="modules/mc_autotune_attitude_control.html"><code>mc_autotune_attitude_control</code></a></td><td>px4 module</td><td>mc_autotune_attitude_control</td><td>9</td><td>2</td></tr><tr><td><a href="modules/mc_hover_thrust_estimator.html"><code>mc_hover_thrust_estimator</code></a></td><td>px4 module</td><td>modules__mc_hover_thrust_estimator</td><td>8</td><td>3</td></tr><tr><td><a href="modules/mc_nn_control.html"><code>mc_nn_control</code></a></td><td>px4 module</td><td>mc_nn_control</td><td>16</td><td>1</td></tr><tr><td><a href="modules/mc_pos_control.html"><code>mc_pos_control</code></a></td><td>px4 module</td><td>modules__mc_pos_control</td><td>12</td><td>10</td></tr><tr><td><a href="modules/mc_raptor.html"><code>mc_raptor</code></a></td><td>px4 module</td><td>modules__mc_raptor</td><td>17</td><td>3</td></tr><tr><td><a href="modules/mc_rate_control.html"><code>mc_rate_control</code></a></td><td>px4 module</td><td>modules__mc_rate_control</td><td>16</td><td>1</td></tr><tr><td><a href="modules/muorb.html"><code>muorb</code></a></td><td>directory</td><td>muorb</td><td>0</td><td>5</td></tr><tr><td><a href="modules/muorb__apps.html"><code>muorb/apps</code></a></td><td>px4 module</td><td>modules__muorb__apps</td><td>0</td><td>2</td></tr><tr><td><a href="modules/muorb__slpi.html"><code>muorb/slpi</code></a></td><td>px4 module</td><td>modules__muorb__slpi__main</td><td>0</td><td>2</td></tr><tr><td><a href="modules/navigator.html"><code>navigator</code></a></td><td>px4 module</td><td>modules__navigator</td><td>34</td><td>73</td></tr><tr><td><a href="modules/payload_deliverer.html"><code>payload_deliverer</code></a></td><td>px4 module</td><td>modules__payload_deliverer</td><td>4</td><td>6</td></tr><tr><td><a href="modules/px4iofirmware.html"><code>px4iofirmware</code></a></td><td>library</td><td>px4iofirmware</td><td>1</td><td>0</td></tr><tr><td><a href="modules/rc_update.html"><code>rc_update</code></a></td><td>px4 module</td><td>modules__rc_update</td><td>7</td><td>3</td></tr><tr><td><a href="modules/replay.html"><code>replay</code></a></td><td>px4 module</td><td>modules__replay</td><td>24</td><td>7</td></tr><tr><td><a href="modules/rover_ackermann.html"><code>rover_ackermann</code></a></td><td>px4 module</td><td>modules__rover_ackermann</td><td>23</td><td>9</td></tr><tr><td><a href="modules/rover_differential.html"><code>rover_differential</code></a></td><td>px4 module</td><td>modules__rover_differential</td><td>21</td><td>10</td></tr><tr><td><a href="modules/rover_mecanum.html"><code>rover_mecanum</code></a></td><td>px4 module</td><td>modules__rover_mecanum</td><td>21</td><td>9</td></tr><tr><td><a href="modules/sensors.html"><code>sensors</code></a></td><td>px4 module</td><td>modules__sensors</td><td>39</td><td>21</td></tr><tr><td><a href="modules/simulation.html"><code>simulation</code></a></td><td>directory</td><td>simulation</td><td>42</td><td>53</td></tr><tr><td><a href="modules/simulation__battery_simulator.html"><code>simulation/battery_simulator</code></a></td><td>px4 module</td><td>modules__simulation__battery_simulator</td><td>5</td><td>1</td></tr><tr><td><a href="modules/simulation__gz_bridge.html"><code>simulation/gz_bridge</code></a></td><td>px4 module</td><td>modules__simulation__gz_bridge</td><td>23</td><td>9</td></tr><tr><td><a href="modules/simulation__pwm_out_sim.html"><code>simulation/pwm_out_sim</code></a></td><td>px4 module</td><td>modules__simulation__pwm_out_sim</td><td>2</td><td>1</td></tr><tr><td><a href="modules/simulation__sensor_agp_sim.html"><code>simulation/sensor_agp_sim</code></a></td><td>px4 module</td><td>modules__simulation__sensor_agp_sim</td><td>4</td><td>2</td></tr><tr><td><a href="modules/simulation__sensor_airspeed_sim.html"><code>simulation/sensor_airspeed_sim</code></a></td><td>px4 module</td><td>modules__simulation__sensor_airspeed_sim</td><td>9</td><td>1</td></tr><tr><td><a href="modules/simulation__sensor_baro_sim.html"><code>simulation/sensor_baro_sim</code></a></td><td>px4 module</td><td>modules__simulation__sensor_baro_sim</td><td>3</td><td>1</td></tr><tr><td><a href="modules/simulation__sensor_gps_sim.html"><code>simulation/sensor_gps_sim</code></a></td><td>px4 module</td><td>modules__simulation__sensor_gps_sim</td><td>8</td><td>1</td></tr><tr><td><a href="modules/simulation__sensor_mag_sim.html"><code>simulation/sensor_mag_sim</code></a></td><td>px4 module</td><td>modules__simulation__senosr_mag_sim</td><td>5</td><td>1</td></tr><tr><td><a href="modules/simulation__simulator_mavlink.html"><code>simulation/simulator_mavlink</code></a></td><td>px4 module</td><td>modules__simulation__simulator_mavlink</td><td>32</td><td>4</td></tr><tr><td><a href="modules/simulation__simulator_sih.html"><code>simulation/simulator_sih</code></a></td><td>px4 module</td><td>modules__simulation__simulator_sih</td><td>15</td><td>6</td></tr><tr><td><a href="modules/simulation__system_power_simulator.html"><code>simulation/system_power_simulator</code></a></td><td>px4 module</td><td>modules__simulation__system_power_simulator</td><td>1</td><td>1</td></tr><tr><td><a href="modules/spacecraft.html"><code>spacecraft</code></a></td><td>px4 module</td><td>modules__spacecraft</td><td>24</td><td>10</td></tr><tr><td><a href="modules/task_watchdog.html"><code>task_watchdog</code></a></td><td>px4 module</td><td>modules__task_watchdog</td><td>0</td><td>1</td></tr><tr><td><a href="modules/temperature_compensation.html"><code>temperature_compensation</code></a></td><td>px4 module</td><td>modules__temperature_compensation</td><td>9</td><td>10</td></tr><tr><td><a href="modules/time_persistor.html"><code>time_persistor</code></a></td><td>px4 module</td><td>modules__time_persistor</td><td>0</td><td>1</td></tr><tr><td><a href="modules/uuv_att_control.html"><code>uuv_att_control</code></a></td><td>px4 module</td><td>modules__uuv_att_control</td><td>9</td><td>1</td></tr><tr><td><a href="modules/uuv_pos_control.html"><code>uuv_pos_control</code></a></td><td>px4 module</td><td>modules__uuv_pos_control</td><td>9</td><td>1</td></tr><tr><td><a href="modules/uxrce_dds_client.html"><code>uxrce_dds_client</code></a></td><td>px4 module</td><td>modules__uxrce_dds_client</td><td>5</td><td>7</td></tr><tr><td><a href="modules/vision_target_estimator.html"><code>vision_target_estimator</code></a></td><td>px4 module</td><td>modules__vision_target_estimator</td><td>28</td><td>20</td></tr><tr><td><a href="modules/vtol_att_control.html"><code>vtol_att_control</code></a></td><td>px4 module</td><td>modules__vtol_att_control</td><td>29</td><td>13</td></tr><tr><td><a href="modules/zenoh.html"><code>zenoh</code></a></td><td>px4 module</td><td>modules__zenoh</td><td>4</td><td>7</td></tr></tbody>
-    </table>
+    <div class="study-links">
+      <h2>Study Guides</h2>
+      <ul>
+        <li><a href="dataman_navigator_commander_interaction.html">Dataman, Navigator, and Commander interaction</a></li>
+      </ul>
+    </div>
+    <div class="module-group" id="estimation-and-sensors">
+      <h2>Estimation And Sensors</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/airspeed_selector.html"><code>airspeed_selector</code></a></td><td>Selects and validates the best available airspeed source.</td><td><code>CONFIG_MODULES_AIRSPEED_SELECTOR</code></td><td>modules__airspeed_selector</td></tr>
+        <tr><td><a href="modules/attitude_estimator_q.html"><code>attitude_estimator_q</code></a></td><td>Estimates vehicle attitude with a lightweight quaternion filter.</td><td><code>CONFIG_MODULES_ATTITUDE_ESTIMATOR_Q</code></td><td>modules__attitude_estimator_q</td></tr>
+        <tr><td><a href="modules/battery_status.html"><code>battery_status</code></a></td><td>Computes battery state, current draw, remaining charge, and warnings.</td><td><code>CONFIG_MODULES_BATTERY_STATUS</code></td><td>modules__battery_status</td></tr>
+        <tr><td><a href="modules/camera_feedback.html"><code>camera_feedback</code></a></td><td>Timestamps camera trigger feedback events for image synchronization.</td><td><code>CONFIG_MODULES_CAMERA_FEEDBACK</code></td><td>modules__camera_feedback</td></tr>
+        <tr><td><a href="modules/ekf2.html"><code>ekf2</code></a></td><td>Fuses sensors into attitude, velocity, position, wind, and bias estimates.</td><td><code>CONFIG_MODULES_EKF2</code></td><td>modules__ekf2</td></tr>
+        <tr><td><a href="modules/esc_battery.html"><code>esc_battery</code></a></td><td>Aggregates ESC telemetry into battery-style status information.</td><td><code>CONFIG_MODULES_ESC_BATTERY</code></td><td>modules__esc_battery</td></tr>
+        <tr><td><a href="modules/gyro_calibration.html"><code>gyro_calibration</code></a></td><td>Performs online gyro calibration and correction support.</td><td><code>CONFIG_MODULES_GYRO_CALIBRATION</code></td><td>modules__gyro_calibration</td></tr>
+        <tr><td><a href="modules/gyro_fft.html"><code>gyro_fft</code></a></td><td>Analyzes gyro vibration spectra for dynamic notch filtering.</td><td><code>CONFIG_MODULES_GYRO_FFT</code></td><td>modules__gyro_fft</td></tr>
+        <tr><td><a href="modules/landing_target_estimator.html"><code>landing_target_estimator</code></a></td><td>Estimates relative landing-target position from sensor observations.</td><td><code>CONFIG_MODULES_LANDING_TARGET_ESTIMATOR</code></td><td>modules__landing_target_estimator</td></tr>
+        <tr><td><a href="modules/local_position_estimator.html"><code>local_position_estimator</code></a></td><td>Provides the legacy local position estimation pipeline.</td><td><code>CONFIG_MODULES_LOCAL_POSITION_ESTIMATOR</code></td><td>modules__local_position_estimator</td></tr>
+        <tr><td><a href="modules/mag_bias_estimator.html"><code>mag_bias_estimator</code></a></td><td>Estimates magnetometer bias for heading correction.</td><td><code>CONFIG_MODULES_MAG_BIAS_ESTIMATOR</code></td><td>modules__mag_bias_estimator</td></tr>
+        <tr><td><a href="modules/sensors.html"><code>sensors</code></a></td><td>Handles sensor drivers, voting, calibration, and combined sensor publication.</td><td><code>CONFIG_MODULES_SENSORS</code></td><td>modules__sensors</td></tr>
+        <tr><td><a href="modules/temperature_compensation.html"><code>temperature_compensation</code></a></td><td>Applies temperature-based corrections to sensor data.</td><td><code>CONFIG_MODULES_TEMPERATURE_COMPENSATION</code></td><td>modules__temperature_compensation</td></tr>
+        <tr><td><a href="modules/vision_target_estimator.html"><code>vision_target_estimator</code></a></td><td>Estimates visual target pose and relative motion.</td><td><code>CONFIG_MODULES_VISION_TARGET_ESTIMATOR</code></td><td>modules__vision_target_estimator</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="module-group" id="state-and-mission">
+      <h2>State And Mission Logic</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/commander.html"><code>commander</code></a></td><td>Runs arming, vehicle mode, health, and failsafe state logic.</td><td><code>CONFIG_MODULES_COMMANDER</code></td><td>modules__commander</td></tr>
+        <tr><td><a href="modules/dataman.html"><code>dataman</code></a></td><td>Stores persistent mission, geofence, and safe-point data.</td><td><code>CONFIG_MODULES_DATAMAN</code></td><td>modules__dataman</td></tr>
+        <tr><td><a href="modules/events.html"><code>events</code></a></td><td>Publishes structured PX4 events for status, warnings, and errors.</td><td><code>CONFIG_MODULES_EVENTS</code></td><td>modules__events</td></tr>
+        <tr><td><a href="modules/flight_mode_manager.html"><code>flight_mode_manager</code></a></td><td>Generates trajectory setpoints for selected flight tasks.</td><td><code>CONFIG_MODULES_FLIGHT_MODE_MANAGER</code></td><td>modules__flight_mode_manager</td></tr>
+        <tr><td><a href="modules/fw_mode_manager.html"><code>fw_mode_manager</code></a></td><td>Manages fixed-wing flight modes and their setpoint generation.</td><td><code>CONFIG_MODULES_FW_MODE_MANAGER</code></td><td>modules__fw_mode_manager</td></tr>
+        <tr><td><a href="modules/land_detector.html"><code>land_detector</code></a></td><td>Detects landed, maybe-landed, ground-contact, and freefall states.</td><td><code>CONFIG_MODULES_LAND_DETECTOR</code></td><td>modules__land_detector</td></tr>
+        <tr><td><a href="modules/load_mon.html"><code>load_mon</code></a></td><td>Reports CPU load, memory use, and scheduler health.</td><td><code>CONFIG_MODULES_LOAD_MON</code></td><td>modules__load_mon</td></tr>
+        <tr><td><a href="modules/manual_control.html"><code>manual_control</code></a></td><td>Processes RC, joystick, and manual control inputs.</td><td><code>CONFIG_MODULES_MANUAL_CONTROL</code></td><td>modules__manual_control</td></tr>
+        <tr><td><a href="modules/navigator.html"><code>navigator</code></a></td><td>Executes mission, RTL, loiter, takeoff, landing, and geofence navigation.</td><td><code>CONFIG_MODULES_NAVIGATOR</code></td><td>modules__navigator</td></tr>
+        <tr><td><a href="modules/rc_update.html"><code>rc_update</code></a></td><td>Maps RC channels and updates manual-control setpoints.</td><td><code>CONFIG_MODULES_RC_UPDATE</code></td><td>modules__rc_update</td></tr>
+        <tr><td><a href="modules/task_watchdog.html"><code>task_watchdog</code></a></td><td>Monitors PX4 task health and reports stalls or timeouts.</td><td><code>CONFIG_MODULES_TASK_WATCHDOG</code></td><td>modules__task_watchdog</td></tr>
+        <tr><td><a href="modules/time_persistor.html"><code>time_persistor</code></a></td><td>Persists time information across reboots and power cycles.</td><td><code>CONFIG_MODULES_TIME_PERSISTOR</code></td><td>modules__time_persistor</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="module-group" id="flight-control">
+      <h2>Flight Control</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/airship_att_control.html"><code>airship_att_control</code></a></td><td>Controls airship attitude and thrust/torque setpoints.</td><td><code>CONFIG_MODULES_AIRSHIP_ATT_CONTROL</code></td><td>modules__airship_att_control</td></tr>
+        <tr><td><a href="modules/fw_att_control.html"><code>fw_att_control</code></a></td><td>Controls fixed-wing attitude and produces body-rate setpoints.</td><td><code>CONFIG_MODULES_FW_ATT_CONTROL</code></td><td>modules__fw_att_control</td></tr>
+        <tr><td><a href="modules/fw_autotune_attitude_control.html"><code>fw_autotune_attitude_control</code></a></td><td>Tunes fixed-wing attitude and rate controller gains in flight.</td><td><code>CONFIG_MODULES_FW_AUTOTUNE_ATTITUDE_CONTROL</code></td><td>fw_autotune_attitude_control</td></tr>
+        <tr><td><a href="modules/fw_lateral_longitudinal_control.html"><code>fw_lateral_longitudinal_control</code></a></td><td>Handles fixed-wing lateral guidance and longitudinal energy control.</td><td><code>CONFIG_MODULES_FW_LATERAL_LONGITUDINAL_CONTROL</code></td><td>modules__fw_lateral_longitudinal_control</td></tr>
+        <tr><td><a href="modules/fw_rate_control.html"><code>fw_rate_control</code></a></td><td>Controls fixed-wing body rates for aileron, elevator, and rudder outputs.</td><td><code>CONFIG_MODULES_FW_RATE_CONTROL</code></td><td>modules__fw_rate_control</td></tr>
+        <tr><td><a href="modules/mc_att_control.html"><code>mc_att_control</code></a></td><td>Controls multicopter attitude and produces body-rate setpoints.</td><td><code>CONFIG_MODULES_MC_ATT_CONTROL</code></td><td>modules__mc_att_control</td></tr>
+        <tr><td><a href="modules/mc_autotune_attitude_control.html"><code>mc_autotune_attitude_control</code></a></td><td>Tunes multicopter attitude and rate controller gains in flight.</td><td><code>CONFIG_MODULES_MC_AUTOTUNE_ATTITUDE_CONTROL</code></td><td>mc_autotune_attitude_control</td></tr>
+        <tr><td><a href="modules/mc_hover_thrust_estimator.html"><code>mc_hover_thrust_estimator</code></a></td><td>Estimates hover thrust from vertical acceleration and thrust response.</td><td><code>CONFIG_MODULES_MC_HOVER_THRUST_ESTIMATOR</code></td><td>modules__mc_hover_thrust_estimator</td></tr>
+        <tr><td><a href="modules/mc_nn_control.html"><code>mc_nn_control</code></a></td><td>Runs an experimental neural-network multicopter control path.</td><td><code>CONFIG_MODULES_MC_NN_CONTROL</code></td><td>mc_nn_control</td></tr>
+        <tr><td><a href="modules/mc_pos_control.html"><code>mc_pos_control</code></a></td><td>Controls multicopter position and velocity, producing attitude and thrust setpoints.</td><td><code>CONFIG_MODULES_MC_POS_CONTROL</code></td><td>modules__mc_pos_control</td></tr>
+        <tr><td><a href="modules/mc_raptor.html"><code>mc_raptor</code></a></td><td>Provides advanced multicopter trajectory tracking and control support.</td><td><code>CONFIG_MODULES_MC_RAPTOR</code></td><td>modules__mc_raptor</td></tr>
+        <tr><td><a href="modules/mc_rate_control.html"><code>mc_rate_control</code></a></td><td>Runs the multicopter angular-rate PID controller and torque output stage.</td><td><code>CONFIG_MODULES_MC_RATE_CONTROL</code></td><td>modules__mc_rate_control</td></tr>
+        <tr><td><a href="modules/vtol_att_control.html"><code>vtol_att_control</code></a></td><td>Manages VTOL attitude control and fixed-wing/multicopter transitions.</td><td><code>CONFIG_MODULES_VTOL_ATT_CONTROL</code></td><td>modules__vtol_att_control</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="module-group" id="actuation-and-payload">
+      <h2>Actuation And Payload</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/control_allocator.html"><code>control_allocator</code></a></td><td>Maps desired forces and torques to actuator outputs.</td><td><code>CONFIG_MODULES_CONTROL_ALLOCATOR</code></td><td>modules__control_allocator</td></tr>
+        <tr><td><a href="modules/gimbal.html"><code>gimbal</code></a></td><td>Manages gimbal commands, status, and driver-facing control paths.</td><td><code>CONFIG_MODULES_GIMBAL</code></td><td>drivers__gimbal</td></tr>
+        <tr><td><a href="modules/internal_combustion_engine_control.html"><code>internal_combustion_engine_control</code></a></td><td>Controls combustion-engine ignition, throttle, choke, and starter outputs.</td><td><code>CONFIG_MODULES_INTERNAL_COMBUSTION_ENGINE_CONTROL</code></td><td>modules__internal_combustion_engine_control</td></tr>
+        <tr><td><a href="modules/payload_deliverer.html"><code>payload_deliverer</code></a></td><td>Controls payload release, gripper, and delivery actions.</td><td><code>CONFIG_MODULES_PAYLOAD_DELIVERER</code></td><td>modules__payload_deliverer</td></tr>
+        <tr><td><a href="modules/px4iofirmware.html"><code>px4iofirmware</code></a></td><td>Contains PX4IO co-processor firmware support code.</td><td><code>CONFIG_MODULES_PX4IOFIRMWARE</code></td><td>px4iofirmware</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="module-group" id="rover-control">
+      <h2>Rover Control</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/rover_ackermann.html"><code>rover_ackermann</code></a></td><td>Controls Ackermann rovers with steering and throttle outputs.</td><td><code>CONFIG_MODULES_ROVER_ACKERMANN</code></td><td>modules__rover_ackermann</td></tr>
+        <tr><td><a href="modules/rover_differential.html"><code>rover_differential</code></a></td><td>Controls differential or skid-steer rover drive outputs.</td><td><code>CONFIG_MODULES_ROVER_DIFFERENTIAL</code></td><td>modules__rover_differential</td></tr>
+        <tr><td><a href="modules/rover_mecanum.html"><code>rover_mecanum</code></a></td><td>Controls mecanum or omnidirectional rover wheel outputs.</td><td><code>CONFIG_MODULES_ROVER_MECANUM</code></td><td>modules__rover_mecanum</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="module-group" id="communication-and-middleware">
+      <h2>Communication And Middleware</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/mavlink.html"><code>mavlink</code></a></td><td>Bridges telemetry, commands, missions, parameters, and logs over MAVLink.</td><td><code>CONFIG_MODULES_MAVLINK</code></td><td>modules__mavlink</td></tr>
+        <tr><td><a href="modules/muorb.html"><code>muorb</code></a></td><td>Contains multi-ORB transport support components.</td><td><span class="config-note">No direct CONFIG_*</span></td><td>muorb</td></tr>
+        <tr><td><a href="modules/muorb__apps.html"><code>muorb/apps</code></a></td><td>Provides application-side multi-ORB bridge modules.</td><td><code>CONFIG_MODULES_MUORB_APPS</code></td><td>modules__muorb__apps</td></tr>
+        <tr><td><a href="modules/muorb__slpi.html"><code>muorb/slpi</code></a></td><td>Provides SLPI-side multi-ORB bridge modules.</td><td><code>CONFIG_MODULES_MUORB_SLPI</code></td><td>modules__muorb__slpi__main</td></tr>
+        <tr><td><a href="modules/uxrce_dds_client.html"><code>uxrce_dds_client</code></a></td><td>Bridges uORB topics to DDS and ROS 2 through uXRCE-DDS.</td><td><code>CONFIG_MODULES_UXRCE_DDS_CLIENT</code></td><td>modules__uxrce_dds_client</td></tr>
+        <tr><td><a href="modules/zenoh.html"><code>zenoh</code></a></td><td>Provides Zenoh transport bridge and client support.</td><td><code>CONFIG_MODULES_ZENOH</code></td><td>modules__zenoh</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="module-group" id="simulation">
+      <h2>Simulation</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/simulation.html"><code>simulation</code></a></td><td>Collects simulation bridges, simulated sensors, and simulated actuator modules.</td><td><code>CONFIG_COMMON_SIMULATION</code></td><td>simulation</td></tr>
+        <tr><td><a href="modules/simulation__battery_simulator.html"><code>simulation/battery_simulator</code></a></td><td>Simulates battery status for SITL and test scenarios.</td><td><code>CONFIG_MODULES_SIMULATION_BATTERY_SIMULATOR</code></td><td>modules__simulation__battery_simulator</td></tr>
+        <tr><td><a href="modules/simulation__gz_bridge.html"><code>simulation/gz_bridge</code></a></td><td>Bridges PX4 uORB topics with Gazebo simulation transport.</td><td><code>CONFIG_MODULES_SIMULATION_GZ_BRIDGE</code></td><td>modules__simulation__gz_bridge</td></tr>
+        <tr><td><a href="modules/simulation__pwm_out_sim.html"><code>simulation/pwm_out_sim</code></a></td><td>Publishes simulated PWM actuator outputs.</td><td><code>CONFIG_MODULES_SIMULATION_PWM_OUT_SIM</code></td><td>modules__simulation__pwm_out_sim</td></tr>
+        <tr><td><a href="modules/simulation__sensor_agp_sim.html"><code>simulation/sensor_agp_sim</code></a></td><td>Simulates auxiliary global-position sensor input.</td><td><code>CONFIG_MODULES_SIMULATION_SENSOR_AGP_SIM</code></td><td>modules__simulation__sensor_agp_sim</td></tr>
+        <tr><td><a href="modules/simulation__sensor_airspeed_sim.html"><code>simulation/sensor_airspeed_sim</code></a></td><td>Simulates airspeed sensor measurements.</td><td><code>CONFIG_MODULES_SIMULATION_SENSOR_AIRSPEED_SIM</code></td><td>modules__simulation__sensor_airspeed_sim</td></tr>
+        <tr><td><a href="modules/simulation__sensor_baro_sim.html"><code>simulation/sensor_baro_sim</code></a></td><td>Simulates barometer pressure and altitude data.</td><td><code>CONFIG_MODULES_SIMULATION_SENSOR_BARO_SIM</code></td><td>modules__simulation__sensor_baro_sim</td></tr>
+        <tr><td><a href="modules/simulation__sensor_gps_sim.html"><code>simulation/sensor_gps_sim</code></a></td><td>Simulates GPS position and velocity measurements.</td><td><code>CONFIG_MODULES_SIMULATION_SENSOR_GPS_SIM</code></td><td>modules__simulation__sensor_gps_sim</td></tr>
+        <tr><td><a href="modules/simulation__sensor_mag_sim.html"><code>simulation/sensor_mag_sim</code></a></td><td>Simulates magnetometer field measurements.</td><td><code>CONFIG_MODULES_SIMULATION_SENSOR_MAG_SIM</code></td><td>modules__simulation__senosr_mag_sim</td></tr>
+        <tr><td><a href="modules/simulation__simulator_mavlink.html"><code>simulation/simulator_mavlink</code></a></td><td>Exchanges MAVLink data with HITL and SITL simulators.</td><td><code>CONFIG_MODULES_SIMULATION_SIMULATOR_MAVLINK</code></td><td>modules__simulation__simulator_mavlink</td></tr>
+        <tr><td><a href="modules/simulation__simulator_sih.html"><code>simulation/simulator_sih</code></a></td><td>Runs simulation-in-hardware vehicle dynamics.</td><td><code>CONFIG_MODULES_SIMULATION_SIMULATOR_SIH</code></td><td>modules__simulation__simulator_sih</td></tr>
+        <tr><td><a href="modules/simulation__system_power_simulator.html"><code>simulation/system_power_simulator</code></a></td><td>Simulates system power rail and battery power status.</td><td><code>CONFIG_MODULES_SIMULATION_SYSTEM_POWER_SIMULATOR</code></td><td>modules__simulation__system_power_simulator</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="module-group" id="logging-and-diagnostics">
+      <h2>Logging And Diagnostics</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/hardfault_stream.html"><code>hardfault_stream</code></a></td><td>Streams stored hardfault and crash diagnostic data.</td><td><code>CONFIG_MODULES_HARDFAULT_STREAM</code></td><td>modules__hardfault_stream</td></tr>
+        <tr><td><a href="modules/logger.html"><code>logger</code></a></td><td>Records selected uORB topics and system data to log files.</td><td><code>CONFIG_MODULES_LOGGER</code></td><td>modules__logger</td></tr>
+        <tr><td><a href="modules/replay.html"><code>replay</code></a></td><td>Replays logged sensor and estimator data through PX4 modules.</td><td><code>CONFIG_MODULES_REPLAY</code></td><td>modules__replay</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="module-group" id="specialty-vehicles">
+      <h2>Specialty Vehicles</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Description</th><th>Enable config</th><th>Target</th></tr></thead>
+        <tbody>
+        <tr><td><a href="modules/spacecraft.html"><code>spacecraft</code></a></td><td>Provides spacecraft attitude, rate, and position control modules.</td><td><code>CONFIG_MODULES_SPACECRAFT</code></td><td>modules__spacecraft</td></tr>
+        <tr><td><a href="modules/uuv_att_control.html"><code>uuv_att_control</code></a></td><td>Controls underwater vehicle attitude.</td><td><code>CONFIG_MODULES_UUV_ATT_CONTROL</code></td><td>modules__uuv_att_control</td></tr>
+        <tr><td><a href="modules/uuv_pos_control.html"><code>uuv_pos_control</code></a></td><td>Controls underwater vehicle position and velocity.</td><td><code>CONFIG_MODULES_UUV_POS_CONTROL</code></td><td>modules__uuv_pos_control</td></tr>
+        </tbody>
+      </table>
+    </div>
   </main>
 </body>
 </html>

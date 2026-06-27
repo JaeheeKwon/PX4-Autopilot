@@ -6,7 +6,44 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Writes the RTC time cyclically to a file and reloads this value on startup. This allows monotonic time on systems that only have a software RTC (that is not battery powered). Explicitly setting the time backwards (e.g. via system_time) is still possible.
+
+## Description of Module
+
+Persists time information across boots when supported by the platform.
+
+### Primary Responsibilities
+
+- Operate without directly detected uORB topic dependencies in this source inventory.
+- Do not publish directly detected uORB outputs from this module directory.
+- Implement the main behavior in classes such as `TimePersistor`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | none detected |
+| Referenced topics | none detected |
+| Parameters/config | none detected |
+| Key classes | `TimePersistor` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| TimePersistor.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| TimePersistor.hpp | Defines `TimePersistor` class |
 
 ## Architecture Overview
 

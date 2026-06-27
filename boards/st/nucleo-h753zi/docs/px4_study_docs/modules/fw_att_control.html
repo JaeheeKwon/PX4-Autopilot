@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="fw_att_control.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>fw_att_control</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>fw_att_control is the fixed wing attitude controller.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/fw_att_control</code></div>
       <div><strong>Build target</strong><br><code>modules__fw_att_control</code></div>
@@ -108,6 +120,31 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Runs fixed-wing attitude control and produces fixed-wing torque or actuator control demands.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.</li><li>Consume runtime inputs from uORB topics such as `airspeed_validated`, `autotune_attitude_control_status`, `fixed_wing_runway_control`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, ... 4 more.</li><li>Publish outputs or status topics such as `fw_virtual_attitude_setpoint`, `landing_gear_wheel`, `vehicle_attitude_setpoint`, `vehicle_rates_setpoint`.</li><li>Use module configuration from `fw_att_control_params.yaml`.</li><li>Implement the main behavior in classes such as `FixedwingAttitudeControl`, `WheelController`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Fixed-wing attitude control converts attitude error into body-rate setpoints. The downstream rate controller then tracks those rates with control-surface torque commands.</p>
+    <pre class="math-block">roll_error = wrap(roll_sp - roll)
+pitch_error = wrap(pitch_sp - pitch)
+yaw_coordination ~= g / max(airspeed, eps) * tan(roll_sp)
+roll_rate_sp = K_roll * roll_error + roll_rate_ff
+pitch_rate_sp = K_pitch * pitch_error + pitch_rate_ff
+yaw_rate_sp = yaw_coordination</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`airspeed_validated`, `autotune_attitude_control_status`, `fixed_wing_runway_control`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_land_detected`, ... 2 more</td></tr><tr><td>Primary outputs</td><td>`fw_virtual_attitude_setpoint`, `landing_gear_wheel`, `vehicle_attitude_setpoint`, `vehicle_rates_setpoint`</td></tr><tr><td>Referenced topics</td><td>`airspeed_validated`, `autotune_attitude_control_status`, `fixed_wing_runway_control`, `fw_virtual_attitude_setpoint`, `landing_gear_wheel`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, ... 5 more</td></tr><tr><td>Parameters/config</td><td>fw_att_control_params.yaml</td></tr><tr><td>Key classes</td><td>`FixedwingAttitudeControl`, `WheelController`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>FixedwingAttitudeControl.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>fw_att_control_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>FixedwingAttitudeControl.hpp</td><td>Defines `FixedwingAttitudeControl` class</td></tr><tr><td>fw_wheel_controller.h</td><td>Defines `WheelController` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -147,7 +184,6 @@ classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
 classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
 classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
 classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/fw_att_control</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__fw_att_control</td></tr><tr><td>Runtime main</td><td>fw_att_control</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>fw_att_control_params.yaml</td></tr><tr><td>Detected sources</td><td>3</td></tr><tr><td>Detected headers</td><td>2</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

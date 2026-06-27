@@ -64,7 +64,7 @@ class BridgeHealthMonitor(Node):
 
         self.create_subscription(
             VehicleStatus,
-            self._topic("/fmu/out/vehicle_status"),
+            self._topic("/fmu/out/vehicle_status_v4"),
             self._vehicle_status_callback,
             self._px4_output_qos,
         )
@@ -140,8 +140,8 @@ class BridgeHealthMonitor(Node):
         msg.cpu_combined = [0] * 10
         msg.gpu_cores = [0] * 4
         msg.gpu_combined = [0] * 10
-        msg.temperature_board = -1
-        msg.temperature_core = [-1] * 8
+        msg.temperature_board = 127
+        msg.temperature_core = [127] * 8
         msg.fan_speed = [0] * 4
         msg.ram_usage = 0
         msg.ram_total = 0
@@ -222,4 +222,3 @@ def main(args=None) -> None:
 
 if __name__ == "__main__":
     main()
-

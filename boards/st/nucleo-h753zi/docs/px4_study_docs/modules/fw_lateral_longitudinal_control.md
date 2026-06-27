@@ -6,7 +6,61 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+fw_lat_lon_control computes attitude and throttle setpoints from lateral and longitudinal control setpoints.
+
+## Description of Module
+
+Runs fixed-wing lateral and longitudinal control from navigation setpoints to attitude and thrust requests.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `airspeed_validated`, `fixed_wing_lateral_setpoint`, `fixed_wing_longitudinal_setpoint`, `flaps_setpoint`, `lateral_control_configuration`, `longitudinal_control_configuration`, `parameter_update`, `vehicle_air_data`, ... 6 more.
+- Publish outputs or status topics such as `fixed_wing_lateral_status`, `flight_phase_estimation`, `fw_virtual_attitude_setpoint`, `tecs_status`, `vehicle_attitude_setpoint`.
+- Use module configuration from `fw_lat_long_params.yaml`.
+- Implement the main behavior in classes such as `FwLateralLongitudinalControl`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+Fixed-wing lateral guidance uses L1-style path tracking, while longitudinal control uses total-energy control concepts for altitude and airspeed.
+
+```text
+L1 lateral guidance:
+a_lat_sp = 2 * V_ground^2 / L1_distance * sin(eta)
+roll_sp = atan(a_lat_sp / g)
+
+TECS energy terms:
+E_total = g*h + 0.5*V^2
+E_balance = g*h - 0.5*V^2
+throttle_sp -> controls E_total rate
+pitch_sp -> controls E_balance rate
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `airspeed_validated`, `fixed_wing_lateral_setpoint`, `fixed_wing_longitudinal_setpoint`, `flaps_setpoint`, `lateral_control_configuration`, `longitudinal_control_configuration`, `parameter_update`, `vehicle_air_data`, `vehicle_attitude`, `vehicle_control_mode`, ... 4 more |
+| Primary outputs | `fixed_wing_lateral_status`, `flight_phase_estimation`, `fw_virtual_attitude_setpoint`, `tecs_status`, `vehicle_attitude_setpoint` |
+| Referenced topics | `airspeed_validated`, `fixed_wing_lateral_setpoint`, `fixed_wing_lateral_status`, `fixed_wing_longitudinal_setpoint`, `flaps_setpoint`, `flight_phase_estimation`, `fw_virtual_attitude_setpoint`, `lateral_control_configuration`, `longitudinal_control_configuration`, `normalized_unsigned_setpoint`, ... 10 more |
+| Parameters/config | fw_lat_long_params.yaml |
+| Key classes | `FwLateralLongitudinalControl` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| FwLateralLongitudinalControl.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| fw_lat_long_params.yaml | Build, parameter, or module configuration |
+| FwLateralLongitudinalControl.hpp | Defines `FwLateralLongitudinalControl` class |
 
 ## Architecture Overview
 

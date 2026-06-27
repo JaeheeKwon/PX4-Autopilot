@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ROS 2 Integration Research — PX4 on ST Nucleo-H753ZI</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f8fa;
+      --panel: #ffffff;
+      --text: #1f2328;
+      --muted: #59636e;
+      --border: #d0d7de;
+      --accent: #0969da;
+      --good: #1a7f37;
+      --warn-bg: #fff8c5;
+      --warn-border: #d4a72c;
+      --danger-bg: #ffebe9;
+      --danger-border: #cf222e;
+      --code: #f6f8fa;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --panel: #161b22;
+        --text: #e6edf3;
+        --muted: #9da7b3;
+        --border: #30363d;
+        --accent: #58a6ff;
+        --good: #3fb950;
+        --warn-bg: #332b00;
+        --warn-border: #9e6a03;
+        --danger-bg: #3d1214;
+        --danger-border: #f85149;
+        --code: #0d1117;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    main { max-width: 1120px; margin: auto; padding: 28px 22px 72px; }
+    header, section, nav {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0 0 8px; font-size: 2rem; }
+    h2 { margin-top: 0; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    h3 { margin-top: 26px; }
+    a { color: var(--accent); }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { background: var(--code); padding: .12em .35em; border-radius: 4px; }
+    pre {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 14px;
+      overflow: auto;
+      line-height: 1.45;
+    }
+    pre code { padding: 0; background: transparent; }
+    table { width: 100%; border-collapse: collapse; display: block; overflow-x: auto; }
+    th, td { border: 1px solid var(--border); padding: 9px 11px; text-align: left; vertical-align: top; }
+    th { background: var(--code); }
+    .meta { color: var(--muted); margin: 0; }
+    .summary { font-size: 1.08rem; }
+    .callout { border-left: 5px solid var(--warn-border); background: var(--warn-bg); padding: 14px 17px; margin: 18px 0; }
+    .danger { border-left-color: var(--danger-border); background: var(--danger-bg); }
+    .good { border-left-color: var(--good); }
+    .diagram {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(90px, 1fr));
+      gap: 8px;
+      align-items: center;
+      margin: 20px 0;
+    }
+    .box { border: 1px solid var(--border); border-radius: 7px; padding: 12px 8px; text-align: center; background: var(--code); }
+    .arrow { text-align: center; color: var(--accent); font-size: 1.4rem; }
+    .status { color: var(--good); font-weight: 600; }
+    .figure {
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--code);
+      overflow-x: auto;
+    }
+    .figure svg { display: block; min-width: 760px; width: 100%; height: auto; }
+    .figure figcaption { color: var(--muted); margin: 10px 4px 2px; text-align: center; }
+    .svg-box { fill: var(--panel); stroke: var(--border); stroke-width: 2; }
+    .svg-group { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 7 5; }
+    .svg-title { fill: var(--text); font: 600 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .svg-text { fill: var(--text); font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .svg-small { fill: var(--muted); font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .svg-arrow { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+    .svg-arrow-alt { fill: none; stroke: var(--good); stroke-width: 2.5; }
+    .phase { white-space: nowrap; font-weight: 600; }
+    nav ul { columns: 2; margin-bottom: 0; }
+    @media (max-width: 780px) {
+      nav ul { columns: 1; }
+      .diagram { display: block; }
+      .box, .arrow { margin: 8px 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>ROS 2 Integration Research</h1>
+    <p class="summary">PX4 on the ST Nucleo-H753ZI using uXRCE-DDS over a dedicated USART6 link.</p>
+    <p class="meta">Repository target: <code>boards/st/nucleo-h753zi</code> · Researched 2026-06-27</p>
+  </header>
+
+  <nav aria-label="Table of contents">
+    <h2>Contents</h2>
+    <ul>
+      <li><a href="#recommendation">Recommended architecture</a></li>
+      <li><a href="#findings">Repository findings</a></li>
+      <li><a href="#hardware">Physical connection</a></li>
+      <li><a href="#nuttx">NuttX setup</a></li>
+      <li><a href="#px4">PX4 firmware setup</a></li>
+      <li><a href="#host">ROS 2 host setup</a></li>
+      <li><a href="#messages">Message compatibility</a></li>
+      <li><a href="#flow">Internal data flow</a></li>
+      <li><a href="#mavros">MAVROS versus direct DDS</a></li>
+      <li><a href="#testing">End-to-end testing</a></li>
+      <li><a href="#simulation">Simulation tools</a></li>
+      <li><a href="#hitl">HITL coexistence</a></li>
+      <li><a href="#capacity">Capacity and reliability</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#implementation">Implementation plan</a></li>
+    </ul>
+  </nav>
+
+  <section id="recommendation">
+    <h2>1. Recommended architecture</h2>
+    <p>
+      Use PX4's <code>uxrce_dds_client</code> on the flight controller and run
+      <code>MicroXRCEAgent</code> on the ROS 2 computer. The agent is a proxy between the
+      resource-constrained XRCE client and the host DDS/ROS 2 data space. PX4 applications do
+      not run ROS 2 APIs: they continue to publish and subscribe through uORB.
+    </p>
+
+    <div class="diagram" aria-label="ROS 2 to PX4 architecture">
+      <div class="box">ROS 2<br>application</div><div class="arrow">⇄</div>
+      <div class="box">Fast DDS +<br>MicroXRCEAgent</div><div class="arrow">⇄</div>
+      <div class="box">USART6<br>921600</div><div class="arrow">⇄</div>
+      <div class="box">PX4 uXRCE-DDS<br>client + uORB</div>
+    </div>
+
+    <figure class="figure">
+      <svg viewBox="0 0 1040 350" role="img" aria-labelledby="topology-title topology-desc">
+        <title id="topology-title">Recommended ROS 2 and Nucleo-H753ZI topology</title>
+        <desc id="topology-desc">ROS 2 and the XRCE agent run on Ubuntu. A USB UART connects the agent to USART6 on PX4, while independent USB connections provide HITL and the debug console.</desc>
+        <defs>
+          <marker id="arrow-topology" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <rect class="svg-group" x="20" y="20" width="460" height="300" rx="16"/>
+        <text class="svg-title" x="42" y="50">Ubuntu 22.04 host / companion</text>
+        <rect class="svg-box" x="55" y="85" width="170" height="76" rx="9"/>
+        <text class="svg-title" x="86" y="116">ROS 2 nodes</text>
+        <text class="svg-small" x="75" y="140">rclpy / rclcpp + px4_msgs</text>
+        <rect class="svg-box" x="285" y="85" width="160" height="76" rx="9"/>
+        <text class="svg-title" x="308" y="116">XRCE Agent</text>
+        <text class="svg-small" x="306" y="140">DDS proxy, v2.4.2</text>
+        <path class="svg-arrow" d="M225 123 H285" marker-start="url(#arrow-topology)" marker-end="url(#arrow-topology)"/>
+        <text class="svg-small" x="241" y="112">DDS</text>
+        <rect class="svg-box" x="285" y="215" width="160" height="66" rx="9"/>
+        <text class="svg-title" x="307" y="244">HITL / QGC</text>
+        <text class="svg-small" x="311" y="265">MAVLink endpoint</text>
+
+        <rect class="svg-group" x="560" y="20" width="460" height="300" rx="16"/>
+        <text class="svg-title" x="582" y="50">Nucleo-H753ZI running NuttX + PX4</text>
+        <rect class="svg-box" x="595" y="85" width="170" height="76" rx="9"/>
+        <text class="svg-title" x="614" y="116">uxrce_dds_client</text>
+        <text class="svg-small" x="624" y="140">CDR ↔ uORB bridge</text>
+        <rect class="svg-box" x="815" y="85" width="170" height="76" rx="9"/>
+        <text class="svg-title" x="872" y="116">uORB</text>
+        <text class="svg-small" x="832" y="140">PX4 apps / EKF2 / control</text>
+        <path class="svg-arrow" d="M765 123 H815" marker-start="url(#arrow-topology)" marker-end="url(#arrow-topology)"/>
+        <rect class="svg-box" x="595" y="215" width="170" height="66" rx="9"/>
+        <text class="svg-title" x="626" y="244">MAVLink RX/TX</text>
+        <text class="svg-small" x="624" y="265">HIL sensor + actuator</text>
+        <rect class="svg-box" x="815" y="215" width="170" height="66" rx="9"/>
+        <text class="svg-title" x="842" y="244">NSH console</text>
+        <text class="svg-small" x="841" y="265">boot and diagnostics</text>
+
+        <path class="svg-arrow" d="M445 123 H595" marker-start="url(#arrow-topology)" marker-end="url(#arrow-topology)"/>
+        <text class="svg-text" x="482" y="103">USB-UART</text>
+        <text class="svg-small" x="472" y="145">USART6 · 921600</text>
+        <path class="svg-arrow-alt" d="M445 248 H595" marker-start="url(#arrow-topology)" marker-end="url(#arrow-topology)"/>
+        <text class="svg-text" x="493" y="237">CN13 USB</text>
+        <path class="svg-arrow-alt" d="M900 281 V305 H510 V290"/>
+        <text class="svg-small" x="656" y="301">CN1 ST-LINK USB to host terminal/debugger</text>
+      </svg>
+      <figcaption>Three independent physical paths prevent ROS 2 DDS, MAVLink HITL, and the debug console from contending for one device.</figcaption>
+    </figure>
+
+    <table>
+      <thead><tr><th>Function</th><th>Board connection</th><th>PX4/NuttX device</th></tr></thead>
+      <tbody>
+        <tr><td>NSH console, power, flashing</td><td>CN1 ST-LINK USB</td><td>USART3, <code>/dev/ttyS0</code></td></tr>
+        <tr><td>ROS 2 / uXRCE-DDS</td><td>USART6 on Morpho headers</td><td><code>/dev/ttyS1</code></td></tr>
+        <tr><td>MAVLink, QGroundControl, HITL</td><td>CN13 User USB</td><td><code>/dev/ttyACM0</code> on PX4</td></tr>
+      </tbody>
+    </table>
+    <figure class="figure">
+      <svg viewBox="0 0 1000 300" role="img" aria-labelledby="wiring-title wiring-desc">
+        <title id="wiring-title">USART6 three-wire connection</title>
+        <desc id="wiring-desc">PG14 on CN12 pin 61 connects to adapter RX. PG9 on CN11 pin 63 connects to adapter TX. Grounds connect together and adapter power is left disconnected.</desc>
+        <defs>
+          <marker id="arrow-wiring" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <rect class="svg-box" x="35" y="35" width="350" height="230" rx="12"/>
+        <text class="svg-title" x="96" y="70">NUCLEO-H753ZI Morpho headers</text>
+        <circle cx="345" cy="115" r="8" fill="var(--accent)"/>
+        <circle cx="345" cy="170" r="8" fill="var(--accent)"/>
+        <circle cx="345" cy="225" r="8" fill="var(--muted)"/>
+        <text class="svg-text" x="75" y="120">CN12 pin 61 · PG14 · USART6 TX</text>
+        <text class="svg-text" x="75" y="175">CN11 pin 63 · PG9 · USART6 RX</text>
+        <text class="svg-text" x="75" y="230">CN12 pin 63 · GND</text>
+
+        <rect class="svg-box" x="615" y="35" width="350" height="230" rx="12"/>
+        <text class="svg-title" x="687" y="70">3.3 V USB-UART adapter</text>
+        <circle cx="655" cy="115" r="8" fill="var(--accent)"/>
+        <circle cx="655" cy="170" r="8" fill="var(--accent)"/>
+        <circle cx="655" cy="225" r="8" fill="var(--muted)"/>
+        <text class="svg-text" x="685" y="120">RX</text>
+        <text class="svg-text" x="685" y="175">TX</text>
+        <text class="svg-text" x="685" y="230">GND</text>
+        <text class="svg-small" x="802" y="120">VCC: not connected</text>
+
+        <path class="svg-arrow" d="M353 115 H647" marker-end="url(#arrow-wiring)"/>
+        <path class="svg-arrow" d="M647 170 H353" marker-end="url(#arrow-wiring)"/>
+        <path d="M353 225 H647" stroke="var(--muted)" stroke-width="3"/>
+        <text class="svg-small" x="450" y="103">board → host</text>
+        <text class="svg-small" x="450" y="160">host → board</text>
+        <text class="svg-small" x="466" y="215">common reference</text>
+      </svg>
+      <figcaption>The stock Arduino CN10 D0/D1 pins are not used by the current USART6 configuration.</figcaption>
+    </figure>
+    <p>
+      This preserves independent DDS and MAVLink transports, so ROS 2 monitoring and HITL can
+      operate concurrently without two protocols competing for one serial device.
+    </p>
+  </section>
+
+  <section id="findings">
+    <h2>2. Findings in the current checkout</h2>
+    <ol>
+      <li>
+        <strong>The DDS client is enabled.</strong> The board's
+        <a href="../../default.px4board"><code>default.px4board</code></a> includes
+        <code>CONFIG_MODULES_UXRCE_DDS_CLIENT=y</code> and maps TEL1 to
+        <code>/dev/ttyS1</code>.
+      </li>
+      <li>
+        <strong>The earlier CN10 wiring guidance is incorrect for a stock board.</strong>
+        The firmware selects PG9/PG14 for USART6, but stock Arduino D0/D1 are PB7/PB6.
+        PG9 and PG14 must be reached through the Morpho headers unless the firmware is changed
+        to enable and use LPUART1 on PB6/PB7. PG14 is additionally present on Arduino D2, but
+        PG9 is not present on Arduino D0.
+      </li>
+      <li>
+        <strong>USART6 is enabled by NuttX.</strong> With serial reordering disabled and USART3
+        serving as the console, USART6 enumerates as <code>/dev/ttyS1</code>.
+      </li>
+      <li>
+        <strong>Versioned messages change final DDS topic names.</strong> For example,
+        <code>VehicleStatus</code> is version 4 in this branch, so the direct DDS topic is
+        <code>/fmu/out/vehicle_status_v4</code>, not
+        <code>/fmu/out/vehicle_status</code>.
+      </li>
+      <li>
+        <strong>The DDS-enabled image fits.</strong> A complete target build including the
+        USART6 hello diagnostic uses 1,348,928 bytes of the 1,441,792-byte application region
+        (93.56%), leaving 92,864 bytes. Test-only
+        commands are excluded from this flight image to provide that margin.
+      </li>
+    </ol>
+
+    <div class="callout danger">
+      Do not wire a USB-UART adapter to CN10 D0/D1 while the current firmware still selects
+      PG9/PG14. The UART can be functioning correctly in software while no signal reaches those
+      Arduino pins.
+    </div>
+  </section>
+
+  <section id="hardware">
+    <h2>3. Physical connection</h2>
+    <div class="callout warning">
+      <strong>The supplied PDF is for a different board.</strong>
+      <code>../um3.pdf</code> identifies itself as UM3115 for NUCLEO-H563ZI (MB1404),
+      not NUCLEO-H753ZI (MB1364). Its LPUART1 solder-bridge designators and jumper
+      settings must not be applied to this target. The H753ZI source of truth is ST UM2407.
+    </div>
+    <h3>USART6 wiring</h3>
+    <p>
+      For the signal-level drawing that includes MCU alternate functions, Morpho pins,
+      crossed directions, unused adapter pins, power sequencing, and the separate console path,
+      see <a href="ros2_integration_test_runbook.html#wiring">the detailed USART6 connection diagram in the test runbook</a>.
+    </p>
+    <table>
+      <thead><tr><th>MCU signal</th><th>Board location</th><th>USB-UART connection</th></tr></thead>
+      <tbody>
+        <tr><td>PG14 / USART6 TX</td><td>CN12 Morpho pin 61</td><td>Adapter RX</td></tr>
+        <tr><td>PG9 / USART6 RX</td><td>CN11 Morpho pin 63</td><td>Adapter TX</td></tr>
+        <tr><td>Ground</td><td>CN12 Morpho pin 63, or another GND</td><td>Adapter GND</td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li>Use 3.3 V TTL logic.</li>
+      <li>Do not connect the adapter's VCC or 5 V wire.</li>
+      <li>Power the Nucleo through CN1 ST-LINK USB.</li>
+      <li>Use a short cable and an adapter known to sustain 921600 baud.</li>
+      <li>Cross TX and RX: board TX to adapter RX, board RX to adapter TX.</li>
+    </ul>
+
+    <h3>Stock MB1364 jumper and solder-bridge state</h3>
+    <table>
+      <thead><tr><th>Item</th><th>Required state</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>CN11 / CN12 Morpho</td><td>Soldered as delivered</td><td>UM2407 states both header footprints are soldered by default; target PG9 and PG14 are directly available.</td></tr>
+        <tr><td>SB12 / SB19</td><td>ON (factory default)</td><td>Keeps target USART3 PD9/PD8 connected to the ST-LINK VCP for the NSH console. It does not route target USART6.</td></tr>
+        <tr><td>USART6 PG9 / PG14</td><td>No bridge change</td><td>Use CN11-63 and CN12-61 directly. The PG9/PG14 names in UM2407's SB12/SB19 description refer to pins on the ST-LINK STM32F723, not the target STM32H753.</td></tr>
+        <tr><td>CN10 D0 / D1</td><td>Do not use</td><td>They are target PB7/PB6 for LPUART1. They are not this firmware's USART6 RX/TX.</td></tr>
+        <tr><td>CN10 D2</td><td>Optional TX probe only</td><td>D2 is target PG14 and therefore carries USART6 TX, but USART6 RX must still use PG9 at CN11-63.</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      The pin assignments are defined by
+      <a href="../../nuttx-config/include/board.h"><code>nuttx-config/include/board.h</code></a>
+      and can be verified against ST's
+      <a href="https://www.st.com/resource/en/user_manual/um2407-stm32h7-nucleo144-board-stmicroelectronics.pdf">UM2407 Nucleo-144 user manual</a>.
+    </p>
+
+    <h3>Stable Linux device names</h3>
+    <p>Do not assume that the first device will always be <code>/dev/ttyACM0</code>:</p>
+    <pre><code>ls -l /dev/serial/by-id/
+udevadm info --query=all --name=/dev/ttyUSB0</code></pre>
+    <p>
+      Prefer a <code>/dev/serial/by-id/...</code> path in scripts. The complete setup can expose
+      one ACM device from ST-LINK, another from CN13, and one USB device from the UART adapter.
+    </p>
+  </section>
+
+  <section id="nuttx">
+    <h2>4. NuttX setup</h2>
+    <p>The current <a href="../../nuttx-config/nsh/defconfig">NSH defconfig</a> already enables:</p>
+    <pre><code>CONFIG_STM32H7_USART3=y
+CONFIG_STM32H7_USART6=y
+CONFIG_STM32H7_SERIAL_DISABLE_REORDERING=y
+CONFIG_USART3_SERIAL_CONSOLE=y
+CONFIG_USART6_BAUD=921600
+CONFIG_USART6_RXBUFSIZE=512
+CONFIG_USART6_TXBUFSIZE=512</code></pre>
+    <p>
+      USART6 defaults to 921600 baud to match the dedicated DDS link. The DDS client also
+      requests that speed with <code>termios</code> when started with <code>-b 921600</code>.
+    </p>
+    <p>
+      Start with the existing 512-byte NuttX buffers. If measurements show overrun or packet
+      loss under high-rate traffic, increase them to 1024 or 2048 bytes and re-check RAM usage.
+      Hardware flow control is not part of the three-wire connection and should remain disabled.
+    </p>
+  </section>
+
+  <section id="px4">
+    <h2>5. PX4 firmware setup</h2>
+    <h3>Implemented firmware configuration</h3>
+    <p>The following is enabled in <a href="../../default.px4board"><code>default.px4board</code></a>:</p>
+    <pre><code>CONFIG_MODULES_UXRCE_DDS_CLIENT=y</code></pre>
+    <p>Build, inspect size, and flash:</p>
+    <pre><code>make st_nucleo-h753zi_default
+arm-none-eabi-size build/st_nucleo-h753zi_default/st_nucleo-h753zi_default.elf
+make st_nucleo-h753zi_default upload</code></pre>
+    <p>The generated serial startup owns TEL1 automatically. For isolated debugging it can be stopped and started manually from the CN1 NSH console:</p>
+    <pre><code>uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600
+uxrce_dds_client status</code></pre>
+    <p>
+      Manual startup is recommended until pin routing, the agent, and bidirectional traffic
+      have been verified independently.
+    </p>
+
+    <h3>Parameter-driven startup</h3>
+    <p>For normal PX4 serial-port integration, also add:</p>
+    <pre><code>CONFIG_BOARD_SERIAL_TEL1="/dev/ttyS1"</code></pre>
+    <p>Then set board defaults before <code>rc.serial</code> runs:</p>
+    <pre><code>param set-default MAV_0_CONFIG 0
+param set-default UXRCE_DDS_CFG 101
+param set-default SER_TEL1_BAUD 921600
+param set-default UXRCE_DDS_DOM_ID 0
+param set-default UXRCE_DDS_KEY 1
+param set-default UXRCE_DDS_SYNCT 1</code></pre>
+    <p>
+      <code>UXRCE_DDS_CFG=101</code> assigns the DDS client to TEL1. MAVLink must not be assigned
+      to the same port. The existing board defaults already disable its generated MAVLink serial
+      instances because CN13 is managed separately by <code>cdcacm_autostart</code>.
+    </p>
+
+    <h3>Available topics</h3>
+    <p>
+      The compiled bridge is generated from
+      <a href="../../../../../src/modules/uxrce_dds_client/dds_topics.yaml"><code>src/modules/uxrce_dds_client/dds_topics.yaml</code></a>.
+      Entries under <code>publications</code> flow from PX4 to ROS 2. Entries under
+      <code>subscriptions</code> flow from ROS 2 to PX4.
+    </p>
+  </section>
+
+  <section id="host">
+    <h2>6. ROS 2 host setup</h2>
+    <p>
+      PX4 currently recommends Ubuntu 22.04 with ROS 2 Humble. Install ROS using the
+      <a href="https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html">official Humble instructions</a>,
+      then install workspace tools and serial access:
+    </p>
+    <pre><code>sudo apt update
+sudo apt install ros-humble-ros-base ros-dev-tools \
+  python3-colcon-common-extensions python3-rosdep python3-vcstool
+sudo usermod -aG dialout "$USER"</code></pre>
+    <p>Log out and back in after adding the user to <code>dialout</code>.</p>
+
+    <h3>Micro XRCE-DDS Agent</h3>
+    <p>
+      For ROS 2 Humble, use a v2 client/agent combination. The current PX4 compatibility table
+      specifies agent v2.4.2 for Humble:
+    </p>
+    <pre><code>mkdir -p ~/src
+cd ~/src
+git clone -b v2.4.2 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+cd Micro-XRCE-DDS-Agent
+mkdir build &amp;&amp; cd build
+cmake ..
+make -j"$(nproc)"
+sudo make install
+sudo ldconfig</code></pre>
+    <p>Start the serial agent:</p>
+    <pre><code>MicroXRCEAgent serial \
+  --dev /dev/serial/by-id/&lt;usb-uart-adapter&gt; \
+  -b 921600</code></pre>
+    <p>
+      Do not pair the default PX4 v2 client with a v3 agent. The version selection table and
+      current installation commands are maintained in the
+      <a href="https://docs.px4.io/main/en/middleware/uxrce_dds">PX4 uXRCE-DDS guide</a>.
+    </p>
+  </section>
+
+  <section id="messages">
+    <h2>7. ROS workspace and message compatibility</h2>
+    <p>
+      The ROS application must compile against the same message definitions used by this PX4
+      firmware. This checkout is a custom, main-derived branch, so copying the local definitions
+      is safer than assuming the current remote <code>px4_msgs/main</code> is identical.
+    </p>
+    <pre><code>cd /home/jaeheek/px4/PX4-Autopilot
+boards/st/nucleo-h753zi/host/scripts/setup_workspace.sh</code></pre>
+
+    <h3>Versioned topic names</h3>
+    <p>
+      The YAML file specifies the base topic. At runtime the generated client appends
+      <code>_vN</code> when the message declares a nonzero <code>MESSAGE_VERSION</code>.
+    </p>
+    <table>
+      <thead><tr><th>YAML base topic</th><th>Message version</th><th>Direct DDS topic in this branch</th></tr></thead>
+      <tbody>
+        <tr><td><code>/fmu/out/vehicle_status</code></td><td>4</td><td><code>/fmu/out/vehicle_status_v4</code></td></tr>
+        <tr><td><code>/fmu/out/vehicle_local_position</code></td><td>1</td><td><code>/fmu/out/vehicle_local_position_v1</code></td></tr>
+        <tr><td><code>/fmu/out/vehicle_odometry</code></td><td>0</td><td><code>/fmu/out/vehicle_odometry</code></td></tr>
+        <tr><td><code>/fmu/out/sensor_combined</code></td><td>Unversioned</td><td><code>/fmu/out/sensor_combined</code></td></tr>
+        <tr><td><code>/fmu/in/onboard_computer_status</code></td><td>Unversioned</td><td><code>/fmu/in/onboard_computer_status</code></td></tr>
+      </tbody>
+    </table>
+    <p>
+      Applications can consume versioned topics directly, or run PX4's ROS 2 message transition
+      node to expose translated, unversioned application-facing topics.
+    </p>
+  </section>
+
+  <section id="flow">
+    <h2>8. Data flow inside PX4</h2>
+    <h3>PX4 to ROS 2</h3>
+    <pre><code>PX4 application / EKF2
+  → orb_publish()
+  → uORB DeviceNode
+  → uxrce_dds_client uORB subscription and poll()
+  → orb_copy()
+  → generated ucdr serialization
+  → Micro XRCE-DDS serial framing
+  → NuttX write(/dev/ttyS1)
+  → USART6 PG14
+  → USB-UART adapter
+  → MicroXRCEAgent
+  → Fast DDS / ROS 2 graph
+  → rclpy or rclcpp subscription callback</code></pre>
+
+    <h3>ROS 2 to PX4</h3>
+    <pre><code>ROS 2 publisher
+  → ROS middleware / Fast DDS
+  → MicroXRCEAgent
+  → XRCE serial framing
+  → USB-UART adapter
+  → USART6 PG9
+  → NuttX read(/dev/ttyS1)
+  → uxrce_dds_client session callback
+  → generated ucdr deserialization
+  → uORB::Publication
+      → PX4 application subscription</code></pre>
+
+    <figure class="figure">
+      <svg viewBox="0 0 1080 410" role="img" aria-labelledby="flow-title flow-desc">
+        <title id="flow-title">Bidirectional uORB and ROS 2 data flow</title>
+        <desc id="flow-desc">Outbound PX4 publications are copied and serialized by the DDS client, sent over USART6, and exposed by the agent. Inbound ROS messages follow the reverse path and are published to uORB.</desc>
+        <defs>
+          <marker id="arrow-flow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+          <marker id="arrow-flow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--good)"/>
+          </marker>
+        </defs>
+        <text class="svg-title" x="25" y="30">PX4 → ROS 2: publications</text>
+        <g>
+          <rect class="svg-box" x="25" y="55" width="155" height="70" rx="8"/>
+          <text class="svg-text" x="56" y="84">PX4 module</text><text class="svg-small" x="49" y="105">orb_publish()</text>
+          <rect class="svg-box" x="225" y="55" width="145" height="70" rx="8"/>
+          <text class="svg-text" x="278" y="84">uORB</text><text class="svg-small" x="248" y="105">DeviceNode</text>
+          <rect class="svg-box" x="415" y="55" width="205" height="70" rx="8"/>
+          <text class="svg-text" x="440" y="84">SendTopicsSubs</text><text class="svg-small" x="443" y="105">poll + orb_copy + CDR</text>
+          <rect class="svg-box" x="665" y="55" width="155" height="70" rx="8"/>
+          <text class="svg-text" x="691" y="84">USART6 TX</text><text class="svg-small" x="684" y="105">XRCE frames</text>
+          <rect class="svg-box" x="865" y="55" width="190" height="70" rx="8"/>
+          <text class="svg-text" x="898" y="84">Agent + ROS 2</text><text class="svg-small" x="896" y="105">DDS data writer</text>
+          <path class="svg-arrow" d="M180 90 H225 M370 90 H415 M620 90 H665 M820 90 H865" marker-end="url(#arrow-flow-blue)"/>
+        </g>
+
+        <text class="svg-title" x="25" y="210">ROS 2 → PX4: subscriptions</text>
+        <g>
+          <rect class="svg-box" x="25" y="235" width="190" height="70" rx="8"/>
+          <text class="svg-text" x="57" y="264">ROS 2 + Agent</text><text class="svg-small" x="57" y="285">DDS data reader</text>
+          <rect class="svg-box" x="260" y="235" width="155" height="70" rx="8"/>
+          <text class="svg-text" x="286" y="264">USART6 RX</text><text class="svg-small" x="281" y="285">XRCE frames</text>
+          <rect class="svg-box" x="460" y="235" width="205" height="70" rx="8"/>
+          <text class="svg-text" x="488" y="264">RcvTopicsPubs</text><text class="svg-small" x="489" y="285">callback + CDR decode</text>
+          <rect class="svg-box" x="710" y="235" width="145" height="70" rx="8"/>
+          <text class="svg-text" x="763" y="264">uORB</text><text class="svg-small" x="728" y="285">Publication</text>
+          <rect class="svg-box" x="900" y="235" width="155" height="70" rx="8"/>
+          <text class="svg-text" x="931" y="264">PX4 module</text><text class="svg-small" x="922" y="285">Subscription</text>
+          <path class="svg-arrow-alt" d="M215 270 H260 M415 270 H460 M665 270 H710 M855 270 H900" marker-end="url(#arrow-flow-green)"/>
+        </g>
+        <rect class="svg-group" x="400" y="35" width="435" height="290" rx="14"/>
+        <text class="svg-small" x="520" y="350">Nucleo-H753ZI transport boundary</text>
+        <path d="M20 370 H1060" stroke="var(--border)"/>
+        <text class="svg-small" x="25" y="394">Blue: PX4 output topic</text>
+        <text class="svg-small" x="220" y="394" fill="var(--good)">Green: ROS 2 input topic</text>
+        <text class="svg-small" x="690" y="394">PX4 applications remain transport-independent.</text>
+      </svg>
+      <figcaption>The generated bridge is the only layer that translates between uORB structures and DDS CDR payloads.</figcaption>
+    </figure>
+
+    <p>
+      Outbound topic objects are uORB subscriptions inside the generated
+      <code>SendTopicsSubs</code> class. Inbound topic objects are uORB publications inside
+      <code>RcvTopicsPubs</code>. The agent does not know or link against PX4 application code;
+      it creates DDS entities requested by the flight-controller client.
+    </p>
+
+    <h3>QoS and timestamps</h3>
+    <ul>
+      <li>PX4 data writers use best-effort reliability and transient-local durability.</li>
+      <li>PX4 data readers use best-effort reliability and volatile durability.</li>
+      <li>ROS subscribers should use a sensor-data-compatible best-effort profile.</li>
+      <li><code>UXRCE_DDS_SYNCT=1</code> compensates PX4/agent timestamp offset.</li>
+      <li>Best-effort topics can lose samples; flight commands should not depend on one packet.</li>
+    </ul>
+  </section>
+
+  <section id="mavros">
+    <h2>9. MAVROS versus direct uXRCE-DDS</h2>
+    <p>
+      MAVROS can run as a ROS 2 node, but it does not make PX4 a ROS 2 participant.
+      A PX4 application cannot subscribe directly to a MAVROS topic name. MAVROS owns the
+      ROS-facing topic, converts its data to a defined MAVLink message, and sends that message
+      to PX4. PX4's <code>mavlink_receiver</code> decodes it and publishes one or more uORB
+      topics. The PX4 application subscribes only to those uORB topics.
+    </p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 1080 340" role="img" aria-labelledby="mavros-flow-title mavros-flow-desc">
+        <title id="mavros-flow-title">MAVROS and direct DDS data paths into a PX4 application</title>
+        <desc id="mavros-flow-desc">MAVROS translates a ROS 2 topic into MAVLink, which PX4 translates into uORB. Direct DDS translates a PX4 message topic into uORB through the XRCE agent and generated client bridge.</desc>
+        <defs>
+          <marker id="arrow-mavros" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+          <marker id="arrow-direct-dds" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--good)"/>
+          </marker>
+        </defs>
+
+        <text class="svg-title" x="25" y="30">MAVROS path: two schema conversions</text>
+        <g>
+          <rect class="svg-box" x="25" y="52" width="165" height="72" rx="8"/>
+          <text class="svg-text" x="58" y="82">ROS 2 topic</text><text class="svg-small" x="42" y="104">geometry/sensor type</text>
+          <rect class="svg-box" x="235" y="52" width="165" height="72" rx="8"/>
+          <text class="svg-text" x="265" y="82">MAVROS plugin</text><text class="svg-small" x="260" y="104">ROS ↔ MAVLink</text>
+          <rect class="svg-box" x="445" y="52" width="165" height="72" rx="8"/>
+          <text class="svg-text" x="489" y="82">MAVLink</text><text class="svg-small" x="478" y="104">message ID + fields</text>
+          <rect class="svg-box" x="655" y="52" width="175" height="72" rx="8"/>
+          <text class="svg-text" x="677" y="82">mavlink_receiver</text><text class="svg-small" x="687" y="104">MAVLink → uORB</text>
+          <rect class="svg-box" x="875" y="52" width="180" height="72" rx="8"/>
+          <text class="svg-text" x="920" y="82">uORB topic</text><text class="svg-small" x="907" y="104">PX4 app subscribes</text>
+          <path class="svg-arrow" d="M190 88 H235 M400 88 H445 M610 88 H655 M830 88 H875" marker-end="url(#arrow-mavros)"/>
+        </g>
+
+        <text class="svg-title" x="25" y="185">Selected path: ROS 2 and PX4 message definitions map directly</text>
+        <g>
+          <rect class="svg-box" x="25" y="207" width="165" height="72" rx="8"/>
+          <text class="svg-text" x="58" y="237">ROS 2 topic</text><text class="svg-small" x="56" y="259">px4_msgs type</text>
+          <rect class="svg-box" x="235" y="207" width="165" height="72" rx="8"/>
+          <text class="svg-text" x="269" y="237">DDS Agent</text><text class="svg-small" x="255" y="259">DDS ↔ XRCE proxy</text>
+          <rect class="svg-box" x="445" y="207" width="165" height="72" rx="8"/>
+          <text class="svg-text" x="471" y="237">XRCE client</text><text class="svg-small" x="466" y="259">serial transport</text>
+          <rect class="svg-box" x="655" y="207" width="175" height="72" rx="8"/>
+          <text class="svg-text" x="679" y="237">generated bridge</text><text class="svg-small" x="693" y="259">CDR → uORB</text>
+          <rect class="svg-box" x="875" y="207" width="180" height="72" rx="8"/>
+          <text class="svg-text" x="920" y="237">uORB topic</text><text class="svg-small" x="907" y="259">PX4 app subscribes</text>
+          <path class="svg-arrow-alt" d="M190 243 H235 M400 243 H445 M610 243 H655 M830 243 H875" marker-end="url(#arrow-direct-dds)"/>
+        </g>
+        <text class="svg-small" x="25" y="320">Neither path exposes a ROS API inside a PX4 module; uORB remains the application-facing interface.</text>
+      </svg>
+      <figcaption>MAVROS carries MAVLink messages, not arbitrary ROS topic names. Both paths end at uORB inside PX4.</figcaption>
+    </figure>
+
+    <h3>Concrete MAVROS example</h3>
+    <pre><code>ROS 2 /mavros/setpoint_position/local (geometry_msgs/PoseStamped)
+  → MAVROS setpoint-position plugin
+  → MAVLink SET_POSITION_TARGET_LOCAL_NED
+  → PX4 MavlinkReceiver::handle_message_set_position_target_local_ned()
+  → offboard_control_mode and trajectory_setpoint uORB publications
+  → PX4 controllers or another PX4 uORB subscriber</code></pre>
+    <p>
+      The PX4 conversion is implemented in
+      <a href="../../../../../src/modules/mavlink/mavlink_receiver.cpp"><code>src/modules/mavlink/mavlink_receiver.cpp</code></a>.
+      The handler validates the target system/component and coordinate frame, converts the
+      MAVLink fields, and publishes uORB. The original ROS 2 topic name is not transmitted to
+      the flight controller.
+    </p>
+    <pre><code>#include &lt;uORB/Subscription.hpp&gt;
+#include &lt;uORB/topics/trajectory_setpoint.h&gt;
+
+uORB::Subscription setpoint_sub{ORB_ID(trajectory_setpoint)};
+trajectory_setpoint_s setpoint{};
+
+if (setpoint_sub.update(&amp;setpoint)) {
+    // Consume the uORB data produced from the received MAVLink message.
+}</code></pre>
+
+    <h3>Can an arbitrary ROS 2 topic reach a PX4 application through MAVROS?</h3>
+    <p>
+      Not automatically. A topic such as <code>/my/custom/topic</code> reaches PX4 through
+      MAVROS only when an explicit mapping exists. The mapping must define the ROS message,
+      MAVLink message, coordinate/unit conversions, and destination uORB topic.
+    </p>
+    <table>
+      <thead><tr><th>Requirement</th><th>Host work</th><th>PX4 work</th><th>When to use</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Existing MAVROS interface</td>
+          <td>Publish or subscribe to the documented MAVROS ROS 2 topic/service.</td>
+          <td>Subscribe to the uORB topic already produced by <code>mavlink_receiver</code>, or publish the uORB source used by an existing MAVLink stream.</td>
+          <td>Use for standard MAVLink capabilities and compatibility with existing MAVROS applications.</td>
+        </tr>
+        <tr>
+          <td>New MAVROS interface</td>
+          <td>Add a MAVROS plugin that subscribes to the ROS 2 topic and encodes a standard or custom MAVLink message.</td>
+          <td>Add the MAVLink dialect/message when necessary, decode it, validate it, and publish a defined uORB topic.</td>
+          <td>Use only when the data must also be represented as MAVLink.</td>
+        </tr>
+        <tr>
+          <td>New direct DDS interface</td>
+          <td>Publish a matching <code>px4_msgs</code> type under <code>/fmu/in/...</code>.</td>
+          <td>Add the PX4 message and a <code>subscriptions</code> entry in <code>dds_topics.yaml</code>; the generated bridge publishes uORB.</td>
+          <td><strong>Recommended for a new ROS 2-specific application on this board.</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Reverse direction</h3>
+    <p>
+      PX4-to-ROS follows the same boundary in reverse. A PX4 application publishes uORB;
+      a configured PX4 MAVLink stream encodes it; MAVROS receives the MAVLink message and a
+      plugin publishes a ROS 2 topic. With direct DDS, the generated
+      <code>uxrce_dds_client</code> subscription serializes the selected uORB topic directly as
+      its corresponding <code>px4_msgs</code> DDS type.
+    </p>
+
+    <div class="callout good">
+      <strong>Decision for Nucleo-H753ZI:</strong> keep MAVLink on CN13 for QGroundControl and
+      HITL, and keep ROS 2 application data on uXRCE-DDS over USART6. PX4 applications remain
+      transport-independent uORB publishers/subscribers, while new ROS 2-specific topics avoid
+      a custom MAVROS plugin and a second MAVLink-to-uORB conversion layer.
+    </div>
+  </section>
+
+  <section id="testing">
+    <h2>10. End-to-end test plan</h2>
+    <h3>Stage 1: firmware and UART</h3>
+    <ol>
+      <li>Open the CN1 NSH console at 57600 baud using its by-id path.</li>
+      <li>Start <code>MicroXRCEAgent</code> on the USB-UART adapter.</li>
+      <li>Start <code>uxrce_dds_client</code> manually on <code>/dev/ttyS1</code>.</li>
+      <li>Run <code>uxrce_dds_client status</code>.</li>
+    </ol>
+    <p>Expected PX4 state:</p>
+    <pre><code>Running, connected
+Using transport:     serial
+Payload tx:          ... B/s
+Payload rx:          ... B/s
+timesync converged:  true</code></pre>
+
+    <h3>Stage 2: PX4 to ROS 2</h3>
+    <pre><code>source /opt/ros/humble/setup.bash
+source ~/nucleo_px4_ros2_ws/install/setup.bash
+ros2 topic list --types | sort | grep /fmu
+
+ros2 topic echo /fmu/out/timesync_status \
+  --qos-reliability best_effort \
+  --qos-durability volatile</code></pre>
+    <p>
+      Without HITL or physical sensors, <code>sensor_combined</code> and odometry may have no
+      samples or useful state. <code>timesync_status</code> and
+      <code>vehicle_status_v4</code> are better transport-first checks.
+    </p>
+
+    <h3>Stage 3: ROS 2 to PX4</h3>
+    <p>
+      Use the reference ROS 2 node to publish
+      <code>/fmu/in/onboard_computer_status</code> at 1 Hz. Correct its VehicleStatus
+      subscription to <code>/fmu/out/vehicle_status_v4</code> before relying on that rate.
+    </p>
+    <pre><code>boards/st/nucleo-h753zi/host/scripts/run_monitor.sh</code></pre>
+    <p>On PX4:</p>
+    <pre><code>listener onboard_computer_status -n 5</code></pre>
+    <p>
+      Updating samples prove the complete inbound path. The built-in PX4
+      <code>listener</code> command is sufficient for the first board-side test application.
+    </p>
+
+    <h3>Optional PX4 test module</h3>
+    <p>
+      A dedicated test module should subscribe to <code>onboard_computer_status</code> using the
+      normal uORB C++ API and report sequence/timing statistics. It should not parse UART data or
+      link ROS libraries. This keeps the transport boundary in <code>uxrce_dds_client</code> and
+      tests exactly the interface production PX4 applications use.
+    </p>
+  </section>
+
+  <section id="simulation">
+    <h2>11. Simulation tools for the ROS 2 host node</h2>
+    <p>
+      The same host application can be tested against simulated PX4 because the simulator does
+      not replace the ROS-facing interface. PX4 still publishes and subscribes through uORB and
+      <code>uxrce_dds_client</code>. SITL changes only the client-to-agent transport from the
+      board's USART6 link to UDP port 8888.
+    </p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 1060 390" role="img" aria-labelledby="sim-title sim-desc">
+        <title id="sim-title">Simulation paths to the same ROS 2 host node</title>
+        <desc id="sim-desc">SIH and Gazebo feed PX4 SITL, which reaches the DDS agent over UDP. SIH can alternatively run on the Nucleo and reach the agent through the physical USART6 link. Both paths expose the same ROS 2 topics.</desc>
+        <defs>
+          <marker id="arrow-sim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <rect class="svg-box" x="25" y="45" width="175" height="75" rx="10"/>
+        <text class="svg-title" x="78" y="76">PX4 SIH</text>
+        <text class="svg-small" x="52" y="99">headless internal physics</text>
+        <rect class="svg-box" x="25" y="165" width="175" height="75" rx="10"/>
+        <text class="svg-title" x="72" y="196">Gazebo</text>
+        <text class="svg-small" x="50" y="219">3D worlds and sensors</text>
+        <rect class="svg-box" x="265" y="90" width="210" height="105" rx="10"/>
+        <text class="svg-title" x="323" y="124">PX4 SITL</text>
+        <text class="svg-small" x="296" y="149">uORB + uXRCE-DDS client</text>
+        <text class="svg-small" x="325" y="173">UDP port 8888</text>
+        <rect class="svg-box" x="550" y="105" width="195" height="75" rx="10"/>
+        <text class="svg-title" x="579" y="136">MicroXRCEAgent</text>
+        <text class="svg-small" x="603" y="159">DDS proxy</text>
+        <rect class="svg-box" x="825" y="105" width="205" height="75" rx="10"/>
+        <text class="svg-title" x="870" y="136">ROS 2 host node</text>
+        <text class="svg-small" x="850" y="159">the same /fmu/in and /out topics</text>
+        <path class="svg-arrow" d="M200 82 H235 V120 H265" marker-end="url(#arrow-sim)"/>
+        <path class="svg-arrow" d="M200 202 H235 V165 H265" marker-end="url(#arrow-sim)"/>
+        <path class="svg-arrow" d="M475 143 H550" marker-end="url(#arrow-sim)"/>
+        <path class="svg-arrow" d="M745 143 H825" marker-end="url(#arrow-sim)"/>
+
+        <rect class="svg-box" x="265" y="275" width="210" height="80" rx="10"/>
+        <text class="svg-title" x="295" y="307">SIH on Nucleo-H753ZI</text>
+        <text class="svg-small" x="292" y="332">uORB + USART6 / ttyS1</text>
+        <path class="svg-arrow-alt" d="M475 315 H650 V180" marker-end="url(#arrow-sim)"/>
+        <text class="svg-small" x="512" y="303">USB-UART, 921600</text>
+      </svg>
+      <figcaption>SITL is the fast software test path; SIH on the board validates the real MCU, NuttX, UART, agent, and ROS 2 node without motors.</figcaption>
+    </figure>
+
+    <h3>Research result and recommendation</h3>
+    <table>
+      <thead><tr><th>Tool</th><th>Connection to this host node</th><th>Use</th><th>Assessment</th></tr></thead>
+      <tbody>
+        <tr><td>PX4 SIH SITL</td><td>uXRCE-DDS over UDP 8888</td><td>Fast, deterministic, headless transport and application tests</td><td><strong>First choice for quick tests and CI.</strong></td></tr>
+        <tr><td>Gazebo Harmonic</td><td>PX4 uXRCE-DDS over UDP; optional <code>ros_gz_bridge</code> for Gazebo-native topics</td><td>3D physics, custom worlds, camera, depth, LiDAR, and optical flow</td><td><strong>First choice for sensor and autonomy tests.</strong></td></tr>
+        <tr><td>SIH on Nucleo-H753ZI</td><td>The implemented USART6 DDS connection</td><td>End-to-end firmware, NuttX timing, serialization, wiring, and host validation</td><td><strong>Required hardware integration gate.</strong></td></tr>
+        <tr><td>Gazebo Classic HITL</td><td>MAVLink HIL on CN13; DDS remains on USART6</td><td>External physics and legacy hardware-in-loop workflows</td><td>Fallback only; PX4 is moving new work to Gazebo.</td></tr>
+        <tr><td>jMAVSim HITL</td><td>MAVLink HIL on CN13; DDS remains on USART6</td><td>Simple quadrotor hardware-in-loop test</td><td>Limited, community-supported fallback.</td></tr>
+        <tr><td>Webots, Isaac Sim, AirSim</td><td>Requires a community or custom PX4/MAVLink bridge</td><td>Specialized perception or robotics environments</td><td>Do not use for initial connection bring-up.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Quick SIH SITL connection test</h3>
+    <p>Run the following on the ROS 2 development computer in three terminals:</p>
+    <pre><code># Terminal 1: simulator DDS transport
+MicroXRCEAgent udp4 -p 8888
+
+# Terminal 2: PX4 plus internal quadrotor physics
+make px4_sitl_sih sihsim_quadx
+
+# Terminal 3: unchanged host application
+boards/st/nucleo-h753zi/host/scripts/run_monitor.sh \
+  ~/nucleo_px4_ros2_ws</code></pre>
+    <p>
+      The SITL startup automatically starts its uXRCE-DDS client. Do not use the serial
+      <code>run_agent.sh</code> wrapper for this test because that wrapper is intentionally for
+      the physical USB-UART adapter.
+    </p>
+
+    <h3>Gazebo connection test</h3>
+    <pre><code># Keep the UDP agent from Terminal 1 running, then start one model:
+make px4_sitl gz_x500
+make px4_sitl gz_x500_depth     # alternative: depth camera
+make px4_sitl gz_x500_lidar_2d  # alternative: 2D LiDAR</code></pre>
+    <p>
+      The PX4 topics used by the health monitor need no Gazebo-to-ROS bridge. Install and use
+      <code>ros_gz_bridge</code> only if another ROS 2 node needs Gazebo-native camera, scan,
+      model-state, or <code>/clock</code> topics. For faster- or slower-than-real-time execution,
+      bridge <code>/clock</code>, set ROS nodes to <code>use_sim_time=true</code>, and disable
+      PX4 XRCE time synchronization so Gazebo is the single clock authority.
+    </p>
+
+    <h3>SIH on the physical Nucleo</h3>
+    <p>
+      This checkout already enables <code>CONFIG_MODULES_SIMULATION_SIMULATOR_SIH=y</code> for
+      the Nucleo target. Set the stable SIH quadrotor airframe, reboot, and retain the normal
+      serial agent and host-monitor commands:
+    </p>
+    <pre><code># PX4 parameter
+SYS_AUTOSTART = 1100
+
+# After reboot, on NSH
+sih status
+uxrce_dds_client status
+
+# On the ROS 2 host
+boards/st/nucleo-h753zi/host/scripts/run_agent.sh /dev/serial/by-id/&lt;adapter&gt;
+boards/st/nucleo-h753zi/host/scripts/run_monitor.sh</code></pre>
+    <div class="callout warning">
+      These are researched, repository-compatible test procedures; they were not executed on
+      this development PC because ROS 2 and the simulators are intentionally not installed here.
+      Record actual topic rates, DDS reconnect behavior, and pass/fail results when run on the
+      ROS 2 host.
+    </div>
+  </section>
+
+  <section id="hitl">
+    <h2>12. HITL coexistence</h2>
+    <p>The board has no installed flight sensors, so HITL is the best source of realistic data:</p>
+    <pre><code>Simulator
+  → CN13 USB MAVLink HIL_SENSOR / HIL_GPS
+  → mavlink_receiver
+  → sensor uORB topics
+  → EKF2 and control modules
+  → vehicle state uORB topics
+  → uxrce_dds_client
+  → USART6 / USB-UART
+  → ROS 2</code></pre>
+    <p>Reverse control flow remains:</p>
+    <pre><code>PX4 controllers → actuator uORB topics → pwm_out_sim
+  → MAVLink HIL_ACTUATOR_CONTROLS → CN13 → simulator</code></pre>
+    <p>
+      Keeping CN13 and USART6 separate allows the ROS 2 machine to observe estimator and
+      controller behavior executing on the physical MCU without interfering with the simulator's
+      high-rate MAVLink sensor stream.
+    </p>
+    <figure class="figure">
+      <svg viewBox="0 0 1060 440" role="img" aria-labelledby="hitl-title hitl-desc">
+        <title id="hitl-title">Combined HITL and ROS 2 block diagram</title>
+        <desc id="hitl-desc">The simulator exchanges MAVLink HIL traffic with PX4 over CN13. Within PX4, sensor messages become uORB data consumed by EKF2 and controllers. State is exported independently through uXRCE-DDS over USART6 to ROS 2.</desc>
+        <defs>
+          <marker id="arrow-hitl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <rect class="svg-box" x="25" y="145" width="175" height="105" rx="10"/>
+        <text class="svg-title" x="70" y="178">Simulator</text>
+        <text class="svg-small" x="52" y="203">HIL_SENSOR / HIL_GPS</text>
+        <text class="svg-small" x="42" y="225">HIL_ACTUATOR_CONTROLS</text>
+
+        <rect class="svg-group" x="255" y="35" width="540" height="360" rx="16"/>
+        <text class="svg-title" x="278" y="65">Nucleo-H753ZI — physical PX4 execution</text>
+        <rect class="svg-box" x="290" y="145" width="150" height="105" rx="10"/>
+        <text class="svg-title" x="325" y="178">MAVLink</text>
+        <text class="svg-small" x="311" y="203">receiver / streams</text>
+        <text class="svg-small" x="315" y="225">CN13 USB CDC</text>
+        <rect class="svg-box" x="485" y="145" width="135" height="105" rx="10"/>
+        <text class="svg-title" x="528" y="178">uORB</text>
+        <text class="svg-small" x="501" y="203">sensor + state +</text>
+        <text class="svg-small" x="503" y="225">actuator topics</text>
+        <rect class="svg-box" x="665" y="90" width="100" height="80" rx="10"/>
+        <text class="svg-text" x="690" y="120">EKF2</text>
+        <text class="svg-small" x="678" y="143">estimator</text>
+        <rect class="svg-box" x="665" y="225" width="100" height="80" rx="10"/>
+        <text class="svg-text" x="675" y="255">Controllers</text>
+        <text class="svg-small" x="681" y="278">+ allocator</text>
+        <rect class="svg-box" x="430" y="300" width="195" height="70" rx="10"/>
+        <text class="svg-title" x="454" y="330">uxrce_dds_client</text>
+        <text class="svg-small" x="468" y="351">USART6 / ttyS1</text>
+
+        <rect class="svg-box" x="850" y="145" width="180" height="105" rx="10"/>
+        <text class="svg-title" x="885" y="178">ROS 2 host</text>
+        <text class="svg-small" x="870" y="203">MicroXRCEAgent</text>
+        <text class="svg-small" x="874" y="225">monitor / test app</text>
+
+        <path class="svg-arrow" d="M200 197 H290" marker-start="url(#arrow-hitl)" marker-end="url(#arrow-hitl)"/>
+        <text class="svg-small" x="205" y="184">CN13</text>
+        <path class="svg-arrow" d="M440 197 H485" marker-start="url(#arrow-hitl)" marker-end="url(#arrow-hitl)"/>
+        <path class="svg-arrow" d="M620 180 L665 140" marker-start="url(#arrow-hitl)" marker-end="url(#arrow-hitl)"/>
+        <path class="svg-arrow" d="M620 215 L665 255" marker-start="url(#arrow-hitl)" marker-end="url(#arrow-hitl)"/>
+        <path class="svg-arrow" d="M552 250 V300" marker-start="url(#arrow-hitl)" marker-end="url(#arrow-hitl)"/>
+        <path class="svg-arrow" d="M625 335 H815 V197 H850" marker-start="url(#arrow-hitl)" marker-end="url(#arrow-hitl)"/>
+        <text class="svg-small" x="695" y="326">USART6 + USB-UART</text>
+      </svg>
+      <figcaption>The simulator closes the flight-control loop over MAVLink; ROS 2 observes or injects selected uORB-facing data over an independent DDS link.</figcaption>
+    </figure>
+  </section>
+
+  <section id="capacity">
+    <h2>13. Capacity and reliability considerations</h2>
+    <h3>Flash</h3>
+    <p>
+      The linker currently gives the application 1408 KiB from <code>0x08020000</code>; four
+      128 KiB sectors at the end of flash are reserved for the parameter LittleFS volume.
+      The observed non-DDS firmware is already close to this limit.
+    </p>
+    <p>If DDS does not fit, use these remedies in order:</p>
+    <ol>
+      <li>Reduce <code>dds_topics.yaml</code> to the topics actually needed by the target.</li>
+      <li>Create a dedicated ROS 2 board variant and disable unused PX4 modules.</li>
+      <li>
+        Only after analysis, reduce the LittleFS reservation from four to at least two erase
+        blocks, coordinating the linker length, <code>PARAM_LITTLEFS_ERASE_BLOCKS</code>, and a
+        parameter-storage migration or reformat.
+      </li>
+    </ol>
+
+    <h3>Bandwidth</h3>
+    <p>
+      A 921600-baud 8-N-1 UART has a theoretical payload ceiling near 92 kB/s before XRCE framing.
+      High-rate IMU plus odometry, attitude, and status topics can approach practical limits.
+      Rate limits are defined in <code>dds_topics.yaml</code>; start with a narrow topic set and
+      measure <code>Payload tx/rx</code> in the client status.
+    </p>
+    <ul>
+      <li>Short wiring and a high-quality adapter matter at 921600 baud.</li>
+      <li>Do not enable hardware flow control without RTS/CTS pin routing and a compatible agent.</li>
+      <li>Use unique nonzero <code>UXRCE_DDS_KEY</code> values for multiple clients.</li>
+      <li>Match <code>ROS_DOMAIN_ID</code> with <code>UXRCE_DDS_DOM_ID</code>.</li>
+      <li>Use namespaces such as <code>uav_0</code> for multi-vehicle systems.</li>
+    </ul>
+  </section>
+
+  <section id="troubleshooting">
+    <h2>14. Troubleshooting checklist</h2>
+    <table>
+      <thead><tr><th>Symptom</th><th>Likely cause</th><th>Check</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>uxrce_dds_client: command not found</code></td>
+          <td>Module absent from firmware</td>
+          <td>Enable <code>CONFIG_MODULES_UXRCE_DDS_CLIENT=y</code> and rebuild.</td>
+        </tr>
+        <tr>
+          <td>Client stays disconnected</td>
+          <td>Wrong physical pins, TX/RX not crossed, baud mismatch, no common ground</td>
+          <td>Use PG14 at CN12-61 and PG9 at CN11-63; confirm both sides use 921600.</td>
+        </tr>
+        <tr>
+          <td>Agent cannot open the adapter</td>
+          <td>Wrong device or permissions</td>
+          <td>Use <code>/dev/serial/by-id</code>; verify <code>dialout</code> membership and that no terminal owns it.</td>
+        </tr>
+        <tr>
+          <td>Topics are listed but echo fails</td>
+          <td>Message package mismatch or incompatible QoS</td>
+          <td>Copy local PX4 messages, rebuild/source the workspace, and use best-effort QoS.</td>
+        </tr>
+        <tr>
+          <td><code>vehicle_status</code> is absent</td>
+          <td>Topic is versioned</td>
+          <td>Look for <code>/fmu/out/vehicle_status_v4</code>, or run the translation node.</td>
+        </tr>
+        <tr>
+          <td>ROS receives data but PX4 does not</td>
+          <td>Wrong inbound topic, domain, namespace, or durability</td>
+          <td>Check <code>/fmu/in/onboard_computer_status</code>, domain 0, namespace, and volatile/best-effort QoS.</td>
+        </tr>
+        <tr>
+          <td>Sensor topics are silent</td>
+          <td>No real sensors and HITL is not sending</td>
+          <td>Verify CN13 MAVLink HITL and inspect uORB with <code>listener sensor_combined</code>.</td>
+        </tr>
+        <tr>
+          <td>Firmware link fails</td>
+          <td>Application FLASH overflow</td>
+          <td>Trim DDS topics/modules or create a deliberate flash-partition plan.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="implementation">
+    <h2>15. Phased implementation plan</h2>
+    <p>
+      Implementation should proceed through transport, firmware-capacity, bidirectional-data,
+      and HITL gates before any ROS 2 flight command is enabled. Each phase below has an explicit
+      completion criterion so that failures remain local and diagnosable.
+    </p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 1080 230" role="img" aria-labelledby="plan-title plan-desc">
+        <title id="plan-title">ROS 2 implementation phases</title>
+        <desc id="plan-desc">Six phases progress from correcting the board reference and obtaining a linking firmware, through physical transport, bidirectional topic validation, HITL integration, and production hardening.</desc>
+        <defs>
+          <marker id="arrow-plan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <g>
+          <rect class="svg-box" x="15" y="55" width="150" height="105" rx="10"/>
+          <text class="svg-title" x="48" y="84">Phase 0</text><text class="svg-text" x="38" y="111">Correct baseline</text><text class="svg-small" x="33" y="136">pins, topics, docs</text>
+          <rect class="svg-box" x="195" y="55" width="150" height="105" rx="10"/>
+          <text class="svg-title" x="228" y="84">Phase 1</text><text class="svg-text" x="219" y="111">Firmware build</text><text class="svg-small" x="218" y="136">link + size gate</text>
+          <rect class="svg-box" x="375" y="55" width="150" height="105" rx="10"/>
+          <text class="svg-title" x="408" y="84">Phase 2</text><text class="svg-text" x="399" y="111">Serial session</text><text class="svg-small" x="400" y="136">agent connected</text>
+          <rect class="svg-box" x="555" y="55" width="150" height="105" rx="10"/>
+          <text class="svg-title" x="588" y="84">Phase 3</text><text class="svg-text" x="569" y="111">Bidirectional test</text><text class="svg-small" x="579" y="136">uORB ↔ ROS 2</text>
+          <rect class="svg-box" x="735" y="55" width="150" height="105" rx="10"/>
+          <text class="svg-title" x="768" y="84">Phase 4</text><text class="svg-text" x="771" y="111">HITL test</text><text class="svg-small" x="757" y="136">load + coexistence</text>
+          <rect class="svg-box" x="915" y="55" width="150" height="105" rx="10"/>
+          <text class="svg-title" x="948" y="84">Phase 5</text><text class="svg-text" x="932" y="111">Harden + deliver</text><text class="svg-small" x="943" y="136">boot + recovery</text>
+          <path class="svg-arrow" d="M165 108 H195 M345 108 H375 M525 108 H555 M705 108 H735 M885 108 H915" marker-end="url(#arrow-plan)"/>
+        </g>
+        <text class="svg-small" x="15" y="205">Do not advance when the current phase's verification gate fails.</text>
+      </svg>
+      <figcaption>The sequence deliberately separates basic transport from flight-stack and control testing.</figcaption>
+    </figure>
+
+    <table>
+      <thead>
+        <tr><th>Phase</th><th>Implementation work</th><th>Files/components</th><th>Verification gate</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="phase">0 — Baseline</td>
+          <td>Correct USART6 wiring references and versioned topic names. Decide whether the ROS 2 build is a new board variant or part of the default target.</td>
+          <td><code>docs/ros2/</code>, <code>ros2_ref/</code></td>
+          <td>Documentation and reference node consistently use PG14/CN12-61, PG9/CN11-63, and <code>vehicle_status_v4</code>.</td>
+        </tr>
+        <tr>
+          <td class="phase">1 — Firmware</td>
+          <td>Enable <code>uxrce_dds_client</code>. Add TEL1 mapping if parameter-driven startup is selected. Initially compile only the DDS topics needed for health testing.</td>
+          <td><code>default.px4board</code> or a new <code>ros2.px4board</code>; <code>dds_topics.yaml</code></td>
+          <td>Firmware links, remains below the flash boundary with recorded margin, boots, and exposes the client command.</td>
+        </tr>
+        <tr>
+          <td class="phase">2 — Transport</td>
+          <td>Wire the 3.3 V adapter, install agent v2.4.2, start both endpoints manually, and record status/performance counters.</td>
+          <td>Host agent, NuttX USART6, USB-UART hardware</td>
+          <td>Client reports <code>connected</code> for at least 10 minutes with converged time sync and no reconnect loop.</td>
+        </tr>
+        <tr>
+          <td class="phase">3 — Data</td>
+          <td>Synchronize local <code>px4_msgs</code>, correct the Python health monitor, validate PX4 output topics, and publish harmless <code>onboard_computer_status</code> inbound.</td>
+          <td><code>Tools/copy_to_ros_ws.sh</code>, <code>bridge_health_monitor.py</code>, ROS workspace</td>
+          <td>ROS receives <code>timesync_status</code>/<code>vehicle_status_v4</code>; PX4 <code>listener</code> receives sequential inbound samples.</td>
+        </tr>
+        <tr>
+          <td class="phase">4 — HITL</td>
+          <td>Run MAVLink HITL on CN13 while DDS remains on USART6. Measure CPU, stack, UART rates, estimator data rates, and reconnect behavior under load.</td>
+          <td>jMAVSim or Gazebo, MAVLink, EKF2, DDS health monitor</td>
+          <td>HITL remains stable, ROS topics update at expected rates, and neither link starves or resets the other.</td>
+        </tr>
+        <tr>
+          <td class="phase">5 — Harden</td>
+          <td>Move DDS startup into board defaults/generated serial startup, add by-id host scripts, document recovery, and add automated source-level checks for pin/topic assumptions.</td>
+          <td><code>rc.board_defaults</code>, serial parameters, host scripts, documentation/tests</td>
+          <td>Cold boot automatically reconnects; agent restart recovers; firmware size and host-package tests pass reproducibly.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Implemented source changes</h3>
+    <ol>
+      <li>
+        Enabled <code>CONFIG_MODULES_UXRCE_DDS_CLIENT=y</code> in the default target and removed
+        test-only command linkage. The measured image occupies 93.56% of its flash region.
+      </li>
+      <li>
+        Added <code>CONFIG_BOARD_SERIAL_TEL1="/dev/ttyS1"</code> so PX4's generated serial
+        configuration owns the dedicated USART6 port.
+      </li>
+      <li>
+        Kept the complete standard DDS topic profile because the linked image fits with 92,864
+        bytes remaining; no global topic-list changes or flash repartition were required.
+      </li>
+      <li>
+        Corrected the source documentation wiring tables to use CN12-61 / PG14 TX and CN11-63 /
+        PG9 RX, while retaining CN13 USB for MAVLink HITL.
+      </li>
+      <li>
+        Added a new health monitor under <code>boards/st/nucleo-h753zi/host</code>. Its versioned
+        status topic is configurable and the inbound test remains limited to
+        <code>onboard_computer_status</code>—no arming, mode, setpoint, or actuator commands.
+      </li>
+      <li>
+        Added host setup, agent, and monitor scripts with stable-device guidance and static source
+        validation that does not require ROS on the PX4 build machine.
+      </li>
+    </ol>
+
+    <h3>Implementation choices</h3>
+    <table>
+      <thead><tr><th>Decision</th><th>Recommended starting choice</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>Default target or variant</td><td>Integrated default target</td><td>The complete bridge fits after excluding test-only commands.</td></tr>
+        <tr><td>Startup</td><td>Parameter-driven</td><td>The generated <code>rc.serial</code> script owns TEL1 consistently.</td></tr>
+        <tr><td>DDS topic scope</td><td>Complete standard set</td><td>The target links with 92,864 bytes of flash margin.</td></tr>
+        <tr><td>ROS distribution</td><td>Humble on Ubuntu 22.04</td><td>PX4's currently documented recommended platform for this integration.</td></tr>
+        <tr><td>Agent</td><td>v2.4.2 for Humble</td><td>Matches the PX4 compatibility table and the default v2 client.</td></tr>
+        <tr><td>Control testing</td><td>Defer until HITL telemetry is stable</td><td>Prevents transport bring-up from creating a flight-safety hazard.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout good">
+      Implemented milestone: a DDS-enabled firmware links with 92,864 bytes of flash margin and
+      is configured for the Morpho-header USART6 wiring. Hardware validation must confirm it publishes
+      <code>timesync_status</code>, and receives <code>onboard_computer_status</code>. This is a
+      complete bidirectional proof without commanding the vehicle.
+    </div>
+  </section>
+
+  <section>
+    <h2>16. Primary references</h2>
+    <ul>
+      <li><a href="https://docs.px4.io/main/en/middleware/uxrce_dds">PX4 uXRCE-DDS bridge documentation</a></li>
+      <li><a href="https://docs.px4.io/main/en/ros2/user_guide">PX4 ROS 2 user guide</a></li>
+      <li><a href="https://github.com/mavlink/mavros/blob/ros2/mavros/README.md">MAVROS ROS 2 documentation</a></li>
+      <li><a href="https://docs.px4.io/main/en/simulation/">PX4 simulator comparison and selection guide</a></li>
+      <li><a href="https://docs.px4.io/main/en/sim_sih/">PX4 SIH simulation guide</a></li>
+      <li><a href="https://docs.px4.io/main/en/sim_sih/hardware">PX4 SIH on flight-controller hardware</a></li>
+      <li><a href="https://docs.px4.io/main/en/sim_gazebo_gz/">PX4 Gazebo simulation guide</a></li>
+      <li><a href="https://gazebosim.org/docs/harmonic/ros2_integration/">Gazebo Harmonic ROS 2 integration</a></li>
+      <li><a href="https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html">ROS 2 Humble installation</a></li>
+      <li><a href="https://micro-xrce-dds.docs.eprosima.com/en/latest/installation.html">eProsima Micro XRCE-DDS installation</a></li>
+      <li><a href="https://www.st.com/resource/en/user_manual/um2407-stm32h7-nucleo144-board-stmicroelectronics.pdf">ST UM2407 Nucleo-H753ZI board manual</a></li>
+      <li><a href="../../README.md">Local Nucleo-H753ZI board documentation</a></li>
+      <li><a href="../../ros2_ref/README.md">Local ROS 2 reference package</a></li>
+      <li><a href="../../host/README.md">Implemented Nucleo-H753ZI ROS 2 host application</a></li>
+      <li><a href="../../host/QUICK_TESTS.md">ROS 2 and PX4 DDS Python quick-test instructions</a></li>
+      <li><a href="ros2_integration_test_runbook.html">ROS 2 integration test runbook: clean setup through acceptance</a></li>
+      <li><a href="usart6_minicom_quick_test.html">USART6 minicom hello/echo quick test and board configuration guide</a></li>
+    </ul>
+    <p class="status">Recommended next milestone: flash the built DDS-enabled firmware and complete the physical bidirectional onboard-computer-status test before enabling offboard control.</p>
+  </section>
+</main>
+</body>
+</html>

@@ -6,7 +6,55 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Simple online gyroscope calibration.
+
+## Description of Module
+
+Coordinates gyro calibration data collection and calibration result publication.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `parameter_update`.
+- Do not publish directly detected uORB outputs from this module directory.
+- Use module configuration from `parameters.yaml`.
+- Implement the main behavior in classes such as `GyroCalibration`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Gyro calibration estimates a stationary bias and validates it with variance checks so the offset can be subtracted from future gyro samples.
+
+```text
+bias = (1/N) * sum_i gyro_i
+variance = (1/(N-1)) * sum_i ||gyro_i - bias||^2
+valid = variance < variance_threshold and |bias| < bias_limit
+gyro_corrected = gyro_raw - bias
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update` |
+| Primary outputs | none detected |
+| Referenced topics | `parameter_update`, `sensor_accel`, `sensor_gyro`, `vehicle_status` |
+| Parameters/config | parameters.yaml |
+| Key classes | `GyroCalibration` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| GyroCalibration.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| parameters.yaml | Build, parameter, or module configuration |
+| GyroCalibration.hpp | Defines `GyroCalibration` class |
 
 ## Architecture Overview
 

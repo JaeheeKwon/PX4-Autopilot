@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Records selected uORB topics and system metadata into PX4 log files.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Provide persistence, replay, or data-recording services used by other PX4 modules.</li><li>Consume runtime inputs from uORB topics such as `battery_status`, `log_message`, `manual_control_setpoint`, `parameter_update`, `ulog_stream_ack`, `vehicle_command`, `vehicle_status`.</li><li>Publish outputs or status topics such as `logger_status`, `ulog_stream`, `vehicle_command_ack`.</li><li>Use module configuration from `module.yaml`.</li><li>Implement the main behavior in classes such as `LogWriter`, `LogType`, `LogWriterFile`, `LogFileBuffer`, `LogWriterMavlink`, `SDLogProfileMask`, ... 7 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.</li><li>Uses a `run()` loop style module body for repeated execution.</li><li>Waits on file descriptors or uORB subscriptions with `px4_poll()`.</li><li>Creates an additional pthread helper context.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`battery_status`, `log_message`, `manual_control_setpoint`, `parameter_update`, `ulog_stream_ack`, `vehicle_command`, `vehicle_status`</td></tr><tr><td>Primary outputs</td><td>`logger_status`, `ulog_stream`, `vehicle_command_ack`</td></tr><tr><td>Referenced topics</td><td>`battery_status`, `log_message`, `logger_status`, `manual_control_setpoint`, `parameter_update`, `uORBTopics`, `ulog_stream`, `ulog_stream_ack`, `vehicle_command`, `vehicle_command_ack`, ... 1 more</td></tr><tr><td>Parameters/config</td><td>module.yaml</td></tr><tr><td>Key classes</td><td>`LogWriter`, `LogType`, `LogWriterFile`, `LogFileBuffer`, `LogWriterMavlink`, `SDLogProfileMask`, `MissionLogType`, `LoggedTopics`, `Logger`, `LogMode`, ... 3 more</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>log_writer_file.cpp</td><td>Dedicated task loop or repeated runtime path</td></tr><tr><td>logger.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>watchdog.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>module.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>module_params_crypto.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>log_writer.h</td><td>Defines `LogWriter` class</td></tr><tr><td>log_writer_file.h</td><td>Defines `LogType` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -145,7 +163,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/logger</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__logger</td></tr><tr><td>Runtime main</td><td>logger</td></tr><tr><td>Stack main</td><td>2500</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>10</td></tr><tr><td>Detected headers</td><td>9</td></tr><tr><td>Detected configs</td><td>3</td></tr></tbody></table>
 

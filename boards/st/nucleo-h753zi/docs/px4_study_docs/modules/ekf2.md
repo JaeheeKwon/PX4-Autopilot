@@ -8,6 +8,69 @@
 
 Architecture notes for the ekf2 module.
 
+## Description of Module
+
+Runs the EKF2 estimator stack for attitude, velocity, position, sensor bias, and estimator status outputs.
+
+### Primary Responsibilities
+
+- Fuse, filter, or validate measurements into estimated state outputs for other modules.
+- Consume runtime inputs from uORB topics such as `airspeed`, `airspeed_validated`, `aux_global_position`, `estimator_attitude`, `estimator_global_position`, `estimator_local_position`, `estimator_odometry`, `estimator_status`, ... 17 more.
+- Publish outputs or status topics such as `ekf2_timestamps`, `estimator_aid_src_airspeed`, `estimator_aid_src_aux_global_position`, `estimator_aid_src_aux_vel`, `estimator_aid_src_baro_hgt`, `estimator_aid_src_drag`, `estimator_aid_src_ev_hgt`, `estimator_aid_src_ev_pos`, ... 42 more.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `Ekf`, `EstimatorAidSource`, `ZeroGyroUpdate`, `ZeroVelocityUpdate`, `Ekf`, `AuxGlobalPosition`, ... 45 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `INS0`, `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+EKF2 is an error-state extended Kalman filter. The nonlinear strapdown prediction is driven by IMU delta angle and delta velocity; slower sensors correct the state through innovation tests and Kalman updates.
+
+```text
+Prediction:
+x[k|k-1] = f(x[k-1|k-1], u_imu, dt)
+P[k|k-1] = F * P[k-1|k-1] * F^T + G * Q * G^T
+
+Measurement update:
+y = z - h(x[k|k-1])
+S = H * P[k|k-1] * H^T + R
+K = P[k|k-1] * H^T * inverse(S)
+x[k|k] = x[k|k-1] + K*y
+P[k|k] = (I - K*H) * P[k|k-1]
+
+Innovation gate:
+y^T * inverse(S) * y < gate^2
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `airspeed`, `airspeed_validated`, `aux_global_position`, `estimator_attitude`, `estimator_global_position`, `estimator_local_position`, `estimator_odometry`, `estimator_status`, `estimator_wind`, `landing_target_pose`, ... 15 more |
+| Primary outputs | `ekf2_timestamps`, `estimator_aid_src_airspeed`, `estimator_aid_src_aux_global_position`, `estimator_aid_src_aux_vel`, `estimator_aid_src_baro_hgt`, `estimator_aid_src_drag`, `estimator_aid_src_ev_hgt`, `estimator_aid_src_ev_pos`, `estimator_aid_src_ev_vel`, `estimator_aid_src_ev_yaw`, ... 40 more |
+| Referenced topics | `airspeed`, `airspeed_validated`, `aux_global_position`, `distance_sensor`, `ekf2_timestamps`, `estimator_aid_source1d`, `estimator_aid_source2d`, `estimator_aid_source3d`, `estimator_aid_src_airspeed`, `estimator_aid_src_aux_global_position`, ... 66 more |
+| Parameters/config | module.yaml |
+| Key classes | `Ekf`, `EstimatorAidSource`, `ZeroGyroUpdate`, `ZeroVelocityUpdate`, `Ekf`, `AuxGlobalPosition`, `Ekf`, `AgpSource`, `Ctrl`, `Mode`, ... 41 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| EKF/aid_sources/gnss/gnss_checks.cpp | Dedicated task loop or repeated runtime path |
+| EKF2.cpp | Entry point, start command, or module lifecycle code |
+| EKF2Selector.cpp | Work-item callback or main runtime update path |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| EKF/CMakeLists.txt | Build, parameter, or module configuration |
+| EKF/bias_estimator/CMakeLists.txt | Build, parameter, or module configuration |
+| EKF/output_predictor/CMakeLists.txt | Build, parameter, or module configuration |
+| EKF/aid_sources/EstimatorAidSource.hpp | Defines `Ekf` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

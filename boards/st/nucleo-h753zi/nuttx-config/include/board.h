@@ -172,8 +172,12 @@
 #define GPIO_USART3_RX  GPIO_USART3_RX_3   /* PD9  -- ST-LINK virtual COM */
 #define GPIO_USART3_TX  GPIO_USART3_TX_3   /* PD8  */
 
-#define GPIO_USART6_RX  GPIO_USART6_RX_2   /* PG9  */
-#define GPIO_USART6_TX  GPIO_USART6_TX_2   /* PG14 */
+/* Dedicated DDS UART on the stock MB1364 Morpho headers.  These target-MCU
+ * signals do not use the ST-LINK USART3 routing solder bridges SB12/SB19.
+ * PG9: CN11-63.  PG14: CN12-61 (also wired to Arduino D2, not D1).
+ */
+#define GPIO_USART6_RX  GPIO_USART6_RX_2   /* PG9,  CN11-63 */
+#define GPIO_USART6_TX  GPIO_USART6_TX_2   /* PG14, CN12-61 / D2 */
 
 /* SPI3 (Arduino shield) */
 #define GPIO_SPI3_MISO  GPIO_SPI3_MISO_1   /* PB4 */

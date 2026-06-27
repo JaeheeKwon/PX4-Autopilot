@@ -35,14 +35,14 @@ and uses USART6 for ROS 2 / DDS:
 |---|---|---|---|
 | NSH console | CN1 ST-LINK USB | `/dev/ttyS0` | USB CDC serial at 57600 baud |
 | MAVLink HITL / QGC | CN13 User USB | `/dev/ttyACM0` | USB CDC MAVLink |
-| ROS 2 / uXRCE-DDS | CN10 D0/D1 USART6 | `/dev/ttyS1` | USB-UART adapter at 921600 baud |
+| ROS 2 / uXRCE-DDS | USART6 on Morpho headers | `/dev/ttyS1` | USB-UART adapter at 921600 baud |
 
 USART6 wiring:
 
 | Nucleo header | MCU pin | Signal | USB-UART adapter |
 |---|---|---|---|
-| CN10 D0 | PG9 | USART6 RX | TX |
-| CN10 D1 | PG14 | USART6 TX | RX |
+| CN11 pin 63 | PG9 | USART6 RX | TX |
+| CN12 pin 61 | PG14 | USART6 TX | RX |
 | GND | GND | Ground | GND |
 
 Use a 3.3 V USB-UART adapter. Do not connect a 5 V UART signal to the STM32 pins.
@@ -61,12 +61,8 @@ boards/st/nucleo-h753zi/ros2_ref/index.html
    less boards/st/nucleo-h753zi/ros2_ref/docs/host_setup_ubuntu_22_04.md
    ```
 
-2. Add the reference board startup hook if you want DDS to auto-start:
-
-   ```sh
-   cp boards/st/nucleo-h753zi/ros2_ref/config/rc.board_extras \
-      boards/st/nucleo-h753zi/init/rc.board_extras
-   ```
+2. DDS auto-start is already configured through TEL1, `UXRCE_DDS_CFG=101`,
+   and `SER_TEL1_BAUD=921600`. Do not install a second startup hook.
 
 3. Build and flash the board:
 

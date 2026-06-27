@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ROS 2 Integration Test Runbook — Nucleo-H753ZI</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f8fa;--p:#fff;--t:#1f2328;--m:#59636e;--b:#d0d7de;--c:#f6f8fa;--a:#0969da;--g:#1a7f37;--w:#9a6700;--r:#cf222e}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--p:#161b22;--t:#e6edf3;--m:#9da7b3;--b:#30363d;--c:#0d1117;--a:#58a6ff;--g:#3fb950;--w:#d29922;--r:#f85149}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--t);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1160px;margin:auto;padding:28px 22px 80px}
+header,nav,section{background:var(--p);border:1px solid var(--b);border-radius:10px;margin-bottom:20px;padding:24px}h1{margin:0 0 8px}h2{margin-top:0;border-bottom:1px solid var(--b);padding-bottom:8px}h3{margin-top:26px}a{color:var(--a)}
+code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{background:var(--c);padding:.12em .34em;border-radius:4px}pre{background:var(--c);border:1px solid var(--b);border-radius:7px;padding:14px;overflow:auto}pre code{padding:0}
+table{width:100%;border-collapse:collapse;display:block;overflow-x:auto}th,td{border:1px solid var(--b);padding:9px 11px;text-align:left;vertical-align:top}th{background:var(--c)}nav ul{columns:2}.meta{color:var(--m)}
+.note,.gate{border-left:5px solid var(--w);background:var(--c);padding:13px 16px;margin:18px 0}.gate{border-color:var(--a)}.danger{border-color:var(--r)}.pass{color:var(--g);font-weight:700}.fail{color:var(--r);font-weight:700}
+.figure{border:1px solid var(--b);background:var(--c);border-radius:8px;padding:12px;overflow:auto}.figure svg{min-width:780px;width:100%}.box{fill:var(--p);stroke:var(--b);stroke-width:2}.group{fill:none;stroke:var(--a);stroke-width:2;stroke-dasharray:7 5}.title{fill:var(--t);font:600 16px sans-serif}.label{fill:var(--t);font:14px sans-serif}.small{fill:var(--m);font:12px sans-serif}.arrow{fill:none;stroke:var(--a);stroke-width:2.5}
+@media(max-width:780px){nav ul{columns:1}}
+</style>
+</head>
+<body><main>
+<header><h1>ROS 2 Integration Test Runbook</h1>
+<p>From a clean Ubuntu installation and unprovisioned Nucleo-H753ZI to a recorded bidirectional PX4 uXRCE-DDS acceptance result.</p>
+<p class="meta">Target <code>st_nucleo-h753zi_default</code> · Ubuntu 22.04 · ROS 2 Humble · 2026-06-27</p></header>
+
+<nav><h2>Contents</h2><ul>
+<li><a href="#scope">1. Scope and gates</a></li><li><a href="#topology">2. Topology</a></li><li><a href="#inventory">3. Inventory</a></li>
+<li><a href="#baseline">4. Baseline record</a></li><li><a href="#px4host">5. PX4 host setup</a></li><li><a href="#firmware">6. Build and flash</a></li>
+<li><a href="#wiring">7. Wiring</a></li><li><a href="#roshost">8. ROS host setup</a></li><li><a href="#agent">9. Agent setup</a></li>
+<li><a href="#workspace">10. Workspace</a></li><li><a href="#gatea">11. Local DDS gate</a></li><li><a href="#gateb">12. PX4 audit gate</a></li>
+<li><a href="#gatec">13. XRCE session gate</a></li><li><a href="#gated">14. Bidirectional gate</a></li><li><a href="#gatee">15. Stability gate</a></li>
+<li><a href="#simulation">16. Simulation</a></li><li><a href="#hitl">17. HITL coexistence</a></li><li><a href="#evidence">18. Evidence</a></li>
+<li><a href="#recovery">19. Recovery</a></li><li><a href="#troubleshooting">20. Troubleshooting</a></li><li><a href="#references">21. References</a></li>
+</ul></nav>
+
+<section id="scope"><h2>1. Scope, safety, and success gates</h2>
+<pre><code>PX4 app ↔ uORB ↔ uXRCE-DDS client ↔ USART6 ↔ USB-UART
+        ↔ Micro XRCE-DDS Agent ↔ ROS 2 DDS ↔ Python node</code></pre>
+<table><thead><tr><th>Gate</th><th>Boundary</th><th>Pass evidence</th></tr></thead><tbody>
+<tr><td>A</td><td>ROS 2 + local DDS</td><td>Listener gets test string and exits 0.</td></tr>
+<tr><td>B</td><td>PX4 boot/configuration</td><td>Correct firmware, TEL1 parameters, and port ownership.</td></tr>
+<tr><td>C</td><td>UART + XRCE</td><td>Stable agent/client session and <code>/fmu</code> endpoints.</td></tr>
+<tr><td>D</td><td>Bidirectional data</td><td>Quick test exits 0 and PX4 uORB receives heartbeat.</td></tr>
+<tr><td>E</td><td>Stability/recovery</td><td>30-minute run plus agent and board recovery.</td></tr>
+</tbody></table>
+<div class="note danger"><strong>Safety:</strong> remove propellers and disconnect actuators. The supplied applications never publish arming or flight setpoints. Stop at the first failed gate.</div></section>
+
+<section id="topology"><h2>2. Test topology</h2>
+<figure class="figure"><svg viewBox="0 0 1060 330" role="img" aria-labelledby="tt td"><title id="tt">ROS 2 integration topology</title><desc id="td">Console, MAVLink, and DDS use separate physical paths.</desc>
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--a)"/></marker></defs>
+<rect class="group" x="20" y="35" width="390" height="250" rx="14"/><text class="title" x="45" y="67">Nucleo-H753ZI / MB1364</text>
+<rect class="box" x="50" y="90" width="330" height="58" rx="8"/><text class="label" x="91" y="120">PX4 applications ↔ uORB</text>
+<rect class="box" x="50" y="175" width="330" height="58" rx="8"/><text class="label" x="88" y="203">uXRCE-DDS · ttyS1 · 921600</text>
+<text class="small" x="56" y="263">CN1 console</text><text class="small" x="174" y="263">CN13 MAVLink</text><text class="small" x="294" y="263">USART6 DDS</text>
+<rect class="group" x="650" y="35" width="390" height="250" rx="14"/><text class="title" x="675" y="67">Ubuntu ROS 2 host</text>
+<rect class="box" x="680" y="90" width="330" height="58" rx="8"/><text class="label" x="731" y="120">Python test applications</text>
+<rect class="box" x="680" y="175" width="330" height="58" rx="8"/><text class="label" x="718" y="203">Micro XRCE-DDS Agent 2.4.2</text>
+<path class="arrow" d="M380 204H680" marker-end="url(#ar)"/><text class="small" x="454" y="192">3.3 V USB-UART</text>
+<path class="arrow" d="M380 119H680" marker-end="url(#ar)"/><text class="small" x="466" y="108">DDS graph</text>
+<text class="small" x="20" y="316">CN1 and CN13 usually enumerate as ttyACM; the adapter often uses ttyUSB. Always use /dev/serial/by-id.</text>
+</svg><figcaption>Keep console, MAVLink/HITL, and DDS independent.</figcaption></figure>
+<p>One PC may perform both roles. With two PCs, use the exact same PX4 commit on both so firmware and <code>px4_msgs</code> match.</p></section>
+
+<section id="inventory"><h2>3. Inventory and pinned versions</h2>
+<ul><li>NUCLEO-H753ZI MB1364.</li><li>CN1 cable for ST-LINK, power, SWD, and console.</li><li>CN13 cable for bootloader/MAVLink.</li><li>3.3 V USB-UART adapter supporting 921600 baud.</li><li>Short TX/RX/GND wires.</li></ul>
+<table><thead><tr><th>Software</th><th>Required baseline</th></tr></thead><tbody>
+<tr><td>Host</td><td>Ubuntu 22.04 LTS, ROS 2 Humble.</td></tr><tr><td>Agent</td><td>Micro XRCE-DDS Agent 2.4.2.</td></tr>
+<tr><td>PX4</td><td>Exact feature-branch commit, recursively initialized submodules.</td></tr><tr><td>UART</td><td>3.3 V, 921600, 8-N-1, no flow control.</td></tr>
+</tbody></table>
+<div class="note"><strong>Manual:</strong> use ST UM2407 for H753ZI/MB1364. Supplied UM3115/UM3 is for H563ZI/MB1404.</div></section>
+
+<section id="baseline"><h2>4. Record the baseline</h2>
+<pre><code>date --iso-8601=seconds
+uname -a
+lsb_release -a
+git branch --show-current
+git rev-parse HEAD
+git status --short
+git submodule status
+arm-none-eabi-gcc --version</code></pre>
+<p>Record board revision, ST-LINK serial, adapter model/serial, operator, and a photograph of unpowered wiring. Preserve unrelated changes.</p></section>
+
+<section id="px4host"><h2>5. PX4 build-host setup from scratch</h2>
+<pre><code>sudo apt update
+sudo apt install -y git
+cd ~
+git clone --recursive &lt;PX4-REPOSITORY-URL&gt; PX4-Autopilot
+cd PX4-Autopilot
+git switch feature/nucleo-h753zi-ros2-integration
+git submodule sync --recursive
+git submodule update --init --recursive
+git status --short --branch
+bash Tools/setup/ubuntu.sh</code></pre>
+<p>Accept prompts and reboot, then verify:</p>
+<pre><code>arm-none-eabi-gcc --version
+cmake --version
+ninja --version
+python3 --version
+openocd --version</code></pre>
+<p>A separate ROS-only PC does not need ARM GCC but does need the matching checkout for message export.</p></section>
+
+<section id="firmware"><h2>6. Build, provision, and flash PX4</h2>
+<h3>6.1 Build</h3>
+<pre><code>boards/st/nucleo-h753zi/host/scripts/check_source.sh
+git diff --check
+make st_nucleo-h753zi_default
+ls -lh build/st_nucleo-h753zi_default/st_nucleo-h753zi_default.{elf,bin,px4}
+sha256sum build/st_nucleo-h753zi_default/st_nucleo-h753zi_default.px4</code></pre>
+<p>Known use with the USART6 hello diagnostic: 1,348,928 / 1,441,792 bytes (93.56%). Stop on overflow or unexplained growth.</p>
+<h3>6.2 Bootloader once, through CN1</h3>
+<pre><code>make st_nucleo-h753zi_bootloader
+openocd -f interface/stlink.cfg -f target/stm32h7x.cfg \
+  -c "program build/st_nucleo-h753zi_bootloader/st_nucleo-h753zi_bootloader.bin \
+      0x08000000 verify reset exit"</code></pre>
+<h3>6.3 Application through CN13</h3>
+<p>Keep CN1 connected for power, connect CN13, run upload, and press RESET if enumeration is awaited:</p>
+<pre><code>make st_nucleo-h753zi_default upload</code></pre>
+<p>Recovery alternative through ST-LINK:</p>
+<pre><code>openocd -f interface/stlink.cfg -f target/stm32h7x.cfg \
+  -c "program build/st_nucleo-h753zi_default/st_nucleo-h753zi_default.bin \
+      0x08020000 verify reset exit"</code></pre>
+<div class="gate"><strong>Gate:</strong> build fits, verification succeeds, artifact hash is recorded.</div></section>
+
+<section id="wiring"><h2>7. Wire USART6 and identify devices</h2>
+<h3>7.1 Detailed Micro XRCE-DDS USART6 connection</h3>
+<figure class="figure">
+<svg viewBox="0 0 1120 690" role="img" aria-labelledby="uart-title uart-desc">
+<title id="uart-title">Detailed USART6 wiring from STM32H753 to the Micro XRCE-DDS Agent</title>
+<desc id="uart-desc">Target PG14 TX crosses to adapter RX, adapter TX crosses to target PG9 RX, and grounds are common. Adapter VCC and flow-control pins are disconnected. USART3 ST-LINK console is a separate path.</desc>
+<defs>
+  <marker id="uart-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--a)"/></marker>
+  <marker id="uart-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--g)"/></marker>
+</defs>
+
+<rect class="group" x="20" y="28" width="430" height="525" rx="14"/>
+<text class="title" x="45" y="60">NUCLEO-H753ZI · target side</text>
+<rect class="box" x="50" y="82" width="370" height="130" rx="9"/>
+<text class="title" x="76" y="112">STM32H753ZIT6 target MCU</text>
+<text class="label" x="76" y="140">USART6 alternate function AF7</text>
+<text class="small" x="76" y="164">PX4 TEL1 → NuttX /dev/ttyS1</text>
+<text class="small" x="76" y="186">921600 baud · 8 data · no parity · 1 stop · no flow control</text>
+
+<text class="title" x="50" y="248">Stock soldered Morpho headers</text>
+<rect class="box" x="50" y="268" width="370" height="54" rx="7"/>
+<text class="label" x="70" y="291">CN12 pin 61 · PG14 · USART6_TX</text>
+<text class="small" x="70" y="310">AF7 push-pull TX; also exposed as Arduino D2</text>
+<rect class="box" x="50" y="337" width="370" height="54" rx="7"/>
+<text class="label" x="70" y="360">CN11 pin 63 · PG9 · USART6_RX</text>
+<text class="small" x="70" y="379">AF7 RX with pull-up</text>
+<rect class="box" x="50" y="406" width="370" height="54" rx="7"/>
+<text class="label" x="70" y="439">CN12 pin 63 · GND</text>
+<rect class="box" x="50" y="475" width="370" height="54" rx="7"/>
+<text class="label" x="70" y="497">Board power: CN1 ST-LINK USB</text>
+<text class="small" x="70" y="516">Do not power the board from the UART adapter</text>
+
+<rect class="group" x="670" y="28" width="430" height="525" rx="14"/>
+<text class="title" x="695" y="60">ROS 2 host side</text>
+<rect class="box" x="720" y="82" width="330" height="95" rx="9"/>
+<text class="title" x="763" y="112">Ubuntu host USB port</text>
+<text class="small" x="751" y="136">/dev/serial/by-id/&lt;usb-uart-adapter&gt;</text>
+<text class="small" x="785" y="158">MicroXRCEAgent process</text>
+<path d="M885 177V232" stroke="var(--a)" stroke-width="3" marker-end="url(#uart-blue)"/>
+<text class="small" x="899" y="208">USB</text>
+
+<rect class="box" x="700" y="232" width="370" height="297" rx="9"/>
+<text class="title" x="744" y="262">USB-to-UART adapter</text>
+<text class="small" x="752" y="284">3.3 V TTL/CMOS logic; not RS-232 voltage</text>
+<rect class="box" x="720" y="296" width="330" height="42" rx="6"/>
+<text class="label" x="744" y="323">RX input</text>
+<rect class="box" x="720" y="350" width="330" height="42" rx="6"/>
+<text class="label" x="744" y="377">TX output</text>
+<rect class="box" x="720" y="404" width="330" height="42" rx="6"/>
+<text class="label" x="744" y="431">GND</text>
+<rect class="box" x="720" y="458" width="330" height="42" rx="6"/>
+<text class="label" x="744" y="485">VCC / 5 V / 3V3 output — leave open</text>
+<text class="small" x="744" y="518">RTS, CTS, DTR, DSR — leave open</text>
+
+<path d="M420 295H720" stroke="var(--a)" stroke-width="4" marker-end="url(#uart-blue)"/>
+<text class="label" x="478" y="283">board TX → adapter RX</text>
+<path d="M720 371H420" stroke="var(--g)" stroke-width="4" marker-end="url(#uart-green)"/>
+<text class="label" x="478" y="359">adapter TX → board RX</text>
+<path d="M420 433H720" stroke="var(--t)" stroke-width="4"/>
+<circle cx="420" cy="433" r="5" fill="var(--t)"/><circle cx="720" cy="433" r="5" fill="var(--t)"/>
+<text class="label" x="506" y="422">common signal ground</text>
+<path d="M420 502H720" stroke="var(--r)" stroke-width="3" stroke-dasharray="9 6"/>
+<path d="M548 486L574 512M574 486L548 512" stroke="var(--r)" stroke-width="5"/>
+<text class="label" x="585" y="491" fill="var(--r)">NO CONNECTION</text>
+<text class="small" x="582" y="514">never join adapter VCC to board</text>
+
+<rect class="box" x="20" y="580" width="1080" height="82" rx="9"/>
+<text class="title" x="45" y="607">Separate interfaces — not part of the USART6 DDS circuit</text>
+<text class="label" x="45" y="634">CN1 / USART3 PD8-PD9: NSH console at 57600 through ST-LINK VCP; keep SB19/SB12 ON.</text>
+<text class="label" x="45" y="654">CN13 / USB OTG-FS: PX4 bootloader and MAVLink/HITL. Do not point MicroXRCEAgent at either interface.</text>
+</svg>
+<figcaption>Signal directions are named from the Nucleo: TX must cross to adapter RX, RX must cross to adapter TX. Drawing is logical, not a physical connector-orientation drawing.</figcaption>
+</figure>
+
+<table>
+<thead><tr><th>Layer</th><th>Required setting</th><th>Common mistake</th></tr></thead>
+<tbody>
+<tr><td>Electrical</td><td>3.3 V TTL/CMOS, common ground</td><td>Using a true ±RS-232 adapter or connecting 5 V logic.</td></tr>
+<tr><td>UART framing</td><td>921600 baud, 8-N-1</td><td>Adapter or terminal left at 57600.</td></tr>
+<tr><td>Flow control</td><td>None; only TX, RX, GND</td><td>Enabling RTS/CTS or connecting DTR reset.</td></tr>
+<tr><td>PX4/NuttX</td><td>TEL1 → <code>/dev/ttyS1</code> → USART6 AF7</td><td>Using CN10 D0/D1 or allowing MAVLink to claim ttyS1.</td></tr>
+<tr><td>Host</td><td>Stable adapter by-id path</td><td>Using a changing ttyUSB number or selecting CN1/CN13.</td></tr>
+<tr><td>Protocol</td><td>Micro XRCE-DDS serial framing</td><td>Opening the port in a serial terminal while the agent is running.</td></tr>
+</tbody>
+</table>
+
+<h3>7.2 Power-off wiring sequence</h3>
+<ol>
+<li>Disconnect CN1, CN13, and the USB-UART adapter from USB.</li>
+<li>Connect CN12-61/PG14 to adapter RX.</li>
+<li>Connect CN11-63/PG9 to adapter TX.</li>
+<li>Connect board GND to adapter GND.</li>
+<li>Insulate or remove the adapter VCC lead. Leave all flow-control leads open.</li>
+<li>Inspect continuity and confirm TX/RX are crossed.</li>
+<li>Connect CN1 first to power the Nucleo, then connect the adapter to the host.</li>
+<li>Identify the adapter by-id path before starting <code>MicroXRCEAgent</code>.</li>
+</ol>
+<p>For initial bring-up, keep the three signal wires short and separated from motor/power wiring. Only one process may open the adapter serial device.</p>
+
+<h3>7.3 Pin table</h3>
+<table><thead><tr><th>Board</th><th>Location</th><th>Adapter</th></tr></thead><tbody>
+<tr><td>PG14 / USART6 TX</td><td>CN12-61, also D2</td><td>RX</td></tr><tr><td>PG9 / USART6 RX</td><td>CN11-63</td><td>TX</td></tr>
+<tr><td>GND</td><td>CN12-63 or another GND</td><td>GND</td></tr><tr><td>Power</td><td>Not connected</td><td>Leave VCC/5 V open</td></tr>
+</tbody></table>
+<p>No USART6 bridge modification is required. Keep SB12/SB19 ON for USART3 VCP. Do not use D0/D1.</p>
+<h3>7.4 Linux device identity and permissions</h3>
+<pre><code>sudo dmesg --follow
+ls -l /dev/serial/by-id/
+ls -l /dev/ttyACM* /dev/ttyUSB* 2&gt;/dev/null
+udevadm info --query=all --name=/dev/ttyUSB0
+sudo usermod -aG dialout "$USER"</code></pre>
+<p>Connect one device at a time and record its by-id path. Log out/in after adding <code>dialout</code>. Never infer CN1/CN13 from ttyACM number.</p></section>
+
+<section id="roshost"><h2>8. ROS 2 Humble host setup</h2>
+<pre><code>sudo apt update
+sudo apt install -y locales software-properties-common curl
+sudo locale-gen en_US en_US.UTF-8
+sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+sudo add-apt-repository universe
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+  -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+http://packages.ros.org/ros2/ubuntu $(. /etc/os-release &amp;&amp; echo $UBUNTU_CODENAME) main" \
+| sudo tee /etc/apt/sources.list.d/ros2.list &gt;/dev/null
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y ros-humble-ros-base ros-dev-tools
+sudo rosdep init
+rosdep update
+source /opt/ros/humble/setup.bash
+echo 'source /opt/ros/humble/setup.bash' &gt;&gt; ~/.bashrc
+ros2 doctor --report</code></pre>
+<p>If <code>rosdep init</code> reports that it was already initialized, continue with <code>rosdep update</code>. Treat other errors as failures. Record corporate mirror/proxy substitutions. Do not mix Ubuntu or ROS releases.</p></section>
+
+<section id="agent"><h2>9. Install Micro XRCE-DDS Agent 2.4.2</h2>
+<pre><code>sudo apt install -y build-essential cmake git
+mkdir -p ~/src
+cd ~/src
+git clone --branch v2.4.2 --depth 1 \
+  https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+cd Micro-XRCE-DDS-Agent
+mkdir build &amp;&amp; cd build
+cmake ..
+cmake --build . -j"$(nproc)"
+sudo cmake --install .
+sudo ldconfig /usr/local/lib
+command -v MicroXRCEAgent
+MicroXRCEAgent --help | head
+git -C ~/src/Micro-XRCE-DDS-Agent describe --tags --always</code></pre>
+<p>Do not pair a v3 agent with the default v2 PX4 client.</p></section>
+
+<section id="workspace"><h2>10. Build the matching ROS workspace</h2>
+<pre><code>cd ~/PX4-Autopilot
+git rev-parse HEAD
+boards/st/nucleo-h753zi/host/scripts/check_source.sh
+boards/st/nucleo-h753zi/host/scripts/setup_workspace.sh
+source /opt/ros/humble/setup.bash
+source ~/nucleo_px4_ros2_ws/install/setup.bash
+ros2 pkg prefix nucleo_px4_ros2_host
+ros2 pkg executables nucleo_px4_ros2_host
+ros2 interface show px4_msgs/msg/VehicleStatus
+ros2 interface show px4_msgs/msg/OnboardComputerStatus</code></pre>
+<p>Expect <code>bridge_health_monitor</code>, <code>dds_test_listener</code>, <code>dds_test_talker</code>, and <code>px4_dds_quick_test</code>.</p>
+<div class="gate"><strong>Gate:</strong> colcon succeeds and all executables/interfaces are visible.</div></section>
+
+<section id="gatea"><h2>11. Gate A — Local ROS 2 DDS</h2>
+<p>No board or agent is used. Terminal A1:</p>
+<pre><code>source /opt/ros/humble/setup.bash
+source ~/nucleo_px4_ros2_ws/install/setup.bash
+printenv | grep -E '^(ROS_DOMAIN_ID|RMW_IMPLEMENTATION|ROS_LOCALHOST_ONLY)=' || true
+ros2 run nucleo_px4_ros2_host dds_test_listener
+echo $?</code></pre>
+<p>Within ten seconds, terminal A2:</p>
+<pre><code>source /opt/ros/humble/setup.bash
+source ~/nucleo_px4_ros2_ws/install/setup.bash
+ros2 run nucleo_px4_ros2_host dds_test_talker</code></pre>
+<p>Expect <code>PASS: received 'nucleo-dds-ok sequence=...'</code> and exit 0. Stop the talker.</p>
+<div class="gate"><span class="pass">PASS:</span> exit 0. <span class="fail">STOP:</span> do not debug PX4 until this works.</div></section>
+
+<section id="gateb"><h2>12. Gate B — PX4 boot/configuration audit</h2>
+<pre><code>sudo apt install -y picocom
+picocom -b 57600 /dev/serial/by-id/&lt;stlink-vcp&gt;</code></pre>
+<p>At <code>nsh&gt;</code>:</p>
+<pre><code>ver all
+ps
+uxrce_dds_client status
+param show UXRCE_DDS_CFG
+param show SER_TEL1_BAUD
+param show UXRCE_DDS_DOM_ID
+param show UXRCE_DDS_KEY
+param show UXRCE_DDS_SYNCT
+mavlink status</code></pre>
+<p>Expect <code>UXRCE_DDS_CFG=101</code>, <code>SER_TEL1_BAUD=921600</code>, domain 0, key 1, sync 1, and no MAVLink ownership of <code>/dev/ttyS1</code>.</p>
+<div class="note danger"><code>param reset_all</code> destroys persisted vehicle setup. Use only with authorization and backup.</div>
+<div class="gate"><span class="pass">PASS:</span> correct image, parameters, and TEL1 ownership.</div></section>
+
+<section id="gatec"><h2>13. Gate C — Serial XRCE session</h2>
+<p>Agent terminal:</p>
+<pre><code>cd ~/PX4-Autopilot
+boards/st/nucleo-h753zi/host/scripts/run_agent.sh \
+  /dev/serial/by-id/&lt;usb-uart-adapter&gt; 921600</code></pre>
+<p>Expect client/session and DDS entity creation. On NSH:</p>
+<pre><code>uxrce_dds_client status
+# Diagnostic manual start only if no client exists:
+uxrce_dds_client start -t serial -d /dev/ttyS1 -b 921600</code></pre>
+<p>Never start two clients on one UART. In a sourced ROS shell:</p>
+<pre><code>ros2 topic list | sort | grep /fmu/
+ros2 topic info --verbose /fmu/out/vehicle_status_v4
+ros2 topic info --verbose /fmu/in/onboard_computer_status</code></pre>
+<div class="gate"><span class="pass">PASS:</span> stable session and endpoints. <span class="fail">STOP:</span> on reconnect loops.</div></section>
+
+<section id="gated"><h2>14. Gate D — Bidirectional quick test</h2>
+<pre><code>cd ~/PX4-Autopilot
+boards/st/nucleo-h753zi/host/scripts/run_px4_quick_test.sh
+echo $?</code></pre>
+<p>Success requires <code>vehicle_status_v4</code>, <code>timesync_status</code>, and the PX4 inbound reader. Expect exit 0.</p>
+<h3>Prove ROS 2→PX4 uORB delivery</h3>
+<pre><code># ROS host
+boards/st/nucleo-h753zi/host/scripts/run_monitor.sh
+# CN1 NSH while monitor runs
+listener onboard_computer_status -n 5</code></pre>
+<p>Samples must show advancing timestamp/uptime. Temperature 127 is the unavailable sentinel.</p>
+<div class="gate"><span class="pass">PASS:</span> quick test exits 0 and PX4 receives heartbeat samples.</div></section>
+
+<section id="gatee"><h2>15. Gate E — Stability and recovery</h2>
+<pre><code>mkdir -p ~/nucleo_ros2_test_logs
+date_tag=$(date +%Y%m%dT%H%M%S)
+boards/st/nucleo-h753zi/host/scripts/run_monitor.sh \
+  2&gt;&amp;1 | tee ~/nucleo_ros2_test_logs/monitor_$date_tag.log</code></pre>
+<p>Capture agent output too. Run 30 minutes. Status/time sync are mandatory; sensors/odometry may be stale without SIH/HITL.</p>
+<ol><li>Stop agent for five seconds; verify stale reporting; restart and verify recovery without board reboot.</li><li>Leave agent running; reboot board; verify automatic session and topic recovery.</li></ol>
+<p>Reject reconnect loops, hard faults, resets, or failed recovery.</p>
+<div class="gate"><span class="pass">PASS:</span> stability plus both recovery tests recorded.</div></section>
+
+<section id="simulation"><h2>16. Simulation regression</h2>
+<h3>SIH SITL</h3><pre><code># S1
+MicroXRCEAgent udp4 -p 8888
+# S2
+make px4_sitl_sih sihsim_quadx
+# S3
+boards/st/nucleo-h753zi/host/scripts/run_px4_quick_test.sh</code></pre>
+<p>SITL auto-starts XRCE on UDP 8888; do not use the serial wrapper.</p>
+<h3>Gazebo</h3><pre><code>make px4_sitl gz_x500
+# Alternatives: gz_x500_depth, gz_x500_lidar_2d
+boards/st/nucleo-h753zi/host/scripts/run_px4_quick_test.sh
+boards/st/nucleo-h753zi/host/scripts/run_monitor.sh</code></pre>
+<p><code>/fmu</code> needs no <code>ros_gz_bridge</code>; use it only for Gazebo-native sensors/state/clock.</p>
+<h3>SIH on physical board</h3><pre><code>param show SYS_AUTOSTART
+param show SYS_HITL
+param set SYS_AUTOSTART 1100
+param set SYS_HITL 2
+param save
+reboot
+sih status
+uxrce_dds_client status</code></pre>
+<p>Run serial agent/monitor; sensors and odometry should update. Restore:</p>
+<pre><code>param set SYS_AUTOSTART 1001
+param set SYS_HITL 1
+param save
+reboot</code></pre></section>
+
+<section id="hitl"><h2>17. Optional HITL coexistence</h2>
+<pre><code>Simulator/QGC ↔ CN13 ↔ MAVLink HIL
+ROS 2/Agent  ↔ USB-UART ↔ USART6 DDS
+NSH console  ↔ CN1 ↔ USART3</code></pre>
+<ol><li>Restore autostart 1001 and <code>SYS_HITL=1</code>.</li><li>Start agent and monitor.</li><li>Start supported jMAVSim/Gazebo Classic HITL on CN13.</li><li>Verify MAVLink does not own ttyS1.</li><li>Verify <code>listener sensor_combined</code>, ROS rates, <code>top</code>, and work queues.</li></ol>
+<p>See <a href="../hils_ros2_setup.html">HITL setup</a>.</p></section>
+
+<section id="evidence"><h2>18. Evidence and acceptance report</h2>
+<table><thead><tr><th>Evidence</th><th>Required content</th></tr></thead><tbody>
+<tr><td>Source/firmware</td><td>Commit, submodules, dirty state, size log, hash, flash verify.</td></tr><tr><td>Hardware</td><td>Revisions, serials, photo, by-id paths.</td></tr>
+<tr><td>Host</td><td>Ubuntu, ROS, RMW, domain, agent tag.</td></tr><tr><td>Gates</td><td>PASS output/exit codes, parameters, session log, uORB sample, recovery times.</td></tr>
+</tbody></table>
+<pre><code>Test date/operator:
+PX4 commit / firmware SHA-256:
+Board / adapter / by-id:
+Ubuntu / ROS / RMW / ROS_DOMAIN_ID / agent:
+Gate A: PASS / FAIL
+Gate B: PASS / FAIL
+Gate C: PASS / FAIL
+Gate D: PASS / FAIL
+Gate E: PASS / FAIL
+SIH SITL / Gazebo / SIH hardware / HITL:
+Deviations and artifacts:
+Conclusion:</code></pre></section>
+
+<section id="recovery"><h2>19. Cleanup and recovery</h2>
+<pre><code>pgrep -a MicroXRCEAgent || true
+ros2 node list</code></pre>
+<p>Stop agent/monitor with Ctrl-C. Restore 1001/1 parameters. For a non-booting board: disconnect CN13/UART, power with CN1, verify ST-LINK, reflash bootloader at <code>0x08000000</code>, then known-good app at <code>0x08020000</code>, reconnect one interface at a time, and repeat B–D. Restore calibrated parameters from backup.</p></section>
+
+<section id="troubleshooting"><h2>20. Troubleshooting matrix</h2>
+<table><thead><tr><th>Symptom</th><th>Action</th></tr></thead><tbody>
+<tr><td>OpenOCD target absent</td><td>Check CN1, <code>lsusb</code>, udev, probe ownership, ST-LINK firmware.</td></tr>
+<tr><td>Uploader waits</td><td>Power via CN1, connect CN13, press RESET, verify bootloader.</td></tr>
+<tr><td>No NSH</td><td>CN1 VCP at 57600, correct by-id, SB12/SB19 ON.</td></tr>
+<tr><td>Permission denied</td><td>Add dialout, log in again, close competing serial consumers.</td></tr>
+<tr><td>Local DDS timeout</td><td>Match <code>ROS_DOMAIN_ID</code>, RMW, <code>ROS_LOCALHOST_ONLY</code>; inspect firewall/multicast.</td></tr>
+<tr><td>Executable absent</td><td>Rerun workspace setup and source install setup.</td></tr>
+<tr><td>No agent client</td><td>Cross TX/RX, common ground, 3.3 V, 921600, client status.</td></tr>
+<tr><td>Session reset loop</td><td>Short wiring, stable power, baud, agent 2.4.2/v2 client.</td></tr>
+<tr><td>No ROS topics</td><td>Match domain, source workspace, inspect agent entities and schema.</td></tr>
+<tr><td>Status missing</td><td>Use <code>/fmu/out/vehicle_status_v4</code>.</td></tr>
+<tr><td>No time sync</td><td>Check <code>UXRCE_DDS_SYNCT=1</code> and client statistics.</td></tr>
+<tr><td><code>inbound_readers=0</code></td><td>Check namespace, topic YAML, agent reader, schema alignment.</td></tr>
+<tr><td>No uORB heartbeat</td><td>Run sustained monitor and compare topic/QoS/entity creation.</td></tr>
+<tr><td>Sensors stale</td><td>Expected without SIH/HITL.</td></tr>
+<tr><td>DDS fails during HITL</td><td>CN13 for MAVLink, USART6 for DDS; inspect port ownership and CPU/work queues.</td></tr>
+</tbody></table></section>
+
+<section id="references"><h2>21. References</h2><ul>
+<li><a href="ros2_integration_research.html">ROS 2 integration research</a></li><li><a href="../../host/QUICK_TESTS.md">Python quick tests</a></li>
+<li><a href="usart6_minicom_quick_test.html">USART6 minicom hello/echo quick test</a></li>
+<li><a href="../../README.md">Board build/flash documentation</a></li><li><a href="https://docs.px4.io/main/en/dev_setup/dev_env_linux_ubuntu">PX4 Ubuntu setup</a></li>
+<li><a href="https://docs.px4.io/main/en/middleware/uxrce_dds">PX4 uXRCE-DDS/version table</a></li><li><a href="https://docs.px4.io/main/en/ros2/user_guide">PX4 ROS 2 guide</a></li>
+<li><a href="https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html">ROS 2 Humble install</a></li><li><a href="https://micro-xrce-dds.docs.eprosima.com/en/latest/installation.html">Agent install</a></li>
+<li><a href="https://www.st.com/resource/en/user_manual/um2407-stm32h7-nucleo144-board-stmicroelectronics.pdf">ST UM2407</a></li>
+</ul><p class="meta">This runbook is not authorization to arm or fly.</p></section>
+</main></body></html>

@@ -6,7 +6,67 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Module to estimate the position and orientation of a target using relative sensors. The module runs periodically on the px4::wq_configurations::vte queue.
+
+## Description of Module
+
+Estimates visual target state from perception observations and vehicle motion.
+
+### Primary Responsibilities
+
+- Fuse, filter, or validate measurements into estimated state outputs for other modules.
+- Consume runtime inputs from uORB topics such as `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, `home_position`, `navigator_mission_item`, `parameter_update`, `position_setpoint_triplet`, `prec_land_status`, `target_gnss`, ... 6 more.
+- Publish outputs or status topics such as `landing_target_pose`, `vte_aid_ev_yaw`, `vte_aid_fiducial_marker`, `vte_aid_gps_pos_mission`, `vte_aid_gps_pos_target`, `vte_aid_gps_vel_target`, `vte_aid_gps_vel_uav`, `vte_bias_init_status`, ... 3 more.
+- Use module configuration from `vision_target_estimator_params.yaml`.
+- Implement the main behavior in classes such as `KF_orientation`, `OOSMManager`, `VTEOrientation`, `KF_position`, `OOSMManager`, `VTEPosition`, ... 14 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `vte`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+The vision target estimator uses Kalman filters for target position/orientation and compensates relative observations into the navigation frame.
+
+```text
+Prediction:
+x[k|k-1] = F(dt) * x[k-1|k-1]
+P[k|k-1] = F * P * F^T + Q
+
+Vision position observation:
+z = R_body_to_ned * p_target_body + p_vehicle_ned
+y = z - H*x
+S = H*P*H^T + R
+K = P*H^T*inverse(S)
+x = x + K*y
+
+Yaw innovations are wrapped to [-pi, pi].
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, `home_position`, `navigator_mission_item`, `parameter_update`, `position_setpoint_triplet`, `prec_land_status`, `target_gnss`, `vehicle_acceleration`, `vehicle_angular_velocity`, ... 4 more |
+| Primary outputs | `landing_target_pose`, `vte_aid_ev_yaw`, `vte_aid_fiducial_marker`, `vte_aid_gps_pos_mission`, `vte_aid_gps_pos_target`, `vte_aid_gps_vel_target`, `vte_aid_gps_vel_uav`, `vte_bias_init_status`, `vte_input`, `vte_orientation`, ... 1 more |
+| Referenced topics | `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, `home_position`, `landing_target_pose`, `navigator_mission_item`, `parameter_update`, `position_setpoint_triplet`, `prec_land_status`, `sensor_gps`, `target_gnss`, ... 18 more |
+| Parameters/config | vision_target_estimator_params.yaml |
+| Key classes | `KF_orientation`, `OOSMManager`, `VTEOrientation`, `KF_position`, `OOSMManager`, `VTEPosition`, `ObsType`, `PreBiasReference`, `OOSMManager`, `VisionTargetEstTest`, ... 10 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| VisionTargetEst.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| vision_target_estimator_params.yaml | Build, parameter, or module configuration |
+| Orientation/KF_orientation.h | Defines `KF_orientation` class |
+| Orientation/VTEOrientation.h | Defines `VTEOrientation` class |
+| Position/KF_position.h | Defines `KF_position` class |
 
 ## Architecture Overview
 

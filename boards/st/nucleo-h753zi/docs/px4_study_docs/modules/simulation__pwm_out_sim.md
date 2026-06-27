@@ -6,7 +6,48 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Driver for simulated PWM outputs. Its only function is to take `actuator_control` uORB messages, mix them with any loaded mixer and output the result to the `actuator_output` uORB topic. It is used in SITL and HITL.
+
+## Description of Module
+
+Simulates PWM output behavior for HIL and simulator actuator paths.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Consume runtime inputs from uORB topics such as `parameter_update`.
+- Publish outputs or status topics such as `actuator_outputs_sim`.
+- Use module configuration files such as `module_hil.yaml`, `module_sim.yaml`.
+- Implement the main behavior in classes such as `PWMSim`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update` |
+| Primary outputs | `actuator_outputs_sim` |
+| Referenced topics | `actuator_outputs_sim`, `parameter_update` |
+| Parameters/config | `module_hil.yaml`, `module_sim.yaml` |
+| Key classes | `PWMSim` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| PWMSim.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| module_hil.yaml | Build, parameter, or module configuration |
+| module_sim.yaml | Build, parameter, or module configuration |
+| PWMSim.hpp | Defines `PWMSim` class |
 
 ## Architecture Overview
 
@@ -45,7 +86,7 @@ classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;
 | Build target | modules__simulation__pwm_out_sim |
 | Runtime main | pwm_out_sim |
 | Stack main | Not specified |
-| Module config | ${module_config} |
+| Module config | Not specified |
 | Detected sources | 1 |
 | Detected headers | 1 |
 | Detected configs | 3 |

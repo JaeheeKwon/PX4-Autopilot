@@ -6,7 +6,56 @@
 - Build kind: `px4 module`
 - Mermaid palette: `ash` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Online magnetometer bias estimator.
+
+## Description of Module
+
+Estimates magnetometer bias and publishes bias corrections for estimator use.
+
+### Primary Responsibilities
+
+- Fuse, filter, or validate measurements into estimated state outputs for other modules.
+- Consume runtime inputs from uORB topics such as `parameter_update`, `vehicle_angular_velocity`, `vehicle_status`.
+- Publish outputs or status topics such as `magnetometer_bias_estimate`.
+- Use module configuration from `params.yaml`.
+- Implement the main behavior in classes such as `MagBiasEstimator`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Magnetic bias estimation compares measured magnetic field with the field predicted from attitude and world magnetic model.
+
+```text
+m_pred_body = R_ned_to_body * m_world
+innovation = m_meas_body - (m_pred_body + bias)
+bias[k] = bias[k-1] + K_bias * innovation
+P_bias[k] = (I - K_bias*H) * P_bias[k-1]
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update`, `vehicle_angular_velocity`, `vehicle_status` |
+| Primary outputs | `magnetometer_bias_estimate` |
+| Referenced topics | `magnetometer_bias_estimate`, `parameter_update`, `sensor_mag`, `vehicle_angular_velocity`, `vehicle_status` |
+| Parameters/config | params.yaml |
+| Key classes | `MagBiasEstimator` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| MagBiasEstimator.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| params.yaml | Build, parameter, or module configuration |
+| MagBiasEstimator.hpp | Defines `MagBiasEstimator` class |
 
 ## Architecture Overview
 

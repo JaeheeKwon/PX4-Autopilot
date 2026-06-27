@@ -31,7 +31,7 @@ flowchart LR
 The board uses two independent host links:
 
 - USB CN13 remains dedicated to MAVLink HITL and QGroundControl.
-- USART6 on CN10 D0/D1 is dedicated to uXRCE-DDS.
+- USART6 on the Morpho headers is dedicated to uXRCE-DDS.
 
 Do not try to share the same serial port between MAVLink and uXRCE-DDS.
 
@@ -72,18 +72,12 @@ MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600
 
 ### Boot-time start
 
-Copy the reference startup hook into the board init directory:
+Boot-time start is integrated through PX4's generated serial configuration.
+`default.px4board` maps TEL1 to `/dev/ttyS1`, and `rc.board_defaults` selects
+TEL1 for DDS at 921600 baud. The generated `rc.serial` script starts the client
+after board defaults are applied.
 
-```sh
-cp boards/st/nucleo-h753zi/ros2_ref/config/rc.board_extras \
-   boards/st/nucleo-h753zi/init/rc.board_extras
-```
-
-Rebuild and flash. PX4 copies `init/rc.board_extras` into ROMFS and sources it
-late in `rcS`, after normal board defaults, airframe setup, and core modules
-have started.
-
-The reference startup hook:
+The integrated startup:
 
 - Keeps `UXRCE_DDS_DOM_ID=0`, matching the ROS 2 default domain.
 - Keeps `UXRCE_DDS_KEY=1`, suitable for a single board and single agent.
@@ -94,8 +88,8 @@ The reference startup hook:
 
 | Nucleo header | MCU pin | Signal | USB-UART adapter |
 |---|---|---|---|
-| CN10 D0 | PG9 | USART6 RX | TX |
-| CN10 D1 | PG14 | USART6 TX | RX |
+| CN11 pin 63 | PG9 | USART6 RX | TX |
+| CN12 pin 61 | PG14 | USART6 TX | RX |
 | GND | GND | Ground | GND |
 
 Use a short ground-connected cable and a 3.3 V adapter. If the agent never
@@ -146,4 +140,3 @@ For multi-vehicle work, start the PX4 client with `-n uav_0` or set
 ```
 
 The reference node accepts a `px4_namespace` parameter for this case.
-

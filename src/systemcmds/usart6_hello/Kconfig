@@ -1,0 +1,6 @@
+menuconfig SYSTEMCMDS_USART6_HELLO
+	bool "usart6_hello"
+	default n
+	depends on PLATFORM_NUTTX
+	---help---
+		Enable the small interactive UART hello/echo diagnostic command.

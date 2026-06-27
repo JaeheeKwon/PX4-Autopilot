@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MPU and NuttX Protected Build Exploration</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+.header { border-bottom: 1px solid var(--line); background: var(--surface); }
+.header-inner { max-width: var(--content); margin: 0 auto; padding: 2rem 1.25rem 1.5rem; }
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+h1 { max-width: 920px; margin: 0; font-size: clamp(2rem, 4vw, 3.35rem); line-height: 1.08; letter-spacing: 0; }
+.lede { max-width: 920px; margin: 1rem 0 0; color: var(--muted); font-size: 1.04rem; }
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] { border-color: var(--accent); background: #dbece7; color: var(--accent-dark); }
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 { margin: 0 0 0.75rem; font-size: 0.88rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a { color: #354345; font-size: 0.9rem; text-decoration: none; }
+.toc a:hover { color: var(--accent-dark); text-decoration: underline; }
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+main h1 { font-size: 2rem; }
+h2 { margin-top: 2rem; padding-top: 0.3rem; border-top: 1px solid var(--line); font-size: 1.65rem; line-height: 1.2; letter-spacing: 0; }
+h2:first-child { border-top: 0; }
+h3 { margin-top: 1.4rem; font-size: 1.15rem; line-height: 1.25; letter-spacing: 0; }
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+th, td { padding: 0.58rem 0.7rem; border: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-alt); text-align: left; }
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  overflow-x: auto;
+}
+.admonition {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+}
+.admonition-title { margin: 0 0 0.35rem; font-weight: 700; color: var(--accent-dark); }
+.footer { max-width: var(--content); margin: 0 auto; padding: 0 1.25rem 2rem; color: var(--muted); font-size: 0.9rem; }
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc { position: relative; top: 0; max-height: none; margin-bottom: 1rem; }
+}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>MPU and NuttX Protected Build Exploration</h1>
+      <p class="lede">How to explore ARM Cortex-M7 MPU-backed kernel/user separation for selected PX4 modules on the Nucleo-H753ZI target.</p>
+    </div>
+  </header>
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="../../index.html">Middleware</a>
+    <a href="../../flight_controller_software_architecture.html">PX4 Flight Controller Software Architecture</a>
+    <a href="../../uorb_architecture.html">uORB Middleware Architecture Deep Dive</a>
+    <a href="../README.html">ST Nucleo-H753ZI PX4 Board Support</a>
+    <a href="hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a>
+    <a href="auto_flight_waypoint_mission.html">Automatic Flight with Stored Waypoints</a>
+    <a href="custom_module_board_build.html">Custom Module Board Build</a>
+    <a href="mpu_nuttx_protected_build.html" aria-current="page">MPU Protected Build</a>
+  </nav>
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#summary">Summary</a></li>
+        <li><a href="#current-nucleo-h753zi-state">Current State</a></li>
+        <li><a href="#px4-and-nuttx-switches">PX4 and NuttX Switches</a></li>
+        <li><a href="#add-user-space-selection-to-a-custom-module">Custom Module</a></li>
+        <li><a href="#create-a-protected-board-variant">Board Variant</a></li>
+        <li><a href="#create-the-protected-nuttx-config">NuttX Config</a></li>
+        <li><a href="#protected-linker-layout">Linker Layout</a></li>
+        <li><a href="#runtime-access-model">Runtime Access</a></li>
+        <li><a href="#validation-plan">Validation Plan</a></li>
+        <li><a href="#functional-safety-notes">Safety Notes</a></li>
+        <li><a href="#recommended-exploration-path">Exploration Path</a></li>
+      </ul>
+    </aside>
+    <main>
+      <h1 id="mpu-and-nuttx-protected-build-exploration">MPU and NuttX Protected Build Exploration</h1>
+      <p>This document describes how to explore memory protection on the ST Nucleo-H753ZI PX4 target using the ARM Cortex-M7 MPU and NuttX protected build mode.</p>
+      <p>The goal is fault containment: move selected PX4 modules into unprivileged user space so they cannot directly access protected kernel memory or hardware registers. This is useful for functional-safety exploration, but it is not a complete safety argument by itself.</p>
+      <p>The markdown source for this page is <a href="mpu_nuttx_protected_build.md">mpu_nuttx_protected_build.md</a>.</p>
+
+      <h2 id="summary">Summary</h2>
+      <p>PX4 on NuttX normally runs as a flat firmware image. In a flat build, modules, drivers, middleware, and startup code share the same privilege level and address space.</p>
+      <p>NuttX protected build changes that model:</p>
+      <div class="mermaid">
+flowchart LR
+    subgraph flash["Firmware image"]
+        kernel["Kernel blob&lt;br/&gt;privileged"]
+        user["User blob&lt;br/&gt;unprivileged"]
+    end
+
+    subgraph kernel_side["Kernel side"]
+        drivers["Hardware drivers"]
+        critical["Critical PX4 modules"]
+        kernel_uorb["uORB kernel interface"]
+    end
+
+    subgraph user_side["User side"]
+        app["Less-trusted PX4 module"]
+        user_uorb["uORB user interface"]
+    end
+
+    mpu["ARMv7-M MPU&lt;br/&gt;region permissions"]
+
+    kernel --&gt; kernel_side
+    user --&gt; user_side
+    mpu --&gt; kernel
+    mpu --&gt; user
+    app -- "syscalls / file descriptors / ioctl / uORB" --&gt; kernel_side
+      </div>
+      <p>The practical result is a two-domain split:</p>
+      <table>
+        <thead><tr><th>Domain</th><th>Privilege</th><th>Typical contents</th></tr></thead>
+        <tbody>
+          <tr><td>Kernel space</td><td>Privileged</td><td>NuttX kernel, low-level board code, hardware drivers, safety-critical PX4 modules.</td></tr>
+          <tr><td>User space</td><td>Unprivileged</td><td>Selected PX4 modules and system commands that should not directly touch kernel memory or peripherals.</td></tr>
+        </tbody>
+      </table>
+      <p>This is not per-module address-space isolation. User-space modules still share the user-space blob and user heap, so one user module can still corrupt another user module. The MPU boundary is mainly between privileged kernel space and unprivileged user space.</p>
+
+      <h2 id="current-nucleo-h753zi-state">Current Nucleo-H753ZI State</h2>
+      <p>The current <code>st_nucleo-h753zi_default</code> target is a flat NuttX build.</p>
+      <table>
+        <thead><tr><th>Area</th><th>Current state</th></tr></thead>
+        <tbody>
+          <tr><td>Board PX4 config</td><td><code>boards/st/nucleo-h753zi/default.px4board</code> does not enable <code>CONFIG_BOARD_PROTECTED</code>.</td></tr>
+          <tr><td>NuttX config</td><td><code>boards/st/nucleo-h753zi/nuttx-config/nsh/defconfig</code> does not enable <code>CONFIG_BUILD_PROTECTED</code>.</td></tr>
+          <tr><td>MPU</td><td><code>CONFIG_ARM_MPU_EARLY_RESET=y</code> is present, but protected user/kernel separation is not enabled.</td></tr>
+          <tr><td>Linker layout</td><td><code>boards/st/nucleo-h753zi/nuttx-config/scripts/script.ld</code> uses a single application flash/RAM layout.</td></tr>
+          <tr><td>STM32H7 status</td><td>The NuttX STM32H7 protected-build path is marked WIP and requires <code>CONFIG_EXPERIMENTAL</code>.</td></tr>
+        </tbody>
+      </table>
+      <p>Because of that, MPU-backed user/kernel isolation is an exploration item for this board, not a drop-in production feature.</p>
+
+      <h2 id="px4-and-nuttx-switches">PX4 and NuttX Switches</h2>
+      <h3>NuttX protected build</h3>
+      <p>NuttX creates the protected execution model with:</p>
+      <pre><code>CONFIG_BUILD_PROTECTED=y
+CONFIG_ARM_MPU=y
+CONFIG_NUTTX_USERSPACE=&lt;user_flash_start&gt;</code></pre>
+      <p><code>CONFIG_BUILD_PROTECTED=y</code> builds NuttX and selected applications as two separately linked objects:</p>
+      <table>
+        <thead><tr><th>Object</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Kernel blob</td><td>Privileged code and kernel data.</td></tr>
+          <tr><td>User blob</td><td>Unprivileged code and user data.</td></tr>
+        </tbody>
+      </table>
+      <p><code>CONFIG_NUTTX_USERSPACE</code> must match the start address of the user-space blob in the protected linker layout.</p>
+      <h3>PX4 module placement</h3>
+      <p>PX4 enables its module-placement logic with:</p>
+      <pre><code>CONFIG_BOARD_PROTECTED=y</code></pre>
+      <p>For each module, PX4 then uses <code>CONFIG_USER_&lt;MODULE&gt;</code> to decide whether the module should be linked into user space.</p>
+      <pre><code>CONFIG_MODULES_MY_AUTO_WP=y
+CONFIG_USER_MY_AUTO_WP=y</code></pre>
+      <ul>
+        <li>Enabled modules with <code>CONFIG_USER_&lt;MODULE&gt;=y</code> are linked into user space.</li>
+        <li>Enabled modules without a user-space marker are linked into kernel space.</li>
+        <li>Kernel-side modules link against kernel-facing PX4 interfaces such as <code>px4_kernel_layer</code> and <code>uORB_kernel</code>.</li>
+        <li>User-side modules link against user-facing PX4 interfaces such as <code>px4_layer</code> and normal <code>uORB</code>.</li>
+      </ul>
+
+      <h2 id="add-user-space-selection-to-a-custom-module">Add User-Space Selection to a Custom Module</h2>
+      <p>For a custom module in:</p>
+      <pre><code>src/modules/my_auto_wp/</code></pre>
+      <p>add both the normal module symbol and the protected-build user-space symbol to <code>src/modules/my_auto_wp/Kconfig</code>:</p>
+      <pre><code class="language-kconfig">menuconfig MODULES_MY_AUTO_WP
+	bool "my_auto_wp"
+	default n
+	---help---
+		Enable my_auto_wp
+
+menuconfig USER_MY_AUTO_WP
+	bool "my_auto_wp running as userspace module"
+	default y
+	depends on BOARD_PROTECTED &amp;&amp; MODULES_MY_AUTO_WP
+	---help---
+		Put my_auto_wp in userspace memory</code></pre>
+      <p>Use <code>default y</code> for modules that should normally move to user space when a protected board build is selected. Use <code>default n</code> when the module should remain kernel-side unless explicitly requested.</p>
+
+      <h2 id="create-a-protected-board-variant">Create a Protected Board Variant</h2>
+      <p>Use a separate variant instead of changing the default board image.</p>
+      <pre><code>boards/st/nucleo-h753zi/protected.px4board</code></pre>
+      <p>For non-default PX4 board labels, the build merges <code>default.px4board</code> with the variant <code>.px4board</code>, so the variant should contain only the differences:</p>
+      <pre><code>CONFIG_BOARD_PROTECTED=y
+CONFIG_MODULES_MY_AUTO_WP=y
+CONFIG_USER_MY_AUTO_WP=y</code></pre>
+      <p>Build target:</p>
+      <pre><code class="language-sh">make st_nucleo-h753zi_protected</code></pre>
+      <p>PX4 chooses the NuttX config directory by board label. Because the label is <code>protected</code>, the build expects:</p>
+      <pre><code>boards/st/nucleo-h753zi/nuttx-config/protected/defconfig</code></pre>
+      <p>If that directory does not exist, PX4 falls back to the normal <code>nsh</code> NuttX config, which is not sufficient for a protected build.</p>
+
+      <h2 id="create-the-protected-nuttx-config">Create the Protected NuttX Config</h2>
+      <p>Start from the current Nucleo-H753ZI <code>nsh</code> defconfig, then enable the protected build options through menuconfig or defconfig generation.</p>
+      <pre><code>CONFIG_EXPERIMENTAL=y
+CONFIG_BUILD_PROTECTED=y
+CONFIG_ARM_MPU=y
+CONFIG_ARM_MPU_EARLY_RESET=y
+CONFIG_ARM_MPU_NREGIONS=8
+CONFIG_NUTTX_USERSPACE=&lt;user_flash_start&gt;
+CONFIG_MM_KERNEL_HEAP=y
+CONFIG_MM_KERNEL_HEAPSIZE=&lt;kernel_heap_bytes&gt;</code></pre>
+      <p>The existing FMU-v5 protected target is the closest PX4 reference:</p>
+      <pre><code>boards/px4/fmu-v5/protected.px4board
+boards/px4/fmu-v5/nuttx-config/protected/defconfig
+boards/px4/fmu-v5/nuttx-config/scripts/memory.ld
+boards/px4/fmu-v5/nuttx-config/scripts/kernel-space.ld
+boards/px4/fmu-v5/nuttx-config/scripts/user-space.ld</code></pre>
+      <p>Do not copy those addresses directly. They are for STM32F7, not STM32H753.</p>
+
+      <h2 id="protected-linker-layout">Protected Linker Layout</h2>
+      <p>The current Nucleo-H753ZI linker script uses one application flash region and one main application RAM region. A protected build needs a split layout.</p>
+      <pre><code>kflash  privileged text/rodata
+uflash  unprivileged text/rodata/userspace header
+
+ksram   privileged data/bss/kernel heap
+usram   unprivileged data/bss/user heap</code></pre>
+      <table>
+        <thead><tr><th>Script</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>memory.ld</code></td><td>Defines <code>kflash</code>, <code>uflash</code>, <code>ksram</code>, <code>usram</code>, and any extra RAM regions.</td></tr>
+          <tr><td><code>kernel-space.ld</code></td><td>Places vectors and privileged kernel sections into kernel regions.</td></tr>
+          <tr><td><code>user-space.ld</code></td><td>Places the <code>userspace</code> header and user sections into user regions.</td></tr>
+        </tbody>
+      </table>
+      <p>The user flash start in <code>memory.ld</code> must match <code>CONFIG_NUTTX_USERSPACE</code>.</p>
+      <table>
+        <thead><tr><th>Region</th><th>Existing constraint</th></tr></thead>
+        <tbody>
+          <tr><td><code>0x08000000</code> to <code>0x0801ffff</code></td><td>PX4 bootloader area.</td></tr>
+          <tr><td><code>0x08020000</code> onward</td><td>Application firmware starts here in the current flat image.</td></tr>
+          <tr><td>Upper flash sectors</td><td>Reserved by the current board layout for LittleFS/parameter storage.</td></tr>
+        </tbody>
+      </table>
+      <p>Use flash-sector-aligned boundaries. Do not place user flash over the bootloader or the LittleFS parameter sectors.</p>
+
+      <h2 id="runtime-access-model">Runtime Access Model</h2>
+      <p>A user-space PX4 module should access the system through existing OS and PX4 interfaces:</p>
+      <table>
+        <thead><tr><th>Need</th><th>Preferred access path</th></tr></thead>
+        <tbody>
+          <tr><td>Publish or subscribe data</td><td>uORB</td></tr>
+          <tr><td>Read parameters</td><td>PX4 parameter API</td></tr>
+          <tr><td>Use a hardware device</td><td>File descriptor, driver API, or ioctl exposed by a kernel-side driver</td></tr>
+          <tr><td>Send diagnostics</td><td>events, logging, or mavlink-facing APIs</td></tr>
+          <tr><td>Request mode changes</td><td>commander-facing APIs or published command topics</td></tr>
+        </tbody>
+      </table>
+      <p>Avoid direct register access and raw kernel pointer sharing in user-space modules. If a user-space module needs hardware access, keep the hardware driver kernel-side and expose a narrow checked interface.</p>
+
+      <h2 id="validation-plan">Validation Plan</h2>
+      <h3>Build-time checks</h3>
+      <ol>
+        <li>Confirm <code>build/st_nucleo-h753zi_protected/boardconfig</code> contains <code>CONFIG_BOARD_PROTECTED=y</code>.</li>
+        <li>Confirm the NuttX <code>.config</code> contains <code>CONFIG_BUILD_PROTECTED=y</code>.</li>
+        <li>Confirm the user-space module appears as <code>CONFIG_USER_MY_AUTO_WP=y</code>.</li>
+        <li>Inspect generated map files and symbols to verify the module is linked into the user blob, not the kernel blob.</li>
+      </ol>
+      <h3>Runtime positive tests</h3>
+      <ol>
+        <li>Boot the board and confirm the normal shell still starts.</li>
+        <li>Start the user-space module:</li>
+      </ol>
+      <pre><code class="language-sh">my_auto_wp start
+my_auto_wp status</code></pre>
+      <ol start="3">
+        <li>Verify normal uORB publish/subscribe behavior.</li>
+        <li>Verify parameter reads and writes if the module uses parameters.</li>
+        <li>Run the normal HITL workflow and check for timing regressions.</li>
+      </ol>
+      <h3>Runtime negative tests</h3>
+      <p>Add a temporary fault-injection command to the user-space module and verify that protection triggers as expected.</p>
+      <table>
+        <thead><tr><th>Fault</th><th>Expected result</th></tr></thead>
+        <tbody>
+          <tr><td>Read from a kernel-only RAM address</td><td>Memory fault or controlled crash path.</td></tr>
+          <tr><td>Write to a kernel-only RAM address</td><td>Memory fault or controlled crash path.</td></tr>
+          <tr><td>Direct write to a peripheral register</td><td>Memory fault if the region is not user-accessible.</td></tr>
+          <tr><td>Stack overflow in user module</td><td>Detectable failure without silent corruption of kernel data.</td></tr>
+        </tbody>
+      </table>
+      <p>Record the fault, reset behavior, crash dump, and whether critical state is preserved well enough for the intended safety concept.</p>
+
+      <h2 id="functional-safety-notes">Functional-Safety Notes</h2>
+      <p>MPU isolation is only one mechanism in a safety architecture.</p>
+      <table>
+        <thead><tr><th>Limitation</th><th>Impact</th></tr></thead>
+        <tbody>
+          <tr><td>User modules share user space</td><td>MPU protection does not isolate user modules from each other.</td></tr>
+          <tr><td>MPU regions are limited</td><td>Region count and alignment constraints force coarse partitions.</td></tr>
+          <tr><td>DMA is not constrained by the CPU MPU</td><td>Drivers using DMA still need careful buffer ownership, cache management, and hardware-level controls.</td></tr>
+          <tr><td>Timing changes</td><td>Syscalls, protected interfaces, and extra checks can affect latency and scheduling.</td></tr>
+          <tr><td>STM32H7 support is WIP in this tree</td><td>Treat this as an engineering exploration before any safety claim.</td></tr>
+        </tbody>
+      </table>
+      <p>Evidence needed for a safety argument includes hazard analysis, allocation of critical and non-critical software, interface contracts, fault-injection evidence, timing analysis, and regression tests.</p>
+
+      <h2 id="recommended-exploration-path">Recommended Exploration Path</h2>
+      <ol>
+        <li>Build and inspect an existing protected reference target such as <code>px4_fmu-v5_protected</code>.</li>
+        <li>Add <code>USER_MY_AUTO_WP</code> to a custom, non-critical Nucleo module.</li>
+        <li>Create <code>st_nucleo-h753zi_protected</code> as a separate board variant.</li>
+        <li>Add a matching <code>nuttx-config/protected</code> config and protected linker layout.</li>
+        <li>Bring up the board with only one user-space module.</li>
+        <li>Add controlled memory fault tests.</li>
+        <li>Move additional non-critical modules to user space only after the first module is stable.</li>
+      </ol>
+      <p>Keep flight-critical hardware drivers and minimal safety-monitoring logic in kernel space until the protected build, interfaces, and timing are well characterized.</p>
+    </main>
+  </div>
+  <footer class="footer">
+    <p>Standalone HTML version of <a href="mpu_nuttx_protected_build.md">mpu_nuttx_protected_build.md</a>.</p>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, securityLevel: "loose" });
+  </script>
+</body>
+</html>

@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Groups simulation-related module targets and shared simulation support.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.</li><li>Consume runtime inputs from uORB topics such as `actuator_outputs`, `actuator_outputs_sim`, `battery_status`, `gimbal_controls`, `gimbal_device_set_attitude`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_groundtruth`, ... 5 more.</li><li>Publish outputs or status topics such as `actuator_outputs_sim`, `airspeed`, `aux_global_position`, `differential_pressure`, `distance_sensor`, `esc_status`, `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, ... 20 more.</li><li>Use module configuration files such as `battery_simulator/battery_simulator_params.yaml`, `gz_bridge/module.yaml`, `gz_bridge/parameters.yaml`, `pwm_out_sim/module_hil.yaml`, `pwm_out_sim/module_sim.yaml`, `sensor_agp_sim/parameters.yaml`, ... 5 more.</li><li>Implement the main behavior in classes such as `BatterySimulator`, `GZBridge`, `GZGimbal`, `GZBridge`, `GZMixingInterfaceESC`, `GZBridge`, ... 47 more.</li><li>Organize nested module targets: `battery_simulator`, `gz_bridge`, `pwm_out_sim`, `sensor_agp_sim`, `sensor_airspeed_sim`, `sensor_baro_sim`, ... 5 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `hp_default`, `rate_ctrl`.</li><li>Also contains explicit task-spawn code or helper task creation in this module tree.</li><li>Uses a `run()` loop style module body for repeated execution.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li><li>Waits on file descriptors or uORB subscriptions with `px4_poll()`.</li><li>Creates an additional pthread helper context.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`actuator_outputs`, `actuator_outputs_sim`, `battery_status`, `gimbal_controls`, `gimbal_device_set_attitude`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_groundtruth`, `vehicle_command`, `vehicle_global_position_groundtruth`, ... 3 more</td></tr><tr><td>Primary outputs</td><td>`actuator_outputs_sim`, `airspeed`, `aux_global_position`, `differential_pressure`, `distance_sensor`, `esc_status`, `fiducial_marker_pos_report`, `fiducial_marker_yaw_report`, `gimbal_device_attitude_status`, `gimbal_device_information`, ... 18 more</td></tr><tr><td>Referenced topics</td><td>`actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `aux_global_position`, `battery_status`, `differential_pressure`, `distance_sensor`, `esc_report`, `esc_status`, `fiducial_marker_pos_report`, ... 32 more</td></tr><tr><td>Parameters/config</td><td>`battery_simulator/battery_simulator_params.yaml`, `gz_bridge/module.yaml`, `gz_bridge/parameters.yaml`, `pwm_out_sim/module_hil.yaml`, `pwm_out_sim/module_sim.yaml`, `sensor_agp_sim/parameters.yaml`, `sensor_airspeed_sim/parameters.yaml`, `sensor_baro_sim/parameters.yaml`, `sensor_gps_sim/parameters.yaml`, `sensor_mag_sim/parameters.yaml`, ... 1 more</td></tr><tr><td>Key classes</td><td>`BatterySimulator`, `GZBridge`, `GZGimbal`, `GZBridge`, `GZMixingInterfaceESC`, `GZBridge`, `GZMixingInterfaceServo`, `GZBridge`, `GZMixingInterfaceWheel`, `GZBridge`, ... 43 more</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>battery_simulator/BatterySimulator.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>gz_bridge/GZBridge.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>gz_bridge/GZGimbal.cpp</td><td>Work-item callback or main runtime update path</td></tr><tr><td>gz_bridge/GZMixingInterfaceESC.cpp</td><td>Work-item callback or main runtime update path</td></tr><tr><td>gz_bridge/GZMixingInterfaceServo.cpp</td><td>Work-item callback or main runtime update path</td></tr><tr><td>battery_simulator/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>battery_simulator/battery_simulator_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>battery_simulator/BatterySimulator.hpp</td><td>Defines `BatterySimulator` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +169,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/simulation</td></tr><tr><td>Build kind</td><td>directory</td></tr><tr><td>Build target</td><td>simulation</td></tr><tr><td>Runtime main</td><td>simulation</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>Not specified</td></tr><tr><td>Detected sources</td><td>31</td></tr><tr><td>Detected headers</td><td>31</td></tr><tr><td>Detected configs</td><td>35</td></tr></tbody></table>
 

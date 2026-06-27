@@ -6,7 +6,52 @@
 - Build kind: `px4 module`
 - Mermaid palette: `ash` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+This implements the setpoint generation for all modes. It takes the current mode state of the vehicle as input and outputs setpoints for controllers.
+
+## Description of Module
+
+Selects and runs multicopter flight-mode tasks that generate trajectory and control setpoints.
+
+### Primary Responsibilities
+
+- Coordinate higher-level vehicle behavior rather than directly driving actuators.
+- Consume runtime inputs from uORB topics such as `follow_target`, `follow_target_estimator`, `gimbal_device_attitude_status`, `gimbal_manager_status`, `home_position`, `parameter_update`, `position_setpoint_triplet`, `prec_land_status`, ... 9 more.
+- Publish outputs or status topics such as `follow_target_estimator`, `follow_target_status`, `gimbal_manager_set_attitude`, `landing_gear`, `orbit_status`, `trajectory_setpoint`, `vehicle_command`, `vehicle_constraints`.
+- Use module configuration files such as `tasks/AutoFollowTarget/follow_target_params.yaml`, `tasks/ManualAccelerationSlow/flight_task_acceleration_slow_params.yaml`, `tasks/Orbit/flight_task_orbit_params.yaml`.
+- Implement the main behavior in classes such as `FlightTaskError`, `FlightModeManager`, `FlightTaskAltitudeCruise`, `WaypointType`, `yaw_mode`, `FlightTaskAuto`, ... 20 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `follow_target`, `follow_target_estimator`, `gimbal_device_attitude_status`, `gimbal_manager_status`, `home_position`, `parameter_update`, `position_setpoint_triplet`, `prec_land_status`, `takeoff_status`, `vehicle_attitude_setpoint`, ... 7 more |
+| Primary outputs | `follow_target_estimator`, `follow_target_status`, `gimbal_manager_set_attitude`, `landing_gear`, `orbit_status`, `trajectory_setpoint`, `vehicle_command`, `vehicle_constraints` |
+| Referenced topics | `follow_target`, `follow_target_estimator`, `follow_target_status`, `gimbal_device_attitude_status`, `gimbal_manager_set_attitude`, `gimbal_manager_status`, `home_position`, `landing_gear`, `manual_control_setpoint`, `orbit_status`, ... 16 more |
+| Parameters/config | `tasks/AutoFollowTarget/follow_target_params.yaml`, `tasks/ManualAccelerationSlow/flight_task_acceleration_slow_params.yaml`, `tasks/Orbit/flight_task_orbit_params.yaml` |
+| Key classes | `FlightTaskError`, `FlightModeManager`, `FlightTaskAltitudeCruise`, `WaypointType`, `yaw_mode`, `FlightTaskAuto`, `as`, `to`, `FlightTask`, `FlightTaskAutoFollowTarget`, ... 16 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| FlightModeManager.cpp | Entry point, start command, or module lifecycle code |
+| tasks/AutoFollowTarget/follow_target_estimator/TargetEstimator.cpp | Work-item callback or main runtime update path |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| tasks/AltitudeCruise/CMakeLists.txt | Build, parameter, or module configuration |
+| tasks/Auto/CMakeLists.txt | Build, parameter, or module configuration |
+| tasks/AutoFollowTarget/CMakeLists.txt | Build, parameter, or module configuration |
+| tasks/AutoFollowTarget/follow_target_estimator/CMakeLists.txt | Build, parameter, or module configuration |
+| FlightModeManager.hpp | Defines `FlightTaskError` class |
 
 ## Architecture Overview
 

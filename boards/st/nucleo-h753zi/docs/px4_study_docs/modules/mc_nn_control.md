@@ -6,7 +6,57 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Multicopter Neural Network Control module. This module is an end-to-end neural network control system for multicopters. It takes in 15 input values and outputs 4 control actions. Inputs: [pos_err(3), att(6), vel(3), ang_vel(3)] Outputs: [Actuator motors(4)]
+
+## Description of Module
+
+Runs an experimental neural-network multicopter control path.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `arming_check_request`, `manual_control_setpoint`, `parameter_update`, `register_ext_component_reply`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_local_position`, ... 1 more.
+- Publish outputs or status topics such as `actuator_motors`, `arming_check_reply`, `config_control_setpoints`, `neural_control`, `register_ext_component_request`, `unregister_ext_component`.
+- Use module configuration from `mc_nn_control_params.yaml`.
+- Implement the main behavior in classes such as `MulticopterNeuralNetworkControl`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+The neural-network controller evaluates a learned policy. Its math is feed-forward inference from normalized state features to actuator or setpoint outputs.
+
+```text
+a_0 = normalize(observation)
+for layer l:
+  a_l = activation(W_l * a_{l-1} + b_l)
+output = denormalize(a_L)
+command = constrain(output, command_min, command_max)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `arming_check_request`, `manual_control_setpoint`, `parameter_update`, `register_ext_component_reply`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_local_position`, `vehicle_status` |
+| Primary outputs | `actuator_motors`, `arming_check_reply`, `config_control_setpoints`, `neural_control`, `register_ext_component_request`, `unregister_ext_component` |
+| Referenced topics | `actuator_motors`, `arming_check_reply`, `arming_check_request`, `config_control_setpoints`, `manual_control_setpoint`, `neural_control`, `parameter_update`, `register_ext_component_reply`, `register_ext_component_request`, `trajectory_setpoint`, ... 6 more |
+| Parameters/config | mc_nn_control_params.yaml |
+| Key classes | `MulticopterNeuralNetworkControl` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| mc_nn_control.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| mc_nn_control_params.yaml | Build, parameter, or module configuration |
+| mc_nn_control.hpp | Defines `MulticopterNeuralNetworkControl` class |
 
 ## Architecture Overview
 

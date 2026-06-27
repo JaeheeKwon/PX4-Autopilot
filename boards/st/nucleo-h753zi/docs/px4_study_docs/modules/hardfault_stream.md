@@ -6,7 +6,46 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Background process that streams the latest hardfault via MAVLink. The module is especially useful when it is necessary to quickly push a hard fault to the ground station. This is useful in cases where the drone experiences a hard fault during flight. It ensures that some data is retained in case the permanent storage is destroyed during a crash. To reliably stream, it is necessary to send the STATUSTEXT message via MAVLink at a high enough frequency. The recommended frequency is 10 Hz or higher.
+
+## Description of Module
+
+Streams hardfault information so crash data can be retrieved after a fault.
+
+### Primary Responsibilities
+
+- Reference uORB topics such as `mavlink_log`, `telemetry_status`.
+- Do not publish directly detected uORB outputs from this module directory.
+- Use module configuration from `params.yaml`.
+- Implement the main behavior in classes such as `HardfaultStream`, `State`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | none detected |
+| Referenced topics | `mavlink_log`, `telemetry_status` |
+| Parameters/config | params.yaml |
+| Key classes | `HardfaultStream`, `State` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| HardfaultStream.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| params.yaml | Build, parameter, or module configuration |
+| HardfaultStream.hpp | Defines `HardfaultStream` class |
 
 ## Architecture Overview
 

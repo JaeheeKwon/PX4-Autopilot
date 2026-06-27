@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="navigator.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>navigator</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Module that is responsible for autonomous flight modes. This includes missions (read from dataman), takeoff and RTL. It is also responsible for geofence violation checking. The different internal modes are implemented as separate classes that inherit from a common base class `NavigatorMode`. The member `_navigation_mode` contains the current active mode. Navigator publishes position setpoint triplets (`position_setpoint_triplet_s`), which are then used by the position controller.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/navigator</code></div>
       <div><strong>Build target</strong><br><code>modules__navigator</code></div>
@@ -108,6 +120,30 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Owns mission, geofence, return, takeoff, landing, and other autonomous navigation behaviors.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Coordinate higher-level vehicle behavior rather than directly driving actuators.</li><li>Consume runtime inputs from uORB topics such as `fixed_wing_lateral_guidance_status`, `geofence_status`, `home_position`, `landing_target_pose`, `mission`, `parameter_update`, `position_controller_landing_status`, `position_controller_status`, ... 10 more.</li><li>Publish outputs or status topics such as `distance_sensor_mode_change_request`, `geofence_result`, `geofence_status`, `home_position`, `mission`, `mission_result`, `mode_completed`, `navigator_status`, ... 10 more.</li><li>Use module configuration from `geofence_params.yaml`.</li><li>Implement the main behavior in classes such as `FeasibilityChecker`, `VehicleType`, `FeasibilityCheckerTest`, `TestFeasibilityChecker`, `Course`, `Navigator`, ... 67 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.</li><li>Uses a `run()` loop style module body for repeated execution.</li><li>Waits on file descriptors or uORB subscriptions with `px4_poll()`.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Navigator uses geometric path following. It converts mission items into position, course, loiter, and acceptance-region setpoints.</p>
+    <pre class="math-block">distance_to_wp = norm(p_current - p_wp)
+bearing = atan2(E_wp - E, N_wp - N)
+accepted = distance_to_wp &lt; acceptance_radius
+cross_track_error = signed_distance(p_current, path_start, path_end)
+course_sp = path_bearing + atan(k_path * cross_track_error / ground_speed)</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`fixed_wing_lateral_guidance_status`, `geofence_status`, `home_position`, `landing_target_pose`, `mission`, `parameter_update`, `position_controller_landing_status`, `position_controller_status`, `rtl_status`, `transponder_report`, ... 8 more</td></tr><tr><td>Primary outputs</td><td>`distance_sensor_mode_change_request`, `geofence_result`, `geofence_status`, `home_position`, `mission`, `mission_result`, `mode_completed`, `navigator_status`, `position_setpoint_triplet`, `prec_land_status`, ... 8 more</td></tr><tr><td>Referenced topics</td><td>`distance_sensor_mode_change_request`, `fixed_wing_lateral_guidance_status`, `geofence_result`, `geofence_status`, `gimbal_manager_set_attitude`, `home_position`, `landing_target_pose`, `mission`, `mission_result`, `mode_completed`, ... 24 more</td></tr><tr><td>Parameters/config</td><td>geofence_params.yaml</td></tr><tr><td>Key classes</td><td>`FeasibilityChecker`, `VehicleType`, `FeasibilityCheckerTest`, `TestFeasibilityChecker`, `Course`, `Navigator`, `Geofence`, `DatamanState`, `to`, `to`, ... 63 more</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>geofence.cpp</td><td>Dedicated task loop or repeated runtime path</td></tr><tr><td>loiter.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>navigator_main.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>navigator_mode.cpp</td><td>Dedicated task loop or repeated runtime path</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>MissionFeasibility/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>geofence_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>MissionFeasibility/FeasibilityChecker.hpp</td><td>Defines `FeasibilityChecker` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f1f3f5&quot;,&quot;secondaryColor&quot;:&quot;#e9ecef&quot;,&quot;tertiaryColor&quot;:&quot;#f8f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#6c757d&quot;,&quot;primaryTextColor&quot;:&quot;#212529&quot;,&quot;lineColor&quot;:&quot;#6c757d&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +187,6 @@ classDef module fill:#f1f3f5,stroke:#343a40,color:#212529;
 classDef io fill:#e9ecef,stroke:#6c757d,color:#212529;
 classDef data fill:#f8f9fa,stroke:#6c757d,color:#212529;
 classDef exec fill:#dee2e6,stroke:#343a40,color:#212529;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/navigator</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__navigator</td></tr><tr><td>Runtime main</td><td>navigator</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>geofence_params.yaml</td></tr><tr><td>Detected sources</td><td>20</td></tr><tr><td>Detected headers</td><td>23</td></tr><tr><td>Detected configs</td><td>8</td></tr></tbody></table>
 

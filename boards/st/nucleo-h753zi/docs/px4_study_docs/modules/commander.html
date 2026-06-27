@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Owns the high-level vehicle state machine: arming, mode transitions, safety checks, failsafe coordination, and operator commands.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Coordinate higher-level vehicle behavior rather than directly driving actuators.</li><li>Consume runtime inputs from uORB topics such as `action_request`, `actuator_armed`, `actuator_motors`, `airspeed_validated`, `arming_check_reply`, `battery_status`, `config_control_setpoints`, `config_overrides_request`, ... 49 more.</li><li>Publish outputs or status topics such as `actuator_armed`, `actuator_test`, `arming_check_request`, `config_overrides`, `event`, `failsafe_flags`, `failure_detector_status`, `health_report`, ... 13 more.</li><li>Use module configuration from `module.yaml`.</li><li>Implement the main behavior in classes such as `Commander`, `PrearmedMode`, `RcOverrideBits`, `HealthAndArmingChecks`, `NavModes`, `HealthComponentIndex`, ... 89 more.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.</li><li>Uses a `run()` loop style module body for repeated execution.</li><li>Creates an additional pthread helper context.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`action_request`, `actuator_armed`, `actuator_motors`, `airspeed_validated`, `arming_check_reply`, `battery_status`, `config_control_setpoints`, `config_overrides_request`, `cpuload`, `differential_pressure`, ... 47 more</td></tr><tr><td>Primary outputs</td><td>`actuator_armed`, `actuator_test`, `arming_check_request`, `config_overrides`, `event`, `failsafe_flags`, `failure_detector_status`, `health_report`, `home_position`, `led_control`, ... 11 more</td></tr><tr><td>Referenced topics</td><td>`action_request`, `actuator_armed`, `actuator_motors`, `actuator_test`, `airspeed`, `airspeed_validated`, `arming_check_reply`, `arming_check_request`, `battery_status`, `button_event`, ... 68 more</td></tr><tr><td>Parameters/config</td><td>module.yaml</td></tr><tr><td>Key classes</td><td>`Commander`, `PrearmedMode`, `RcOverrideBits`, `HealthAndArmingChecks`, `NavModes`, `HealthComponentIndex`, `Context`, `Report`, `ExternalChecks`, `HealthAndArmingCheckBase`, ... 85 more</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>Commander.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>Arming/ArmAuthorization/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>Arming/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>HealthAndArmingChecks/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>HealthAndArmingChecks/esc_check_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>ModeUtil/CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>Commander.hpp</td><td>Defines `Commander` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +169,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/commander</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__commander</td></tr><tr><td>Runtime main</td><td>commander</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>72</td></tr><tr><td>Detected headers</td><td>69</td></tr><tr><td>Detected configs</td><td>12</td></tr></tbody></table>
 

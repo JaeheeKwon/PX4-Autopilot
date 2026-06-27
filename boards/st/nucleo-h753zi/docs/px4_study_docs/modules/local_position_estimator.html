@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="local_position_estimator.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>local_position_estimator</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Attitude and position estimator using an Extended Kalman Filter.</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/local_position_estimator</code></div>
       <div><strong>Build target</strong><br><code>modules__local_position_estimator</code></div>
@@ -108,6 +120,32 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Provides the legacy local-position estimator path using sensor and aiding inputs.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Fuse, filter, or validate measurements into estimated state outputs for other modules.</li><li>Consume runtime inputs from uORB topics such as `actuator_armed`, `distance_sensor`, `landing_target_pose`, `parameter_update`, `sensor_combined`, `vehicle_air_data`, `vehicle_angular_velocity`, `vehicle_attitude`, ... 7 more.</li><li>Publish outputs or status topics such as `estimator_innovation_variances`, `estimator_innovations`, `estimator_states`, `estimator_status`, `vehicle_global_position`, `vehicle_local_position`, `vehicle_odometry`.</li><li>Use module configuration from `params.yaml`.</li><li>Implement the main behavior in classes such as `BlockLocalPositionEstimator`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `INS0`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>The local position estimator is a Kalman-filter style estimator for local position, velocity, and sensor offsets.</p>
+    <pre class="math-block">x = [p_N, p_E, p_D, v_N, v_E, v_D, biases...]
+x_pred = F*x + B*u
+P_pred = F*P*F^T + Q
+y = z - H*x_pred
+S = H*P_pred*H^T + R
+K = P_pred*H^T*inverse(S)
+x = x_pred + K*y</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`actuator_armed`, `distance_sensor`, `landing_target_pose`, `parameter_update`, `sensor_combined`, `vehicle_air_data`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_command`, `vehicle_gps_position`, ... 5 more</td></tr><tr><td>Primary outputs</td><td>`estimator_innovation_variances`, `estimator_innovations`, `estimator_states`, `estimator_status`, `vehicle_global_position`, `vehicle_local_position`, `vehicle_odometry`</td></tr><tr><td>Referenced topics</td><td>`actuator_armed`, `distance_sensor`, `estimator_innovation_variances`, `estimator_innovations`, `estimator_states`, `estimator_status`, `landing_target_pose`, `parameter_update`, `sensor_combined`, `sensor_gps`, ... 15 more</td></tr><tr><td>Parameters/config</td><td>params.yaml</td></tr><tr><td>Key classes</td><td>`BlockLocalPositionEstimator`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>BlockLocalPositionEstimator.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>BlockLocalPositionEstimator.hpp</td><td>Defines `BlockLocalPositionEstimator` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +189,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/local_position_estimator</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__local_position_estimator</td></tr><tr><td>Runtime main</td><td>local_position_estimator</td></tr><tr><td>Stack main</td><td>5700</td></tr><tr><td>Module config</td><td>params.yaml</td></tr><tr><td>Detected sources</td><td>10</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

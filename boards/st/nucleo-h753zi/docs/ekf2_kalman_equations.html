@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 EKF2 Kalman Filter Equations</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --paper: #ffffff;
+      --ink: #1f2933;
+      --muted: #5f6b7a;
+      --line: #d8dee8;
+      --accent: #0f6f78;
+      --accent-soft: #e4f3f4;
+      --code-bg: #f1f4f8;
+      --warn-bg: #fff6df;
+      --warn-line: #e6bd4f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.58 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 32px auto 64px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 45px rgba(31, 41, 51, 0.08);
+    }
+
+    .hero {
+      padding: 42px 48px 28px;
+      border-bottom: 1px solid var(--line);
+      border-radius: 8px 8px 0 0;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbfc 100%);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .content {
+      min-width: 0;
+    }
+
+    .index-sidebar {
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      padding: 24px 18px;
+      border-right: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+
+    .index-title {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .index-sidebar a {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 4px;
+      color: var(--ink);
+      font-size: 0.92rem;
+      line-height: 1.25;
+      text-decoration: none;
+    }
+
+    .index-sidebar a:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .index-sidebar .sub-link {
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .section {
+      padding: 30px 48px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 2.15rem;
+      max-width: 780px;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      margin-bottom: 14px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin: 24px 0 8px;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code,
+    .path {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.93em;
+      background: var(--code-bg);
+      border: 1px solid #e1e7ef;
+      border-radius: 4px;
+      padding: 0.08rem 0.28rem;
+    }
+
+    .lead {
+      color: var(--muted);
+      max-width: 850px;
+      margin-top: 14px;
+      font-size: 1.05rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 14px 16px;
+      margin: 18px 0;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .warning {
+      border-left-color: var(--warn-line);
+      background: var(--warn-bg);
+    }
+
+    .equation {
+      overflow-x: auto;
+      padding: 12px 14px;
+      margin: 14px 0 18px;
+      background: #fbfcfe;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 22px;
+      font-size: 0.95rem;
+    }
+
+    th,
+    td {
+      vertical-align: top;
+      text-align: left;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+    }
+
+    th {
+      background: #f2f6f9;
+      font-weight: 650;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fbfcfe;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 14px 0 18px;
+      padding: 14px 16px;
+      background: #101820;
+      color: #eef6ff;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      display: block;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    ul {
+      margin: 0 0 18px 1.2rem;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    .source-list li {
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .index-sidebar {
+        position: static;
+        max-height: none;
+        padding: 18px 20px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: 100%;
+        margin: 0;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+      }
+
+      .hero,
+      .section {
+        padding: 26px 20px;
+      }
+
+      h1 {
+        font-size: 1.75rem;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [["\\(", "\\)"]],
+        displayMath: [["\\[", "\\]"]]
+      },
+      svg: {fontCache: "global"}
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <h1>EKF2 Kalman Filter Equations and PX4 Implementation Map</h1>
+    <p class="lead">
+      This document summarizes the EKF2 error-state Kalman filter in this PX4 checkout:
+      the full nominal state, the 24-dimensional covariance state, the prediction and update
+      equations, and the optimized implementation used in the generated and handwritten code.
+    </p>
+    <div class="meta">
+      <span class="pill">PX4 path: <span class="path">src/modules/ekf2/EKF</span></span>
+      <span class="pill">Nominal storage: 25 scalars</span>
+      <span class="pill">Covariance/error state: 24 DOF</span>
+      <span class="pill">Generated with SymForce</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="index-sidebar" role="navigation" aria-label="Document index">
+      <p class="index-title">Index</p>
+      <a href="#overview">1. Filter Structure</a>
+      <a class="sub-link" href="quaternion_ned_conversions.html">Quaternion/NED Derivations</a>
+      <a href="#prediction">2. Nominal Prediction</a>
+      <a href="#covariance">3. Covariance Prediction</a>
+      <a href="#measurement">4. Measurement Update</a>
+      <a href="#time-horizon">5. Time Horizon</a>
+      <a href="#convergence-covariance">6. Convergence and Sensor Covariance</a>
+      <a href="#observations">7. Observation Models</a>
+      <a href="#optimized">8. Optimized Details</a>
+      <a href="#source-map">9. Source Map</a>
+      <a href="#caveats">10. Notes and Caveats</a>
+    </div>
+
+    <div class="content">
+  <div class="section" id="overview">
+    <h2>1. Filter Structure</h2>
+    <p>
+      EKF2 is an error-state EKF. The vehicle attitude is stored as a four-element nominal
+      quaternion, but the covariance uses a three-element small-angle attitude error. This is
+      why the published nominal state has 25 scalars while the Kalman matrices are
+      \(24 \times 24\).
+    </p>
+    <div class="equation">
+      \[
+      x =
+      \begin{bmatrix}
+      q_{0:3} &amp; v_N &amp; v_E &amp; v_D &amp; p_N &amp; p_E &amp; p_D &amp;
+      b_{g,x:y:z} &amp; b_{a,x:y:z} &amp;
+      m_{I,N:E:D} &amp; m_{B,x:y:z} &amp;
+      w_N &amp; w_E &amp; t
+      \end{bmatrix}^T
+      \]
+      \[
+      \delta x =
+      \begin{bmatrix}
+      \delta\theta_{0:2} &amp; \delta v_{N:E:D} &amp; \delta p_{N:E:D} &amp;
+      \delta b_{g,x:y:z} &amp; \delta b_{a,x:y:z} &amp;
+      \delta m_{I,N:E:D} &amp; \delta m_{B,x:y:z} &amp;
+      \delta w_{N:E} &amp; \delta t
+      \end{bmatrix}^T
+      \]
+    </div>
+    <p>
+      The generated state header defines <code>StateSample</code> with quaternion, velocity,
+      position, gyro bias, accelerometer bias, earth magnetic field, body magnetic bias,
+      wind velocity, and terrain. The tangent-space index table then maps these blocks into
+      the 24-element covariance state.
+    </p>
+
+    <table>
+      <thead>
+      <tr>
+        <th>State block</th>
+        <th>Nominal storage</th>
+        <th>Covariance index</th>
+        <th>Meaning</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td><code>quat_nominal</code></td>
+        <td>0..3, 4 scalars</td>
+        <td>0..2, 3 DOF</td>
+        <td>Quaternion rotating body frame to NED navigation frame.</td>
+      </tr>
+      <tr>
+        <td><code>vel</code></td>
+        <td>4..6</td>
+        <td>3..5</td>
+        <td>Velocity in NED, meters per second.</td>
+      </tr>
+      <tr>
+        <td><code>pos</code></td>
+        <td>7..9</td>
+        <td>6..8</td>
+        <td>Position error in NED. In this implementation horizontal position is accumulated in <code>_gpos</code>; <code>pos(2)</code> stores down position from altitude.</td>
+      </tr>
+      <tr>
+        <td><code>gyro_bias</code></td>
+        <td>10..12</td>
+        <td>9..11</td>
+        <td>Gyroscope bias, radians per second.</td>
+      </tr>
+      <tr>
+        <td><code>accel_bias</code></td>
+        <td>13..15</td>
+        <td>12..14</td>
+        <td>Accelerometer bias, meters per second squared.</td>
+      </tr>
+      <tr>
+        <td><code>mag_I</code></td>
+        <td>16..18</td>
+        <td>15..17</td>
+        <td>Earth magnetic field in NED.</td>
+      </tr>
+      <tr>
+        <td><code>mag_B</code></td>
+        <td>19..21</td>
+        <td>18..20</td>
+        <td>Magnetometer body-frame bias.</td>
+      </tr>
+      <tr>
+        <td><code>wind_vel</code></td>
+        <td>22..23</td>
+        <td>21..22</td>
+        <td>Horizontal wind velocity in NED north/east components.</td>
+      </tr>
+      <tr>
+        <td><code>terrain</code></td>
+        <td>24</td>
+        <td>23</td>
+        <td>Terrain vertical position used by range and optical-flow aiding.</td>
+      </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      The quaternion/Euler conversion equations and the body-frame to NED rotation matrix are
+      derived in the separate document
+      <a href="quaternion_ned_conversions.html">Quaternion and NED Conversion Derivations</a>.
+      EKF2 uses those rotations when converting IMU body-frame delta velocity into the NED
+      navigation frame.
+    </div>
+  </div>
+
+  <div class="section" id="prediction">
+    <h2>2. Nominal State Prediction</h2>
+    <p>
+      EKF2 predicts the delayed-horizon nominal state from downsampled IMU delta angles and
+      delta velocities. In the C++ implementation, gyro and accelerometer biases are applied
+      to the integrated IMU increments before updating attitude and velocity.
+    </p>
+
+    <h3>Bias-corrected IMU increments</h3>
+    <div class="equation">
+      \[
+      \Delta\theta_c =
+      \Delta\theta_{imu} - b_g \Delta t_\theta
+      - R(q_k)^T \omega_{ie}^{n} \Delta t_\theta
+      \]
+      \[
+      \Delta v_c = \Delta v_{imu} - b_a \Delta t_v
+      \]
+    </div>
+    <p>
+      \(R(q)\) rotates body-frame vectors into the NED/navigation frame. The earth-rate
+      correction appears in the handwritten state predictor; the symbolic covariance model is
+      simpler and does not include every navigation correction term.
+    </p>
+
+    <h3>Attitude, velocity, and position</h3>
+    <div class="equation">
+      \[
+      q_{k+1} = \operatorname{normalize}\left(q_k \otimes
+      \operatorname{Exp}(\Delta\theta_c)\right)
+      \]
+      \[
+      v_{k+1} =
+      v_k + R(q_{k+1})\Delta v_c +
+      \left(g^n - 2\omega_{ie}^{n}\times v_k - \omega_{en}^{n}\times v_k\right)\Delta t_v
+      \]
+      \[
+      p_{k+1} = p_k + \frac{1}{2}\left(v_k + v_{k+1}\right)\Delta t_v
+      \]
+    </div>
+    <p>
+      In code, EKF2 performs the covariance prediction first and then calls the nominal
+      <code>predictState()</code>. The nominal predictor uses exact axis-angle quaternion
+      construction, current attitude to rotate delta velocity, gravity, Coriolis, transport-rate
+      acceleration, and trapezoidal position integration.
+    </p>
+
+    <h3>Static process states</h3>
+    <p>
+      Biases, magnetic field states, wind, and terrain are nominally held constant during the
+      prediction step. Their uncertainty grows through explicit process-noise additions in
+      <code>predictCovariance()</code>.
+    </p>
+    <div class="equation">
+      \[
+      b_{g,k+1}=b_{g,k},\quad
+      b_{a,k+1}=b_{a,k},\quad
+      m_{I,k+1}=m_{I,k},\quad
+      m_{B,k+1}=m_{B,k},\quad
+      w_{k+1}=w_k,\quad
+      t_{k+1}=t_k
+      \]
+    </div>
+  </div>
+
+  <div class="section" id="covariance">
+    <h2>3. Error-State Covariance Prediction</h2>
+    <p>
+      The generated covariance model is derived directly in discrete time. It constructs a
+      true state by perturbing the nominal state in tangent space, propagates both true and
+      nominal states, computes the next error state, and differentiates it.
+    </p>
+    <div class="equation">
+      \[
+      q^t = \operatorname{Exp}(\delta\theta)\otimes q,\qquad
+      y^t = y + \delta y \quad \text{for all non-attitude state blocks}
+      \]
+      \[
+      u^t =
+      \begin{bmatrix}
+      a_m - b_a^t - n_a\\
+      \omega_m - b_g^t - n_g
+      \end{bmatrix}
+      \]
+      \[
+      A = \left.\frac{\partial f_{\delta}(\delta x,n)}{\partial \delta x}\right|_{\delta x=0,n=0},
+      \qquad
+      G = \left.\frac{\partial f_{\delta}(\delta x,n)}{\partial n}\right|_{\delta x=0,n=0}
+      \]
+      \[
+      Q_u = \operatorname{diag}
+      \left(\sigma_{a_x}^2,\sigma_{a_y}^2,\sigma_{a_z}^2,
+      \sigma_g^2,\sigma_g^2,\sigma_g^2\right)
+      \]
+      \[
+      P_{k+1}^{-} = A P_k^{+} A^T + G Q_u G^T
+      \]
+    </div>
+
+    <div class="note">
+      The generated function has signature
+      <code>PredictCovariance(state: Matrix25_1, P: Matrix24_24, accel, accel_var, gyro, gyro_var, dt)</code>
+      and returns a <code>Matrix24_24</code>. The generated header reports 1810 scalar operations
+      and 144 intermediate terms for this checkout.
+    </div>
+
+    <h3>Symmetry and additional process noise</h3>
+    <p>
+      The symbolic generator only emits the upper triangle and diagonal of \(P\). After calling
+      <code>sym::PredictCovariance()</code>, EKF2 adds process noise to stationary process
+      states, mirrors the upper triangle into the lower triangle, and constrains variances.
+    </p>
+    <pre><code>P = sym::PredictCovariance(...);
+
+// Additional diagonal process noise is added for gyro bias, accel bias,
+// magnetic field, magnetic bias, wind, and terrain when those blocks exist.
+
+for row in 0..State::size-1:
+  for col in 0..row-1:
+    P(row, col) = P(col, row)</code></pre>
+  </div>
+
+  <div class="section" id="measurement">
+    <h2>4. Measurement Update Equations</h2>
+    <p>
+      EKF2 uses sequential fusion. A scalar observation is fused at a time, or a vector
+      observation is broken into scalar updates. For nonlinear sensors, generated code computes
+      the predicted measurement, Jacobian, and innovation variance.
+    </p>
+
+    <h3>Innovation and gain</h3>
+    <div class="equation">
+      \[
+      \hat z = h(x^-),\qquad r = \hat z - z
+      \]
+      \[
+      H = \left.\frac{\partial h(x\boxplus\delta x)}{\partial \delta x}\right|_{\delta x=0},
+      \qquad
+      S = HPH^T + R
+      \]
+      \[
+      K = PH^T S^{-1}
+      \]
+    </div>
+    <p>
+      The sign convention matters: most EKF2 innovations are predicted minus observed. The
+      error-state correction applied to the nominal state is therefore \(\hat{\delta x}=-K r\).
+    </p>
+
+    <h3>State correction</h3>
+    <div class="equation">
+      \[
+      \hat{\delta\theta} = -K_{\theta}r,\qquad
+      q^+ = \operatorname{Exp}(\hat{\delta\theta})\otimes q^-
+      \]
+      \[
+      y^+ = y^- - K_y r
+      \quad \text{for velocity, biases, magnetic field, wind, and terrain}
+      \]
+      \[
+      p^+ = p^- - K_p r
+      \]
+    </div>
+    <p>
+      The implementation applies the position correction to <code>_gpos</code>, clears
+      <code>_state.pos</code>, and stores <code>pos(2)=-altitude</code>. This matches comments in
+      the ranging-beacon fusion path: horizontal <code>_state.pos(0:1)</code> is always zero in
+      the global-position EKF, and horizontal local position is projected from <code>_gpos</code>.
+    </p>
+
+    <h3>Joseph-stabilized covariance update</h3>
+    <div class="equation">
+      \[
+      P^+ = (I-KH)P^-(I-KH)^T + K R K^T
+      \]
+    </div>
+    <p>
+      This is the mathematically clear form. EKF2 keeps the Joseph form but computes it without
+      constructing \(I-KH\).
+    </p>
+    <div class="equation">
+      \[
+      P_{temp}=P^- - K(HP^-)
+      \]
+      \[
+      P^+ = P_{temp} - (P_{temp}H^T)K^T + K R K^T
+      \]
+    </div>
+    <p>
+      For direct state observations, \(H\) is a one-hot selector. EKF2 computes
+      \(K_i=P_{i,j}/S\), uses row <code>j</code> for the first covariance pass, then uses column
+      <code>j</code> for the stabilized pass. For generated nonlinear observations, it computes
+      <code>PH = P * H</code> in both passes.
+    </p>
+  </div>
+
+  <div class="section" id="time-horizon">
+    <h2>5. Delayed Fusion Time Horizon</h2>
+    <p>
+      EKF2 uses two time horizons because IMU data is fast and nearly continuous, while
+      aiding sensors such as GNSS, barometer, optical flow, range finder, and external vision
+      are slower and often delayed. The EKF core fuses those slow measurements in the past,
+      then the output predictor propagates the corrected estimate back to the current time.
+    </p>
+
+    <h3>Step-by-step flow</h3>
+    <ol>
+      <li>
+        <strong>Fast IMU data arrives.</strong> Every IMU sample updates the output predictor
+        immediately, so PX4 has a continuously propagated current-time attitude, velocity, and
+        position estimate.
+      </li>
+      <li>
+        <strong>IMU data is downsampled for the EKF core.</strong> EKF2 accumulates delta angle
+        and delta velocity, constrains the integration interval, and pushes downsampled IMU
+        samples into the IMU ring buffer.
+      </li>
+      <li>
+        <strong>The EKF fusion horizon is intentionally delayed.</strong> EKF2 sets
+        <code>_time_delayed_us</code> from the oldest IMU sample in the buffer:
+      </li>
+    </ol>
+    <div class="equation">
+      \[
+      t_{fusion}=t_{latest}-t_{delay}
+      \]
+    </div>
+    <ol start="4">
+      <li>
+        <strong>Slow sensors are buffered by timestamp.</strong> A GNSS, barometer, vision,
+        range, or optical-flow sample is not fused as if it happened now. It waits in its
+        observation buffer until the delayed EKF horizon reaches the sample time.
+      </li>
+      <li>
+        <strong>The measurement is fused against the matching past state.</strong> A delayed
+        sensor observation \(z(t_s)\) is fused with the EKF state at approximately the same
+        time:
+      </li>
+    </ol>
+    <div class="equation">
+      \[
+      z(t_s) \quad \text{is fused with} \quad x(t_{fusion}\approx t_s)
+      \]
+    </div>
+    <ol start="6">
+      <li>
+        <strong>The EKF predicts and fuses at the delayed horizon.</strong> Each EKF update
+        predicts state and covariance with delayed IMU data, then runs the sensor fusion
+        controllers at that delayed time.
+      </li>
+      <li>
+        <strong>The output predictor applies the delayed correction.</strong> After the EKF
+        state is corrected at the delayed horizon, the output predictor compares that corrected
+        EKF state with its own buffered state at the same time and applies the correction to
+        the current output history.
+      </li>
+      <li>
+        <strong>PX4 publishes current-time outputs.</strong> The estimator fuses slow
+        measurements in the past, but the published attitude, local position, global position,
+        and odometry are propagated to the current IMU horizon for controllers and logging.
+      </li>
+    </ol>
+
+    <h3>Why this is needed</h3>
+    <p>
+      If an old GNSS or vision measurement were fused directly into the current IMU-propagated
+      state, the EKF would interpret timing error as real state error. That can create false
+      position, velocity, or attitude corrections. The delayed horizon avoids that by aligning
+      each slow measurement with the state it actually observed.
+    </p>
+    <pre><code>Fast IMU now  -> output predictor -> current output
+Slow sensors  -> observation buffers -> delayed EKF fusion
+Delayed EKF correction -> output predictor -> corrected current output</code></pre>
+
+    <h3>Implementation map</h3>
+    <p>
+      The relevant EKF2 code paths are:
+    </p>
+    <ul>
+      <li><code>EstimatorInterface::setIMUData()</code>: updates the output predictor, downsamples IMU, pushes IMU into the buffer, and updates <code>_time_delayed_us</code>.</li>
+      <li><code>EstimatorInterface::initialise_interface()</code>: sizes IMU and observation buffers from <code>EKF2_DELAY_MAX</code> and <code>EKF2_PREDICT_US</code>.</li>
+      <li><code>Ekf::update()</code>: predicts covariance/state with delayed IMU data and runs sensor fusion.</li>
+      <li><code>OutputPredictor::correctOutputStates()</code>: applies delayed EKF corrections to the output predictor history.</li>
+    </ul>
+  </div>
+
+  <div class="section" id="convergence-covariance">
+    <h2>6. Convergence and Sensor Covariance</h2>
+    <h3>What the coordinate conversions guarantee</h3>
+    <p>
+      Quaternion and NED conversion equations guarantee a valid coordinate rotation only when
+      the quaternion is normalized. A unit quaternion produces an orthonormal rotation matrix:
+    </p>
+    <div class="equation">
+      \[
+      \|q\|=1 \quad \Longrightarrow \quad R(q)^T R(q)=I
+      \]
+      \[
+      v^n=R^n_b(q)v^b
+      \]
+    </div>
+    <p>
+      This guarantees that a body-frame vector is rotated into NED without scaling or shearing.
+      It does not, by itself, guarantee EKF convergence.
+    </p>
+
+    <h3>What EKF convergence depends on</h3>
+    <p>
+      EKF2 is a nonlinear estimator, so global convergence is not mathematically guaranteed.
+      In practice it converges when the initial state is close enough, the process and
+      observation models are valid, the relevant states are observable, noise values are
+      realistic, and bad measurements are rejected or reset safely.
+    </p>
+    <p>
+      EKF2 improves practical convergence by normalizing quaternion states, using a
+      Joseph-stabilized covariance update, gating innovations, constraining covariance growth,
+      resetting states when needed, fusing measurements sequentially, and aligning delayed
+      sensor data with the EKF fusion horizon.
+    </p>
+
+    <h3>How sensor covariance enters EKF2</h3>
+    <p>
+      The EKF measurement covariance is the observation variance \(R\). EKF2 combines it with
+      the projected state covariance to form the innovation variance \(S\):
+    </p>
+    <div class="equation">
+      \[
+      R = \operatorname{cov}(z),\qquad
+      S = HPH^T + R,\qquad
+      K = PH^T S^{-1}
+      \]
+    </div>
+    <p>
+      Larger \(R\) means the sensor is trusted less and the Kalman gain is smaller. Smaller
+      \(R\) means the sensor is trusted more, but unrealistically small covariance can cause
+      rejection, inconsistency, or unstable corrections.
+    </p>
+
+    <h3>Where to provide a sensor covariance</h3>
+    <p>
+      There is no single global "set covariance" call for every EKF2 aid source. Covariance
+      enters through the specific sensor message fields or through EKF2 noise parameters:
+    </p>
+    <table>
+      <thead>
+      <tr>
+        <th>Sensor source</th>
+        <th>How EKF2 gets \(R\)</th>
+        <th>Code path</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>External vision / visual odometry</td>
+        <td>
+          Publish finite <code>vehicle_odometry.position_variance</code>,
+          <code>velocity_variance</code>, and <code>orientation_variance</code>. Set
+          <code>EKF2_EV_NOISE_MD=0</code> to use reported variances; EKF2 still lower-bounds
+          them with <code>EKF2_EVP_NOISE</code>, <code>EKF2_EVV_NOISE</code>, and
+          <code>EKF2_EVA_NOISE</code>.
+        </td>
+        <td><code>EKF2::UpdateExtVisionSample()</code>, <code>ev_*_control.cpp</code></td>
+      </tr>
+      <tr>
+        <td>GNSS position and velocity</td>
+        <td>
+          GNSS accuracy fields become variance inputs: <code>eph</code> for horizontal
+          position, <code>epv</code> for height, <code>s_variance_m_s</code> for speed, and
+          <code>heading_accuracy</code> for GNSS yaw. EKF2 lower-bounds or limits these with
+          parameters such as <code>EKF2_GPS_P_NOISE</code>, <code>EKF2_GPS_V_NOISE</code>, and
+          <code>EKF2_NOAID_NOISE</code>.
+        </td>
+        <td><code>EKF2::UpdateGpsSample()</code>, <code>gps_control.cpp</code></td>
+      </tr>
+      <tr>
+        <td>Auxiliary relative velocity</td>
+        <td>
+          Publish <code>landing_target_pose.cov_vx_rel</code> and
+          <code>cov_vy_rel</code>. EKF2 copies those into <code>auxVelSample.velVar</code>.
+        </td>
+        <td><code>EKF2::UpdateAuxVelSample()</code>, <code>auxvel_fusion.cpp</code></td>
+      </tr>
+      <tr>
+        <td>Ranging beacon</td>
+        <td>
+          Publish <code>ranging_beacon.range_accuracy</code>; EKF2 squares it to get range
+          variance. If it is not finite, <code>EKF2_RNGBC_NOISE</code> is used.
+        </td>
+        <td><code>EKF2::UpdateRangingBeaconSample()</code></td>
+      </tr>
+      <tr>
+        <td>Barometer, magnetometer, airspeed, drag, optical flow, range finder</td>
+        <td>
+          These primarily use EKF2 parameters for observation noise, such as
+          <code>EKF2_BARO_NOISE</code>, <code>EKF2_MAG_NOISE</code>,
+          <code>EKF2_EAS_NOISE</code>, <code>EKF2_DRAG_NOISE</code>,
+          <code>EKF2_OF_N_MIN/MAX</code>, <code>EKF2_RNG_NOISE</code>, and
+          <code>EKF2_RNG_SFE</code>.
+        </td>
+        <td>Source-specific fusion controllers in <code>src/modules/ekf2/EKF/aid_sources/</code></td>
+      </tr>
+      </tbody>
+    </table>
+
+    <h3>Implementation pattern</h3>
+    <p>
+      Sensor-specific code computes an observation variance, passes it into
+      <code>updateAidSourceStatus()</code>, and later fuses it through
+      <code>measurementUpdate()</code> or <code>fuseDirectStateMeasurement()</code>.
+    </p>
+    <pre><code>observation_variance = sensor_reported_variance_or_param_floor;
+innovation_variance = H * P * H.T + observation_variance;
+K = P * H / innovation_variance;
+measurementUpdate(K, H, observation_variance, innovation);</code></pre>
+  </div>
+
+  <div class="section" id="observations">
+    <h2>7. Common EKF2 Observation Models</h2>
+    <p>
+      The same Kalman update is reused across sensor models. Direct velocity and position
+      measurements use one-hot state selectors; nonlinear sensors use generated Jacobians based
+      on the chain rule from nominal storage to tangent-space error.
+    </p>
+
+    <table>
+      <thead>
+      <tr>
+        <th>Sensor or aid source</th>
+        <th>Predicted measurement model</th>
+        <th>Implementation path</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>GNSS, EV, fake, or auxiliary horizontal position</td>
+        <td>\(\hat z = p_{N:E}\); direct state fusion in each axis.</td>
+        <td><code>position_fusion.cpp</code>, <code>gps_control.cpp</code>, <code>ev_pos_control.cpp</code></td>
+      </tr>
+      <tr>
+        <td>GNSS or EV velocity</td>
+        <td>\(\hat z = v_{N:E:D}\); direct state fusion in each axis.</td>
+        <td><code>velocity_fusion.cpp</code></td>
+      </tr>
+      <tr>
+        <td>Barometer, GNSS height, range height, EV height</td>
+        <td>\(\hat z = p_D\), with source-specific sign and bias handling.</td>
+        <td><code>position_fusion.cpp</code>, height-source control files</td>
+      </tr>
+      <tr>
+        <td>Magnetometer</td>
+        <td>\(\hat z_m = R(q)^T m_I + m_B\)</td>
+        <td><code>generated/compute_mag_*.h</code>, <code>mag_fusion.cpp</code></td>
+      </tr>
+      <tr>
+        <td>Magnetic declination</td>
+        <td>\(\hat z = \operatorname{atan2}(m_{I,E}, m_{I,N})\)</td>
+        <td><code>generated/compute_mag_declination_pred_innov_var_and_h.h</code></td>
+      </tr>
+      <tr>
+        <td>Yaw or GNSS yaw</td>
+        <td>Small-angle heading innovation around the current quaternion estimate.</td>
+        <td><code>yaw_fusion.cpp</code>, <code>generated/compute_yaw_innov_var_and_h.h</code></td>
+      </tr>
+      <tr>
+        <td>Airspeed</td>
+        <td>\(\hat z = \left\|[v_N-w_N,\ v_E-w_E,\ v_D]^T\right\|\)</td>
+        <td><code>generated/compute_airspeed_innov_and_innov_var.h</code></td>
+      </tr>
+      <tr>
+        <td>Synthetic sideslip</td>
+        <td>\(\hat z = \operatorname{atan2}((R^T(v-w))_y,\ (R^T(v-w))_x)\), fused toward zero.</td>
+        <td><code>generated/compute_sideslip_innov_and_innov_var.h</code></td>
+      </tr>
+      <tr>
+        <td>Body-frame velocity</td>
+        <td>\(\hat z = R(q)^T v\)</td>
+        <td><code>generated/compute_body_vel_innov_var_h.h</code></td>
+      </tr>
+      <tr>
+        <td>Terrain height above ground</td>
+        <td>\(\hat z = t - p_D\), with variance \(P_{23,23}-P_{23,8}-P_{8,23}+P_{8,8}+R\).</td>
+        <td><code>generated/compute_hagl_innov_var.h</code></td>
+      </tr>
+      <tr>
+        <td>Optical flow</td>
+        <td>Line-of-sight rate from body-frame relative velocity and terrain/range geometry.</td>
+        <td><code>generated/compute_flow_*.h</code>, <code>optical_flow_fusion.cpp</code></td>
+      </tr>
+      <tr>
+        <td>Ranging beacon</td>
+        <td>\(\hat z = \|p - p_{beacon}\|\)</td>
+        <td><code>generated/compute_range_beacon_innov_var_and_h.h</code></td>
+      </tr>
+      <tr>
+        <td>Drag specific force</td>
+        <td>Body-axis drag acceleration from relative wind, ballistic coefficients, and momentum drag.</td>
+        <td><code>generated/compute_drag_*.h</code>, <code>drag_fusion.cpp</code></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section" id="optimized">
+    <h2>8. Optimized Implementation Details</h2>
+    <div class="grid">
+      <div>
+        <h3>Generated covariance prediction</h3>
+        <p>
+          <code>derivation.py</code> constructs symbolic \(A\), \(G\), and \(P_{new}\), then
+          zeroes lower-triangular terms before code generation. The C++ caller mirrors the
+          upper triangle afterward.
+        </p>
+      </div>
+      <div>
+        <h3>Generated observation Jacobians</h3>
+        <p>
+          For nonlinear sensors, generated functions compute \(H\) in the 24-dimensional
+          tangent space using a chain rule from quaternion storage to attitude error.
+        </p>
+      </div>
+      <div>
+        <h3>Sequential scalar fusion</h3>
+        <p>
+          Multi-axis measurements are fused one scalar at a time. This reduces matrix
+          dimensions and lets EKF2 reject or constrain individual axes.
+        </p>
+      </div>
+      <div>
+        <h3>Joseph update without dense temporaries</h3>
+        <p>
+          EKF2 keeps the stabilized covariance formula but avoids forming \(I-KH\), using row
+          and column products directly against the row-major matrix.
+        </p>
+      </div>
+      <div>
+        <h3>Gain inhibition and state limits</h3>
+        <p>
+          Before covariance and state correction, inhibited-state gains are cleared. After
+          covariance correction, state variances are constrained to prevent numerical runaway.
+        </p>
+      </div>
+      <div>
+        <h3>Delayed and current horizons</h3>
+        <p>
+          The EKF itself runs at a delayed fusion horizon; the output predictor propagates
+          corrected states to the current IMU horizon for publication and control.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="source-map">
+    <h2>9. Source Map</h2>
+    <table>
+      <thead>
+      <tr>
+        <th>File</th>
+        <th>Relevant content</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/python/ekf_derivation/generated/state.h"><code>generated/state.h</code></a></td>
+        <td>Nominal <code>StateSample</code>, 25-scalar storage, and 24-DOF tangent index map.</td>
+      </tr>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/python/ekf_derivation/derivation.py"><code>python/ekf_derivation/derivation.py</code></a></td>
+        <td>Symbolic error-state derivation, \(A\), \(G\), \(Q\), generated observation Jacobians.</td>
+      </tr>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/python/ekf_derivation/generated/predict_covariance.h"><code>generated/predict_covariance.h</code></a></td>
+        <td>Optimized generated covariance prediction with 25-state storage input and 24x24 covariance output.</td>
+      </tr>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/covariance.cpp"><code>covariance.cpp</code></a></td>
+        <td>Covariance initialization, generated prediction call, process-noise additions, symmetry copy, variance constraints.</td>
+      </tr>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/ekf.cpp"><code>ekf.cpp</code></a></td>
+        <td>Main EKF cycle and handwritten nominal state prediction.</td>
+      </tr>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/ekf_helper.cpp"><code>ekf_helper.cpp</code></a></td>
+        <td>State correction, direct state fusion, generic measurement update, optimized Joseph covariance update.</td>
+      </tr>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/yaw_fusion.cpp"><code>yaw_fusion.cpp</code></a></td>
+        <td>Yaw fusion, heading gain optimization, and generated yaw innovation variance call.</td>
+      </tr>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/documentation/Process%20and%20Observation%20Models.pdf"><code>Process and Observation Models.pdf</code></a></td>
+        <td>Local PDF overview of the 24-state EKF process and observation models.</td>
+      </tr>
+      <tr>
+        <td><a href="../../../../src/modules/ekf2/EKF/documentation/Output%20Predictor.pdf"><code>Output Predictor.pdf</code></a></td>
+        <td>Relationship between delayed-horizon EKF states and current-horizon output prediction.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section" id="caveats">
+    <h2>10. Notes and Caveats</h2>
+    <ul>
+      <li>The full generated state in this checkout includes magnetometer, wind, and terrain blocks. Build-time configuration controls which fusions and process-noise blocks are active.</li>
+      <li>The symbolic covariance model uses a simplified discrete-time process model for tractable Jacobians. The handwritten nominal prediction includes additional navigation terms and more accurate integration.</li>
+      <li>Most EKF2 innovations use predicted minus measured sign convention, so the state correction is applied as <code>state - K * innovation</code>.</li>
+      <li>MathJax renders the TeX equations when the CDN is reachable. If not, the TeX source remains visible and readable in the page.</li>
+    </ul>
+  </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

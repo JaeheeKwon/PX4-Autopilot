@@ -6,7 +6,48 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Module to simulate auxiliary global position measurements with optional failure modes for SIH simulation.
+
+## Description of Module
+
+Simulates airspeed or auxiliary pressure sensor data for simulation workflows.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Publish or condition sensor topics consumed by estimators and controllers.
+- Consume runtime inputs from uORB topics such as `parameter_update`, `vehicle_global_position_groundtruth`.
+- Publish outputs or status topics such as `aux_global_position`.
+- Use module configuration from `parameters.yaml`.
+- Implement the main behavior in classes such as `SensorAgpSim`, `FailureMode`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update`, `vehicle_global_position_groundtruth` |
+| Primary outputs | `aux_global_position` |
+| Referenced topics | `aux_global_position`, `parameter_update`, `vehicle_global_position`, `vehicle_global_position_groundtruth` |
+| Parameters/config | parameters.yaml |
+| Key classes | `SensorAgpSim`, `FailureMode` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| SensorAgpSim.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| parameters.yaml | Build, parameter, or module configuration |
+| SensorAgpSim.hpp | Defines `SensorAgpSim` class |
 
 ## Architecture Overview
 

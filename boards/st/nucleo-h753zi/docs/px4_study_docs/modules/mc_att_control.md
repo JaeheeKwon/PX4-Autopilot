@@ -6,7 +6,60 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+This implements the multicopter attitude controller. It takes attitude setpoints (`vehicle_attitude_setpoint`) as inputs and outputs a rate setpoint. The controller has a P loop for angular error Publication documenting the implemented Quaternion Attitude Control: Nonlinear Quadrocopter Attitude Control (2013) by Dario Brescianini, Markus Hehn and Raffaello D'Andrea Institute for Dynamic Systems and Control (IDSC), ETH Zurich https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/154099/eth-7387-01.p
+
+## Description of Module
+
+Runs multicopter attitude control and converts attitude setpoints into body-rate setpoints.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `autotune_attitude_control_status`, `hover_thrust_estimate`, `manual_control_setpoint`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_land_detected`, ... 2 more.
+- Publish outputs or status topics such as `mc_virtual_attitude_setpoint`, `vehicle_attitude_setpoint`, `vehicle_rates_setpoint`.
+- Use module configuration from `mc_att_control_params.yaml`.
+- Implement the main behavior in classes such as `AttitudeControl`, `AttitudeControlConvergenceTest`, `MulticopterAttitudeControl`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+Multicopter attitude control is quaternion based. The reduced attitude error is converted to a body-rate setpoint; yaw can be weighted lower than roll/pitch.
+
+```text
+q_err = inverse(q_body) * q_sp
+e_q = sign(q_err.w) * q_err.xyz
+rate_sp = 2 * K_att * e_q + yaw_feedforward
+rate_sp.xy = limit_tilt_priority(rate_sp.xy)
+rate_sp.z = yaw_weight * rate_sp.z
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `autotune_attitude_control_status`, `hover_thrust_estimate`, `manual_control_setpoint`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_local_position`, `vehicle_status` |
+| Primary outputs | `mc_virtual_attitude_setpoint`, `vehicle_attitude_setpoint`, `vehicle_rates_setpoint` |
+| Referenced topics | `autotune_attitude_control_status`, `hover_thrust_estimate`, `manual_control_setpoint`, `mc_virtual_attitude_setpoint`, `parameter_update`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_land_detected`, `vehicle_local_position`, ... 2 more |
+| Parameters/config | mc_att_control_params.yaml |
+| Key classes | `AttitudeControl`, `AttitudeControlConvergenceTest`, `MulticopterAttitudeControl` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| mc_att_control_main.cpp | Entry point, start command, or module lifecycle code |
+| AttitudeControl/CMakeLists.txt | Build, parameter, or module configuration |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| mc_att_control_params.yaml | Build, parameter, or module configuration |
+| AttitudeControl/AttitudeControl.hpp | Defines `AttitudeControl` class |
+| AttitudeControl/AttitudeControlTest.cpp | Defines `AttitudeControlConvergenceTest` class |
+| mc_att_control.hpp | Defines `MulticopterAttitudeControl` class |
 
 ## Architecture Overview
 

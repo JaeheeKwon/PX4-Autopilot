@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -108,6 +120,28 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Simulates magnetometer data for simulation workflows.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.</li><li>Publish or condition sensor topics consumed by estimators and controllers.</li><li>Consume runtime inputs from uORB topics such as `parameter_update`, `vehicle_attitude_groundtruth`, `vehicle_global_position_groundtruth`.</li><li>Do not publish directly detected uORB outputs from this module directory.</li><li>Use module configuration from `parameters.yaml`.</li><li>Implement the main behavior in classes such as `SensorMagSim`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `hp_default`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>The magnetometer simulator rotates the world magnetic field into the body frame and adds bias/noise.</p>
+    <pre class="math-block">m_body = R_ned_to_body * m_ned
+measurement = scale * (m_body + bias) + noise
+heading_information comes from atan2 of horizontal magnetic components after tilt compensation.</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`parameter_update`, `vehicle_attitude_groundtruth`, `vehicle_global_position_groundtruth`</td></tr><tr><td>Primary outputs</td><td>none detected</td></tr><tr><td>Referenced topics</td><td>`parameter_update`, `vehicle_attitude`, `vehicle_attitude_groundtruth`, `vehicle_global_position`, `vehicle_global_position_groundtruth`</td></tr><tr><td>Parameters/config</td><td>parameters.yaml</td></tr><tr><td>Key classes</td><td>`SensorMagSim`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>SensorMagSim.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>parameters.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>SensorMagSim.hpp</td><td>Defines `SensorMagSim` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -133,7 +167,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/simulation/sensor_mag_sim</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__simulation__senosr_mag_sim</td></tr><tr><td>Runtime main</td><td>sensor_mag_sim</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>parameters.yaml</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

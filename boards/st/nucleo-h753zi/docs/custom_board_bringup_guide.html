@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PX4 Custom Board Bring-Up Guide</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --paper: #ffffff;
+      --ink: #17202c;
+      --muted: #5d6878;
+      --line: #d9e1ec;
+      --blue: #2563eb;
+      --green: #0f766e;
+      --amber: #a16207;
+      --red: #b42318;
+      --blue-soft: #eef4ff;
+      --green-soft: #eef8f6;
+      --amber-soft: #fff7e8;
+      --red-soft: #fff0ee;
+      --code: #111827;
+      --code-ink: #f3f4f6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 30px 0 56px;
+    }
+
+    header {
+      padding: 28px 0 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 980px;
+      font-size: clamp(34px, 5vw, 56px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 940px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--paper);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    section {
+      margin-top: 34px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 29px;
+      line-height: 1.16;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 20px;
+      line-height: 1.25;
+    }
+
+    h4 {
+      margin: 18px 0 8px;
+      font-size: 16px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul, ol {
+      margin: 8px 0 18px 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #e9eef5;
+      color: #132033;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: .93em;
+    }
+
+    pre {
+      margin: 12px 0 0;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 8px;
+      background: var(--code);
+      color: var(--code-ink);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      padding: 18px;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 14px 16px;
+      border-radius: 4px;
+      border-left: 4px solid var(--green);
+      background: var(--green-soft);
+    }
+
+    .callout.warn {
+      border-left-color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .callout.risk {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .callout-title {
+      margin: 0 0 6px;
+      font-weight: 850;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef2f7;
+      color: #263142;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .diagram {
+      margin: 16px 0 20px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow-x: auto;
+    }
+
+    svg {
+      display: block;
+      max-width: 100%;
+      min-width: 760px;
+      height: auto;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .svg-title {
+      font-size: 18px;
+      font-weight: 850;
+      fill: #17202c;
+    }
+
+    .svg-label {
+      font-size: 13px;
+      font-weight: 800;
+      fill: #17202c;
+    }
+
+    .svg-small {
+      font-size: 11px;
+      fill: #536174;
+    }
+
+    .box {
+      fill: #fff;
+      stroke: #b9c5d6;
+      stroke-width: 1.3;
+      rx: 8;
+    }
+
+    .box-blue {
+      fill: var(--blue-soft);
+      stroke: #9eb8ed;
+    }
+
+    .box-green {
+      fill: var(--green-soft);
+      stroke: #90cac2;
+    }
+
+    .box-amber {
+      fill: var(--amber-soft);
+      stroke: #e6bd72;
+    }
+
+    .box-red {
+      fill: var(--red-soft);
+      stroke: #e6a29a;
+    }
+
+    .arrow {
+      fill: none;
+      stroke: #526071;
+      stroke-width: 1.6;
+      marker-end: url(#arrowhead);
+    }
+
+    .arrow-green {
+      fill: none;
+      stroke: var(--green);
+      stroke-width: 2;
+      marker-end: url(#arrowheadGreen);
+    }
+
+    .source-list {
+      columns: 2;
+      column-gap: 24px;
+    }
+
+    .source-list li {
+      break-inside: avoid;
+    }
+
+    footer {
+      margin-top: 44px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 840px) {
+      .page {
+        width: min(100% - 28px, 1180px);
+        padding-top: 22px;
+      }
+
+      .grid.two, .grid.three {
+        grid-template-columns: 1fr;
+      }
+
+      .source-list {
+        columns: 1;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .page {
+        width: auto;
+        padding: 0;
+      }
+
+      nav {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <p class="eyebrow">PX4 / NuttX Board Bring-Up</p>
+      <h1>Custom Board Bring-Up Guide for STM32H7 PX4 Targets</h1>
+      <p class="subtitle">
+        A practical guide for creating and validating a custom PX4 board target. The examples use
+        <code>boards/st/nucleo-h753zi</code>, but the workflow applies to other NuttX STM32H7
+        boards with the same platform layering.
+      </p>
+      <div class="meta">
+        <span class="pill">Target family: STM32H7 / Cortex-M7</span>
+        <span class="pill">Host OS: NuttX</span>
+        <span class="pill">Reference board: <code>st_nucleo-h753zi</code></span>
+        <span class="pill">Generated: 2026-06-23</span>
+      </div>
+      <nav aria-label="Document sections">
+        <a href="#summary">Summary</a>
+        <a href="#layers">Layer Split</a>
+        <a href="#layout">Directory Layout</a>
+        <a href="#mcu-drivers">MCU Drivers</a>
+        <a href="#phases">Bring-Up Phases</a>
+        <a href="#peripherals">Peripheral Recipes</a>
+        <a href="#verification">Verification</a>
+        <a href="#pitfalls">Pitfalls</a>
+        <a href="#checklist">Checklist</a>
+        <a href="#references">References</a>
+      </nav>
+    </header>
+
+    <section id="summary">
+      <h2>Executive Summary</h2>
+      <div class="grid two">
+        <div class="card">
+          <h3>Core Principle</h3>
+          <p>
+            PX4 board bring-up is mostly a configuration and integration task. NuttX provides
+            MCU-level lower-half drivers, PX4 provides reusable STM platform wrappers, and the
+            custom board directory supplies the board-specific facts: clocks, pins, enabled
+            peripherals, buses, timers, storage, LEDs, and startup defaults.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Bring-Up Strategy</h3>
+          <p>
+            Do not start by enabling every feature. Bring up the board in layers: bootloader,
+            console, USB, HRT, parameter storage, buses, sensors, outputs, then application
+            modules. Verify each layer before moving to the next one.
+          </p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <p class="callout-title">Rule of thumb</p>
+        <p>
+          If the code describes an STM32 peripheral mechanism, it usually belongs to NuttX or the
+          PX4 STM platform. If the code describes your board's concrete wiring or policy, it
+          belongs under <code>boards/&lt;vendor&gt;/&lt;board&gt;</code>.
+        </p>
+      </div>
+    </section>
+
+    <section id="layers">
+      <h2>Layer Split</h2>
+      <p>
+        The most important bring-up skill is knowing which layer owns each decision. A wrong
+        assumption here leads to duplicated drivers, board-specific hacks in platform code, or
+        PX4 drivers that depend directly on GPIO pins.
+      </p>
+
+      <div class="diagram" role="img" aria-label="PX4 board bring-up layer diagram">
+        <svg viewBox="0 0 1080 470">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#526071"></polygon>
+            </marker>
+            <marker id="arrowheadGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#0f766e"></polygon>
+            </marker>
+          </defs>
+
+          <text class="svg-title" x="32" y="36">Board Bring-Up Ownership Layers</text>
+
+          <rect class="box box-amber" x="58" y="78" width="220" height="82"></rect>
+          <text class="svg-label" x="82" y="110">MCU hardware</text>
+          <text class="svg-small" x="82" y="133">STM32H753ZI peripherals</text>
+          <text class="svg-small" x="82" y="151">GPIO, clocks, timers, DMA</text>
+
+          <rect class="box box-blue" x="326" y="78" width="220" height="82"></rect>
+          <text class="svg-label" x="350" y="110">NuttX STM32H7</text>
+          <text class="svg-small" x="350" y="133">lower-half MCU drivers</text>
+          <text class="svg-small" x="350" y="151">stm32_spi, i2c, pwm, gpio</text>
+
+          <rect class="box box-green" x="594" y="78" width="220" height="82"></rect>
+          <text class="svg-label" x="618" y="110">PX4 STM platform</text>
+          <text class="svg-small" x="618" y="133">HRT, SPI glue, IO timers</text>
+          <text class="svg-small" x="618" y="151">work queues, uORB, params</text>
+
+          <rect class="box" x="862" y="78" width="170" height="82"></rect>
+          <text class="svg-label" x="886" y="110">PX4 drivers</text>
+          <text class="svg-small" x="886" y="133">sensor/output modules</text>
+          <text class="svg-small" x="886" y="151">uORB contracts</text>
+
+          <path class="arrow" d="M278 119 L326 119"></path>
+          <path class="arrow" d="M546 119 L594 119"></path>
+          <path class="arrow" d="M814 119 L862 119"></path>
+
+          <rect class="box box-red" x="326" y="252" width="488" height="112"></rect>
+          <text class="svg-label" x="350" y="284">Your board package</text>
+          <text class="svg-small" x="350" y="307">boards/&lt;vendor&gt;/&lt;board&gt;/nuttx-config/include/board.h</text>
+          <text class="svg-small" x="350" y="327">boards/&lt;vendor&gt;/&lt;board&gt;/src/board_config.h</text>
+          <text class="svg-small" x="350" y="347">src/i2c.cpp, src/spi.cpp, src/timer_config.cpp, src/init.c</text>
+
+          <path class="arrow-green" d="M570 252 C570 212, 436 202, 436 160"></path>
+          <path class="arrow-green" d="M570 252 C570 212, 704 202, 704 160"></path>
+          <path class="arrow" d="M814 308 C890 308, 947 242, 947 160"></path>
+        </svg>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Provides</th>
+            <th>You Usually Change</th>
+            <th>You Usually Do Not Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>NuttX STM32H7 arch layer</td>
+            <td>MCU-level drivers such as <code>stm32_spi.c</code>, <code>stm32_i2c.c</code>, <code>stm32_pwm.c</code>, <code>stm32_gpio.c</code>, <code>stm32_dma.c</code>.</td>
+            <td>Enable options in board <code>defconfig</code>.</td>
+            <td>The generic lower-half driver implementation, unless the MCU port is missing a real feature or has a bug.</td>
+          </tr>
+          <tr>
+            <td>PX4 STM platform layer</td>
+            <td>Reusable PX4 wrappers for HRT, SPI chip-select glue, IO timers, board reset, versioning, work queues, uORB, params.</td>
+            <td>Rarely. Prefer board-level configuration.</td>
+            <td>Shared STM platform code for one custom board.</td>
+          </tr>
+          <tr>
+            <td>Board NuttX config</td>
+            <td>Chip selection, clocks, peripheral enablement, alternate-function pins, linker scripts, memory layout.</td>
+            <td><code>nuttx-config/nsh/defconfig</code>, <code>nuttx-config/include/board.h</code>, scripts.</td>
+            <td>Other board directories.</td>
+          </tr>
+          <tr>
+            <td>Board PX4 source</td>
+            <td>PX4-facing board macros, LEDs, storage mount, buses, timers, board init, bootloader compatibility.</td>
+            <td><code>src/board_config.h</code>, <code>src/init.c</code>, <code>src/i2c.cpp</code>, <code>src/spi.cpp</code>, <code>src/timer_config.cpp</code>, <code>src/led.c</code>.</td>
+            <td>PX4 sensor drivers unless adding a new sensor type.</td>
+          </tr>
+          <tr>
+            <td>PX4 application/driver modules</td>
+            <td>Flight stack, sensors, MAVLink, actuator outputs, simulation modules.</td>
+            <td>Board build selection through <code>default.px4board</code> and startup scripts.</td>
+            <td>Direct board pin assumptions inside application modules.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="layout">
+      <h2>Recommended Directory Layout</h2>
+      <p>
+        A NuttX board target lives under <code>boards/&lt;vendor&gt;/&lt;board&gt;</code>. For the
+        Nucleo-H753ZI reference target, the important files are:
+      </p>
+
+      <pre><code>boards/st/nucleo-h753zi/
+  default.px4board
+  bootloader.px4board
+  firmware.prototype
+  init/
+    rc.board_early
+    rc.board_defaults
+  nuttx-config/
+    Kconfig
+    nsh/defconfig
+    bootloader/defconfig
+    include/board.h
+    include/board_dma_map.h
+    scripts/script.ld
+    scripts/bootloader_script.ld
+  src/
+    CMakeLists.txt
+    board_config.h
+    hw_config.h
+    init.c
+    led.c
+    i2c.cpp
+    spi.cpp
+    timer_config.cpp
+    usb.c
+    bootloader_main.c</code></pre>
+
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Bring-Up Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>default.px4board</code></td>
+            <td>Selects PX4 modules, board architecture, param file path, serial configuration, and feature set for the application firmware.</td>
+          </tr>
+          <tr>
+            <td><code>bootloader.px4board</code></td>
+            <td>Selects the bootloader build. STM32H7 PX4 bootloaders are NuttX-based.</td>
+          </tr>
+          <tr>
+            <td><code>nuttx-config/nsh/defconfig</code></td>
+            <td>Enables MCU peripherals, NuttX features, serial devices, USB, filesystems, memory protection, and scheduler options.</td>
+          </tr>
+          <tr>
+            <td><code>nuttx-config/include/board.h</code></td>
+            <td>Defines clock tree, PLLs, timer clocks, peripheral kernel clocks, UART/SPI/I2C alternate-function pins, and board LED indexes.</td>
+          </tr>
+          <tr>
+            <td><code>src/board_config.h</code></td>
+            <td>Defines PX4-facing board macros: HRT timer, LEDs, GPIO init list, PWM output channel count, DMA pool size, and board common declarations.</td>
+          </tr>
+          <tr>
+            <td><code>src/init.c</code></td>
+            <td>Owns board initialization: calls <code>px4_platform_init()</code>, initializes DMA pool, LEDs, storage, hardfault handling, and <code>px4_platform_configure()</code>.</td>
+          </tr>
+          <tr>
+            <td><code>src/i2c.cpp</code></td>
+            <td>Exports <code>px4_i2c_buses</code>, the PX4 bus list consumed by I2C/SPI driver framework.</td>
+          </tr>
+          <tr>
+            <td><code>src/spi.cpp</code></td>
+            <td>Exports <code>px4_spi_buses</code>, including SPI bus numbers, chip selects, DRDY pins, and external/internal bus classification.</td>
+          </tr>
+          <tr>
+            <td><code>src/timer_config.cpp</code></td>
+            <td>Maps STM32 timers/channels/pins to PX4 PWM input/output/capture infrastructure.</td>
+          </tr>
+          <tr>
+            <td><code>init/rc.board_early</code></td>
+            <td>Sets early startup policy before normal parameter/storage flows complete.</td>
+          </tr>
+          <tr>
+            <td><code>init/rc.board_defaults</code></td>
+            <td>Sets board default parameters such as HITL mode, sensor presence, serial defaults, and board-specific circuit breakers.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="mcu-drivers">
+      <h2>Finding Available MCU-Level Drivers</h2>
+      <p>
+        For STM32H7 targets, MCU-level drivers live in the NuttX STM32H7 arch layer. These are
+        below PX4 drivers and below PX4's STM platform wrappers.
+      </p>
+
+      <pre><code>platforms/nuttx/NuttX/nuttx/arch/arm/src/stm32h7/</code></pre>
+
+      <h3>Useful Discovery Commands</h3>
+      <pre><code># List STM32H7 lower-half driver source files.
+rg --files platforms/nuttx/NuttX/nuttx/arch/arm/src/stm32h7 |
+  rg 'spi|i2c|uart|serial|can|pwm|timer|adc|dma|gpio|usb|sdmmc|ethernet'
+
+# Find NuttX Kconfig options for STM32H7 peripherals.
+rg -n "config STM32H7_.*(SPI|I2C|USART|FDCAN|TIM|ADC|PWM|SDMMC|ETH|OTG)" \
+  platforms/nuttx/NuttX/nuttx/arch/arm/src/stm32h7/Kconfig
+
+# Check what your board currently enables.
+rg -n "CONFIG_STM32H7|CONFIG_SPI|CONFIG_I2C|CONFIG_SERIAL|CONFIG_PWM|CONFIG_ADC|CONFIG_CAN" \
+  boards/st/nucleo-h753zi/nuttx-config/nsh/defconfig</code></pre>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Need</th>
+            <th>NuttX Driver Area</th>
+            <th>Kconfig Pattern</th>
+            <th>Board Wiring Location</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>GPIO</td>
+            <td><code>stm32_gpio.c/.h</code></td>
+            <td>Core STM32H7 support</td>
+            <td><code>board_config.h</code>, <code>board.h</code>, board source</td>
+          </tr>
+          <tr>
+            <td>UART/USART</td>
+            <td><code>stm32_serial.c</code>, <code>stm32_uart.h</code></td>
+            <td><code>CONFIG_STM32H7_USARTx</code>, <code>CONFIG_STM32H7_UARTx</code></td>
+            <td><code>board.h</code> pin defines and serial startup params</td>
+          </tr>
+          <tr>
+            <td>I2C</td>
+            <td><code>stm32_i2c.c/.h</code></td>
+            <td><code>CONFIG_I2C</code>, <code>CONFIG_STM32H7_I2Cx</code></td>
+            <td><code>board.h</code> pins plus <code>src/i2c.cpp</code></td>
+          </tr>
+          <tr>
+            <td>SPI</td>
+            <td><code>stm32_spi.c/.h</code></td>
+            <td><code>CONFIG_SPI</code>, <code>CONFIG_STM32H7_SPIx</code></td>
+            <td><code>board.h</code> pins plus <code>src/spi.cpp</code></td>
+          </tr>
+          <tr>
+            <td>PWM/timers</td>
+            <td><code>stm32_pwm.c/.h</code>, <code>stm32_tim.c/.h</code></td>
+            <td><code>CONFIG_STM32H7_TIMx</code>, <code>CONFIG_STM32H7_TIMx_PWM</code></td>
+            <td><code>board.h</code>, <code>board_config.h</code>, <code>src/timer_config.cpp</code></td>
+          </tr>
+          <tr>
+            <td>ADC</td>
+            <td><code>stm32_adc.c/.h</code></td>
+            <td><code>CONFIG_STM32H7_ADCx</code></td>
+            <td><code>board.h</code>, PX4 ADC board config if used</td>
+          </tr>
+          <tr>
+            <td>CAN/FDCAN</td>
+            <td><code>stm32_fdcan_sock.c/.h</code></td>
+            <td><code>CONFIG_STM32H7_FDCANx</code></td>
+            <td><code>board.h</code>, board transceiver GPIOs, startup params</td>
+          </tr>
+          <tr>
+            <td>USB device</td>
+            <td><code>stm32_otgdev.c</code>, <code>stm32_otg.h</code></td>
+            <td><code>CONFIG_STM32H7_OTGFS</code>, <code>CONFIG_USBDEV</code></td>
+            <td><code>board.h</code>, <code>board_config.h</code>, <code>usb.c</code></td>
+          </tr>
+          <tr>
+            <td>Flash/progmem</td>
+            <td><code>stm32_flash.c/.h</code></td>
+            <td><code>CONFIG_STM32H7_PROGMEM</code></td>
+            <td>Linker script and board storage mount logic</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="phases">
+      <h2>Bring-Up Phases</h2>
+      <p>
+        Bring up one layer at a time. A board that boots to console and preserves parameters is
+        a better foundation than a board that starts many drivers but cannot be diagnosed.
+      </p>
+
+      <h3>Phase 0: Collect Hardware Facts</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Decisions To Record</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>MCU</td>
+            <td>Exact part number, flash size, SRAM regions, cache behavior, package, boot pins, debug interface.</td>
+          </tr>
+          <tr>
+            <td>Clock tree</td>
+            <td>HSE/LSE sources, PLL plan, SYSCLK, HCLK, PCLKs, USB 48 MHz source, timer clocks.</td>
+          </tr>
+          <tr>
+            <td>Console and USB</td>
+            <td>Primary debug UART, USB device pins, VBUS sense, expected console device names.</td>
+          </tr>
+          <tr>
+            <td>Storage</td>
+            <td>SD card, FRAM, EEPROM, internal flash filesystem, parameter file path, hardfault log path.</td>
+          </tr>
+          <tr>
+            <td>Buses</td>
+            <td>I2C/SPI/CAN/UART bus numbers, internal vs external classification, power rails, chip selects, DRDY pins.</td>
+          </tr>
+          <tr>
+            <td>Outputs</td>
+            <td>PWM timers/channels/pins, DShot support, safety switch, IO co-processor, actuator rail power.</td>
+          </tr>
+          <tr>
+            <td>Inputs</td>
+            <td>RC input, PPM/SBUS/CRSF pins, capture timers, button inputs, safety inputs.</td>
+          </tr>
+          <tr>
+            <td>LEDs and power control</td>
+            <td>LED polarity, power-enable GPIOs, sensor reset GPIOs, peripheral rail behavior.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Phase 1: Create The Board Skeleton</h3>
+      <ol>
+        <li>Choose the closest existing board with the same MCU family and similar memory layout.</li>
+        <li>Create <code>boards/&lt;vendor&gt;/&lt;board&gt;</code>.</li>
+        <li>Add <code>default.px4board</code>, <code>bootloader.px4board</code> if needed, <code>firmware.prototype</code>, <code>nuttx-config</code>, <code>src</code>, and <code>init</code>.</li>
+        <li>Keep the initial feature set small: console, USB, HRT, params, LEDs, and debug commands.</li>
+      </ol>
+
+      <pre><code># Example target names for this board.
+make st_nucleo-h753zi_default
+make st_nucleo-h753zi_bootloader</code></pre>
+
+      <h3>Phase 2: Configure NuttX</h3>
+      <p>
+        Use <code>nuttx-config/nsh/defconfig</code> for the application image and
+        <code>nuttx-config/bootloader/defconfig</code> for the bootloader image.
+      </p>
+
+      <pre><code># Edit with menuconfig when available.
+make st_nucleo-h753zi_default menuconfig
+
+# Review enabled MCU features.
+rg -n "CONFIG_STM32H7|CONFIG_I2C|CONFIG_SPI|CONFIG_SERIAL|CONFIG_USB" \
+  boards/st/nucleo-h753zi/nuttx-config/nsh/defconfig</code></pre>
+
+      <div class="callout warn">
+        <p class="callout-title">Common NuttX config mistake</p>
+        <p>
+          Defining pins in <code>board.h</code> does not enable a peripheral. The matching
+          <code>CONFIG_STM32H7_*</code> option must also be enabled in <code>defconfig</code>.
+          Likewise, enabling a peripheral in <code>defconfig</code> is not enough if the board
+          pins and PX4 bus arrays are missing.
+        </p>
+      </div>
+
+      <h3>Phase 3: Define Clocks And Pins</h3>
+      <p>
+        Put NuttX clock and pin definitions in <code>nuttx-config/include/board.h</code>. For
+        Nucleo-H753ZI, this includes the 8 MHz HSE, PLL1 at 400 MHz SYSCLK, peripheral kernel
+        clocks, timer clocks, UART pins, SPI3 pins, and I2C1 pins.
+      </p>
+
+      <pre><code># Examples from the reference board.
+#define STM32_BOARD_XTAL        8000000ul
+#define STM32_BOARD_USEHSE
+
+#define GPIO_USART3_RX  GPIO_USART3_RX_3
+#define GPIO_USART3_TX  GPIO_USART3_TX_3
+
+#define GPIO_SPI3_MISO  GPIO_SPI3_MISO_1
+#define GPIO_SPI3_MOSI  GPIO_SPI3_MOSI_2
+#define GPIO_SPI3_SCK   GPIO_SPI3_SCK_1
+
+#define GPIO_I2C1_SCL   GPIO_I2C1_SCL_2
+#define GPIO_I2C1_SDA   GPIO_I2C1_SDA_2</code></pre>
+
+      <h3>Phase 4: Define PX4 Board Facts</h3>
+      <p>
+        Put PX4-facing board macros in <code>src/board_config.h</code>. This file is where the
+        PX4 platform learns board-level policy and resources.
+      </p>
+
+      <pre><code>#define HRT_TIMER           5
+#define HRT_TIMER_CHANNEL   1
+
+#define BOARD_DMA_ALLOC_POOL_SIZE  5120
+#define DIRECT_PWM_OUTPUT_CHANNELS  0
+
+#define PX4_GPIO_INIT_LIST { \
+    GPIO_OTGFS_VBUS,       \
+}</code></pre>
+
+      <h3>Phase 5: Implement Board Initialization</h3>
+      <p>
+        <code>src/init.c</code> is the central bring-up file. It should configure board GPIOs,
+        call the PX4 platform initialization, initialize board-only services, mount storage, and
+        call <code>px4_platform_configure()</code>.
+      </p>
+
+      <pre><code>__EXPORT int board_app_initialize(uintptr_t arg)
+{
+    px4_platform_init();
+
+    board_dma_alloc_init();
+    drv_led_start();
+    mount_parameter_storage();
+
+    px4_platform_configure();
+    return OK;
+}</code></pre>
+
+      <h3>Phase 6: Expose Buses And Timers</h3>
+      <p>
+        PX4 drivers discover board buses through board-provided arrays. The Nucleo reference board
+        currently exposes SPI3 but no devices, and no I2C buses in the PX4 bus array.
+      </p>
+
+      <pre><code>// src/i2c.cpp
+constexpr px4_i2c_bus_t px4_i2c_buses[I2C_BUS_MAX_BUS_ITEMS] = {};
+
+// src/spi.cpp
+constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
+    initSPIBus(SPI::Bus::SPI3, {}),
+};
+
+// src/timer_config.cpp
+constexpr io_timers_t io_timers[MAX_IO_TIMERS] = {};
+constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {};</code></pre>
+
+      <p>
+        When adding real sensors or outputs, these files change from empty/minimal arrays into the
+        board's hardware manifest.
+      </p>
+
+      <h3>Phase 7: Add PX4 Modules And Startup Policy</h3>
+      <p>
+        Enable modules in <code>default.px4board</code>. Start board-specific hardware from
+        <code>init/rc.board_defaults</code>, <code>init/rc.board_early</code>, or a sensor startup
+        script depending on the feature.
+      </p>
+
+      <pre><code># default.px4board examples
+CONFIG_MODULES_SENSORS=y
+CONFIG_MODULES_MAVLINK=y
+CONFIG_SYSTEMCMDS_DMESG=y
+CONFIG_SYSTEMCMDS_UORB=y
+CONFIG_SYSTEMCMDS_TOPIC_LISTENER=y</code></pre>
+    </section>
+
+    <section id="peripherals">
+      <h2>Peripheral Bring-Up Recipes</h2>
+
+      <h3>Console And USB</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Files</th>
+            <th>Validation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Enable UART/USART in NuttX.</td>
+            <td><code>nuttx-config/nsh/defconfig</code></td>
+            <td>Serial device appears as expected, for example <code>/dev/ttyS0</code>.</td>
+          </tr>
+          <tr>
+            <td>Map TX/RX pins.</td>
+            <td><code>nuttx-config/include/board.h</code></td>
+            <td>NSH prompt appears on the expected connector.</td>
+          </tr>
+          <tr>
+            <td>Enable USB device and VBUS sense.</td>
+            <td><code>defconfig</code>, <code>board_config.h</code>, <code>usb.c</code></td>
+            <td>Board enumerates as <code>/dev/ttyACM0</code> or equivalent.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>I2C</h3>
+      <ol>
+        <li>Enable <code>CONFIG_I2C</code> and <code>CONFIG_STM32H7_I2Cx</code> in <code>defconfig</code>.</li>
+        <li>Define <code>GPIO_I2Cx_SCL</code> and <code>GPIO_I2Cx_SDA</code> in <code>board.h</code>.</li>
+        <li>Add the bus to <code>src/i2c.cpp</code> using <code>initI2CBusInternal()</code> or <code>initI2CBusExternal()</code>.</li>
+        <li>Enable and start the PX4 driver that probes the device.</li>
+      </ol>
+
+      <pre><code>constexpr px4_i2c_bus_t px4_i2c_buses[I2C_BUS_MAX_BUS_ITEMS] = {
+    initI2CBusExternal(1),
+};</code></pre>
+
+      <h3>SPI</h3>
+      <ol>
+        <li>Enable <code>CONFIG_SPI</code> and <code>CONFIG_STM32H7_SPIx</code> in <code>defconfig</code>.</li>
+        <li>Define <code>GPIO_SPIx_SCK</code>, <code>GPIO_SPIx_MISO</code>, and <code>GPIO_SPIx_MOSI</code> in <code>board.h</code>.</li>
+        <li>Add devices and chip-select pins to <code>src/spi.cpp</code>.</li>
+        <li>Add DRDY pins for interrupt-driven sensors when available.</li>
+        <li>Enable the corresponding PX4 sensor driver.</li>
+      </ol>
+
+      <pre><code>constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
+    initSPIBus(SPI::Bus::SPI3, {
+        initSPIDevice(DRV_IMU_DEVTYPE_BMI270, SPI::CS{GPIO::PortA, GPIO::Pin4},
+                      SPI::DRDY{GPIO::PortB, GPIO::Pin0}),
+    }),
+};</code></pre>
+
+      <div class="callout warn">
+        <p class="callout-title">SPI detail</p>
+        <p>
+          SPI SCK/MISO/MOSI pins are NuttX alternate-function pins in <code>board.h</code>.
+          Chip select and DRDY GPIOs are usually board-level PX4 device facts in
+          <code>src/spi.cpp</code>. The shared PX4 STM SPI layer consumes <code>px4_spi_buses</code>
+          and implements the select/status callbacks.
+        </p>
+      </div>
+
+      <h3>PWM / DShot / Timer IO</h3>
+      <ol>
+        <li>Choose timers that do not conflict with HRT, capture inputs, or other board functions.</li>
+        <li>Enable the needed timer/PWM Kconfig options in <code>defconfig</code>.</li>
+        <li>Set <code>DIRECT_PWM_OUTPUT_CHANNELS</code> in <code>board_config.h</code>.</li>
+        <li>Populate <code>io_timers</code> and <code>timer_io_channels</code> in <code>timer_config.cpp</code>.</li>
+        <li>Enable <code>CONFIG_DRIVERS_PWM_OUT</code> or the relevant output driver in <code>default.px4board</code>.</li>
+      </ol>
+
+      <pre><code>// Conceptual example only. Choose timer/pins from your schematic and board.h.
+constexpr io_timers_t io_timers[MAX_IO_TIMERS] = {
+    initIOTimer(Timer::Timer1),
+};
+
+constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {
+    initIOTimerChannel(io_timers, {Timer::Timer1, Timer::Channel1}, {GPIO::PortE, GPIO::Pin9}),
+};</code></pre>
+
+      <h3>Parameter Storage</h3>
+      <p>
+        Decide early where parameters live. The Nucleo reference board has no SD card, FRAM, or
+        EEPROM, so it mounts a LittleFS partition in internal flash and sets
+        <code>CONFIG_BOARD_PARAM_FILE="/fs/flash/params"</code>.
+      </p>
+
+      <pre><code># default.px4board
+CONFIG_BOARD_PARAM_FILE="/fs/flash/params"
+CONFIG_BOARD_NO_SDCARD=y</code></pre>
+
+      <p>
+        If you use internal flash, check linker script regions carefully so the application,
+        bootloader, and parameter filesystem do not overlap.
+      </p>
+    </section>
+
+    <section id="verification">
+      <h2>Verification Flow</h2>
+
+      <h3>Build Checks</h3>
+      <pre><code># Application build.
+make st_nucleo-h753zi_default
+
+# Bootloader build.
+make st_nucleo-h753zi_bootloader
+
+# Optional menuconfig if changing NuttX options.
+make st_nucleo-h753zi_default menuconfig</code></pre>
+
+      <h3>First-Boot Console Checks</h3>
+      <p>
+        Keep these commands enabled in early board builds:
+        <code>dmesg</code>, <code>ver</code>, <code>top</code>, <code>uorb</code>,
+        <code>listener</code> or <code>topic_listener</code>, <code>work_queue</code>,
+        <code>perf</code>, <code>param</code>, and storage-specific tools such as
+        <code>mtd</code>.
+      </p>
+
+      <pre><code># Basic identity and boot log.
+ver all
+dmesg
+
+# Scheduler and PX4 runtime.
+top
+work_queue status
+
+# uORB and modules.
+uorb top
+listener sensor_combined
+
+# Parameters and storage.
+param status
+param show SYS_AUTOSTART
+
+# Board manifest/config if enabled.
+mft status</code></pre>
+
+      <h3>Layered Definition Of Done</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Done When</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Bootloader</td>
+            <td>Bootloader builds, flashes at the expected address, enters update mode, and can load the application image.</td>
+          </tr>
+          <tr>
+            <td>Application boot</td>
+            <td>Board reaches NSH/PX4 startup repeatedly with no hard fault and correct clock speed.</td>
+          </tr>
+          <tr>
+            <td>Console</td>
+            <td>Debug console is available from reset and does not conflict with MAVLink or RC ports.</td>
+          </tr>
+          <tr>
+            <td>USB</td>
+            <td>USB enumerates reliably and VBUS detection matches the hardware connector.</td>
+          </tr>
+          <tr>
+            <td>HRT</td>
+            <td>Timers work, scheduled work queues run, and no PWM/capture configuration uses the HRT timer accidentally.</td>
+          </tr>
+          <tr>
+            <td>Parameters</td>
+            <td>Parameters survive reboot and the storage path does not corrupt application flash.</td>
+          </tr>
+          <tr>
+            <td>I2C/SPI</td>
+            <td>Bus initializes, devices probe, communication errors remain bounded, and chip-select/DRDY behavior is correct.</td>
+          </tr>
+          <tr>
+            <td>Sensors</td>
+            <td>Driver publishes the expected uORB topics with valid timestamps, device IDs, and update rates.</td>
+          </tr>
+          <tr>
+            <td>Outputs</td>
+            <td>PWM/DShot outputs map to the expected pins, honor arming/disarmed/failsafe states, and do not conflict with timers.</td>
+          </tr>
+          <tr>
+            <td>Startup defaults</td>
+            <td>Board boots into the intended mode without manual parameter edits.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="pitfalls">
+      <h2>Common Pitfalls</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Symptom</th>
+            <th>Likely Cause</th>
+            <th>Where To Look</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Peripheral pins defined but device never appears.</td>
+            <td>Peripheral not enabled in <code>defconfig</code>, or bus not exposed in <code>i2c.cpp</code>/<code>spi.cpp</code>.</td>
+            <td><code>nuttx-config/nsh/defconfig</code>, <code>board.h</code>, board bus files.</td>
+          </tr>
+          <tr>
+            <td>SPI driver probes wrong device or no device.</td>
+            <td>Wrong chip select, wrong device ID, missing power rail, wrong internal/external bus classification.</td>
+            <td><code>src/spi.cpp</code>, schematic, sensor driver start command.</td>
+          </tr>
+          <tr>
+            <td>No console or wrong serial device order.</td>
+            <td>USART not enabled, pin alternate function wrong, serial reordering behavior not understood.</td>
+            <td><code>defconfig</code>, <code>board.h</code>, serial port mapping docs.</td>
+          </tr>
+          <tr>
+            <td>Bootloader flashes but app does not boot.</td>
+            <td>Application load address, linker script, bootloader board ID, or flash region mismatch.</td>
+            <td><code>hw_config.h</code>, <code>firmware.prototype</code>, linker scripts.</td>
+          </tr>
+          <tr>
+            <td>Parameters reset every boot.</td>
+            <td>Parameter file path invalid, filesystem not mounted before parameter load, no persistent storage.</td>
+            <td><code>default.px4board</code>, <code>rc.board_early</code>, <code>init.c</code>.</td>
+          </tr>
+          <tr>
+            <td>LEDs inverted.</td>
+            <td>Board LED polarity differs from most PX4 boards.</td>
+            <td><code>board_config.h</code>, <code>led.c</code>, schematic.</td>
+          </tr>
+          <tr>
+            <td>PWM output does not appear.</td>
+            <td><code>DIRECT_PWM_OUTPUT_CHANNELS</code> is zero, timer array empty, Kconfig timer/PWM not enabled, or timer conflict.</td>
+            <td><code>board_config.h</code>, <code>timer_config.cpp</code>, <code>defconfig</code>.</td>
+          </tr>
+          <tr>
+            <td>Random DMA or bus corruption.</td>
+            <td>Cacheable memory used for DMA, DMA pool too small, wrong DMA map, or alignment issue.</td>
+            <td><code>board_dma_map.h</code>, <code>BOARD_DMA_ALLOC_POOL_SIZE</code>, NuttX DMA config.</td>
+          </tr>
+          <tr>
+            <td>HITL starts but real sensors are silent.</td>
+            <td>HITL defaults disable real sensors or GPS; physical drivers are not started.</td>
+            <td><code>rc.board_defaults</code>, <code>SYS_HITL</code>, sensor startup scripts.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="checklist">
+      <h2>Bring-Up Checklist</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Item</th>
+            <th>Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Required</td>
+            <td>Exact MCU and clock plan documented.</td>
+            <td><code>board.h</code> PLL and clock macros match schematic and measured behavior.</td>
+          </tr>
+          <tr>
+            <td>Required</td>
+            <td>Bootloader and app memory map are consistent.</td>
+            <td>Bootloader address, app load address, linker scripts, and <code>firmware.prototype</code> match.</td>
+          </tr>
+          <tr>
+            <td>Required</td>
+            <td>Debug console available from reset.</td>
+            <td>NSH prompt visible on documented connector.</td>
+          </tr>
+          <tr>
+            <td>Required</td>
+            <td>PX4 platform initializes cleanly.</td>
+            <td><code>ver all</code>, <code>dmesg</code>, <code>top</code>, <code>work_queue status</code> work.</td>
+          </tr>
+          <tr>
+            <td>Required</td>
+            <td>Persistent parameter storage works.</td>
+            <td>Set a parameter, reboot, and verify it remains set.</td>
+          </tr>
+          <tr>
+            <td>Required</td>
+            <td>Board buses are explicitly described.</td>
+            <td><code>i2c.cpp</code>, <code>spi.cpp</code>, and <code>timer_config.cpp</code> match schematic.</td>
+          </tr>
+          <tr>
+            <td>Required</td>
+            <td>Board startup defaults match intended mode.</td>
+            <td>HITL, real sensor, or actuator output behavior occurs without manual console edits.</td>
+          </tr>
+          <tr>
+            <td>Required for real sensors</td>
+            <td>Each hardware sensor has a driver, bus, power rail, and startup command.</td>
+            <td>Expected uORB topic updates at expected rate with stable device ID.</td>
+          </tr>
+          <tr>
+            <td>Required for actuators</td>
+            <td>Output mapping, arming state, disarmed values, and failsafe values verified.</td>
+            <td>Scope/logic analyzer confirms expected pin behavior.</td>
+          </tr>
+          <tr>
+            <td>Recommended</td>
+            <td>Debug commands remain enabled until board is stable.</td>
+            <td><code>dmesg</code>, <code>perf</code>, <code>uorb</code>, <code>listener</code>, <code>param</code>, <code>top</code> available.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="references">
+      <h2>Local References</h2>
+      <ul class="source-list">
+        <li><a href="../README.md"><code>boards/st/nucleo-h753zi/README.md</code></a></li>
+        <li><a href="../default.px4board"><code>boards/st/nucleo-h753zi/default.px4board</code></a></li>
+        <li><a href="../bootloader.px4board"><code>boards/st/nucleo-h753zi/bootloader.px4board</code></a></li>
+        <li><a href="../init/rc.board_early"><code>boards/st/nucleo-h753zi/init/rc.board_early</code></a></li>
+        <li><a href="../init/rc.board_defaults"><code>boards/st/nucleo-h753zi/init/rc.board_defaults</code></a></li>
+        <li><a href="../nuttx-config/nsh/defconfig"><code>boards/st/nucleo-h753zi/nuttx-config/nsh/defconfig</code></a></li>
+        <li><a href="../nuttx-config/bootloader/defconfig"><code>boards/st/nucleo-h753zi/nuttx-config/bootloader/defconfig</code></a></li>
+        <li><a href="../nuttx-config/include/board.h"><code>boards/st/nucleo-h753zi/nuttx-config/include/board.h</code></a></li>
+        <li><a href="../src/CMakeLists.txt"><code>boards/st/nucleo-h753zi/src/CMakeLists.txt</code></a></li>
+        <li><a href="../src/board_config.h"><code>boards/st/nucleo-h753zi/src/board_config.h</code></a></li>
+        <li><a href="../src/init.c"><code>boards/st/nucleo-h753zi/src/init.c</code></a></li>
+        <li><a href="../src/i2c.cpp"><code>boards/st/nucleo-h753zi/src/i2c.cpp</code></a></li>
+        <li><a href="../src/spi.cpp"><code>boards/st/nucleo-h753zi/src/spi.cpp</code></a></li>
+        <li><a href="../src/timer_config.cpp"><code>boards/st/nucleo-h753zi/src/timer_config.cpp</code></a></li>
+        <li><a href="../../../../docs/en/hardware/porting_guide.md"><code>docs/en/hardware/porting_guide.md</code></a></li>
+        <li><a href="../../../../docs/en/hardware/porting_guide_nuttx.md"><code>docs/en/hardware/porting_guide_nuttx.md</code></a></li>
+        <li><a href="../../../../platforms/nuttx/NuttX/nuttx/arch/arm/src/stm32h7/Kconfig"><code>platforms/nuttx/NuttX/nuttx/arch/arm/src/stm32h7/Kconfig</code></a></li>
+        <li><a href="../../../../platforms/nuttx/NuttX/nuttx/arch/arm/src/stm32h7/stm32_spi.c"><code>platforms/nuttx/NuttX/nuttx/arch/arm/src/stm32h7/stm32_spi.c</code></a></li>
+        <li><a href="../../../../platforms/nuttx/src/px4/common/px4_init.cpp"><code>platforms/nuttx/src/px4/common/px4_init.cpp</code></a></li>
+        <li><a href="../../../../platforms/nuttx/src/px4/stm/stm32_common/spi/spi.cpp"><code>platforms/nuttx/src/px4/stm/stm32_common/spi/spi.cpp</code></a></li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>
+        This guide is based on the local PX4-Autopilot source tree and the
+        <code>boards/st/nucleo-h753zi</code> target. It is intended for engineering bring-up,
+        not as a substitute for board electrical validation, safety analysis, or flight-test
+        qualification.
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

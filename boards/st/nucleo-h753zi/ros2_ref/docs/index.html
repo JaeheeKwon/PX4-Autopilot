@@ -139,6 +139,7 @@
       padding: 10px 12px;
       text-align: left;
       vertical-align: top;
+      overflow-wrap: anywhere;
     }
     th {
       background: #eef3f8;
@@ -252,6 +253,7 @@
     <thead>
       <tr>
         <th>Component</th>
+        <th>Description</th>
         <th>Path</th>
         <th>Role</th>
       </tr>
@@ -259,21 +261,25 @@
     <tbody>
       <tr>
         <td>PX4 startup hook</td>
+        <td>Board-side startup extension that launches the DDS client after PX4 boots on NuttX.</td>
         <td><code>../config/rc.board_extras</code></td>
         <td>Starts <code>uxrce_dds_client</code> on <code>/dev/ttyS1</code>.</td>
       </tr>
       <tr>
         <td>ROS 2 package</td>
+        <td>Host-side reference package containing the health monitor executable and launch file.</td>
         <td><code>../ros2_ws/src/nucleo_px4_ros2_ref</code></td>
         <td>Contains the reference bridge health monitor node.</td>
       </tr>
       <tr>
         <td>Agent helper</td>
+        <td>Shell wrapper for starting the Micro XRCE-DDS Agent with the board's serial settings.</td>
         <td><code>../scripts/run_agent_serial.sh</code></td>
         <td>Runs <code>MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600</code>.</td>
       </tr>
       <tr>
         <td>Workspace helper</td>
+        <td>Host setup script that prepares the ROS 2 workspace and message dependencies.</td>
         <td><code>../scripts/build_ros2_workspace.sh</code></td>
         <td>Creates and builds a host ROS 2 workspace with <code>px4_msgs</code>.</td>
       </tr>
@@ -282,4 +288,3 @@
 </main>
 </body>
 </html>
-

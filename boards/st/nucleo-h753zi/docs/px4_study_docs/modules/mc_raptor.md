@@ -8,6 +8,55 @@
 
 Architecture notes for the mc_raptor module.
 
+## Description of Module
+
+Runs an experimental multicopter Raptor control path for advanced setpoint generation.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `arming_check_request`, `register_ext_component_reply`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_local_position`, `vehicle_status`.
+- Publish outputs or status topics such as `actuator_motors`, `arming_check_reply`, `config_control_setpoints`, `raptor_input`, `raptor_status`, `register_ext_component_request`, `tune_control`, `unregister_ext_component`.
+- Use parameters or module configuration entries such as `MC_RAPTOR_ENABLE`, `MC_RAPTOR_INTREF`, `MC_RAPTOR_OFFB`, `MC_RAPTOR_VERBOS`.
+- Implement the main behavior in classes such as `Raptor`, `FlightModeState`, `InternalReference`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `rate_ctrl`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+Raptor runs learned policy inference for multicopter control. The controller is a parameterized neural policy, optionally with recurrent state.
+
+```text
+o_t = normalize(sensor_state_t, setpoint_t, previous_action_t)
+h_t = f_theta(h_{t-1}, o_t)
+a_t = pi_theta(o_t, h_t)
+a_t = constrain(a_t, action_min, action_max)
+actuator_output = action_scale * a_t + action_offset
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `arming_check_request`, `register_ext_component_reply`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_local_position`, `vehicle_status` |
+| Primary outputs | `actuator_motors`, `arming_check_reply`, `config_control_setpoints`, `raptor_input`, `raptor_status`, `register_ext_component_request`, `tune_control`, `unregister_ext_component` |
+| Referenced topics | `actuator_motors`, `arming_check_reply`, `arming_check_request`, `config_control_setpoints`, `raptor_input`, `raptor_status`, `register_ext_component_reply`, `register_ext_component_request`, `trajectory_setpoint`, `tune_control`, ... 7 more |
+| Parameters/config | `MC_RAPTOR_ENABLE`, `MC_RAPTOR_INTREF`, `MC_RAPTOR_OFFB`, `MC_RAPTOR_VERBOS` |
+| Key classes | `Raptor`, `FlightModeState`, `InternalReference` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| mc_raptor.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| mc_raptor.hpp | Defines `Raptor` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

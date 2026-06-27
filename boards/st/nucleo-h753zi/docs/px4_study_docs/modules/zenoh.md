@@ -8,6 +8,51 @@
 
 Architecture notes for the Zenoh bridge module.
 
+## Description of Module
+
+Bridges PX4 data through Zenoh transport.
+
+### Primary Responsibilities
+
+- Translate between PX4 uORB data and an external transport or companion-computer interface.
+- Reference uORB topics such as `actuator_outputs`, `input_rc`, `parameter_update`, `uORBTopics`.
+- Do not publish directly detected uORB outputs from this module directory.
+- Use parameters or module configuration entries such as `ZENOH_ENABLE`.
+- Implement the main behavior in classes such as `uORB_Zenoh_Publisher`, `Zenoh_Publisher`, `uORB_Zenoh_Subscriber`, `size_t`, `Zenoh_Subscriber`, `ZENOH`, ... 1 more.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+- Waits on file descriptors or uORB subscriptions with `px4_poll()`.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | none detected |
+| Referenced topics | `actuator_outputs`, `input_rc`, `parameter_update`, `uORBTopics` |
+| Parameters/config | `ZENOH_ENABLE` |
+| Key classes | `uORB_Zenoh_Publisher`, `Zenoh_Publisher`, `uORB_Zenoh_Subscriber`, `size_t`, `Zenoh_Subscriber`, `ZENOH`, `Zenoh_Config` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| zenoh.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| dds_topics.yaml | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| zenoh_params.yaml | Build, parameter, or module configuration |
+| publishers/uorb_publisher.hpp | Defines `uORB_Zenoh_Publisher` class |
+| publishers/zenoh_publisher.hpp | Defines `Zenoh_Publisher` class |
+| subscribers/uorb_subscriber.hpp | Defines `uORB_Zenoh_Subscriber` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

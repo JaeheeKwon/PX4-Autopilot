@@ -6,7 +6,59 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Attitude and position estimator using an Extended Kalman Filter.
+
+## Description of Module
+
+Provides the legacy local-position estimator path using sensor and aiding inputs.
+
+### Primary Responsibilities
+
+- Fuse, filter, or validate measurements into estimated state outputs for other modules.
+- Consume runtime inputs from uORB topics such as `actuator_armed`, `distance_sensor`, `landing_target_pose`, `parameter_update`, `sensor_combined`, `vehicle_air_data`, `vehicle_angular_velocity`, `vehicle_attitude`, ... 7 more.
+- Publish outputs or status topics such as `estimator_innovation_variances`, `estimator_innovations`, `estimator_states`, `estimator_status`, `vehicle_global_position`, `vehicle_local_position`, `vehicle_odometry`.
+- Use module configuration from `params.yaml`.
+- Implement the main behavior in classes such as `BlockLocalPositionEstimator`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `INS0`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+The local position estimator is a Kalman-filter style estimator for local position, velocity, and sensor offsets.
+
+```text
+x = [p_N, p_E, p_D, v_N, v_E, v_D, biases...]
+x_pred = F*x + B*u
+P_pred = F*P*F^T + Q
+y = z - H*x_pred
+S = H*P_pred*H^T + R
+K = P_pred*H^T*inverse(S)
+x = x_pred + K*y
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_armed`, `distance_sensor`, `landing_target_pose`, `parameter_update`, `sensor_combined`, `vehicle_air_data`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_command`, `vehicle_gps_position`, ... 5 more |
+| Primary outputs | `estimator_innovation_variances`, `estimator_innovations`, `estimator_states`, `estimator_status`, `vehicle_global_position`, `vehicle_local_position`, `vehicle_odometry` |
+| Referenced topics | `actuator_armed`, `distance_sensor`, `estimator_innovation_variances`, `estimator_innovations`, `estimator_states`, `estimator_status`, `landing_target_pose`, `parameter_update`, `sensor_combined`, `sensor_gps`, ... 15 more |
+| Parameters/config | params.yaml |
+| Key classes | `BlockLocalPositionEstimator` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| BlockLocalPositionEstimator.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| params.yaml | Build, parameter, or module configuration |
+| BlockLocalPositionEstimator.hpp | Defines `BlockLocalPositionEstimator` class |
 
 ## Architecture Overview
 

@@ -98,7 +98,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="events.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>events</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Background process running periodically on the LP work queue to perform housekeeping tasks. It is currently only responsible for tone alarm on RC Loss. The tasks can be started via CLI or uORB topics (vehicle_command from MAVLink, etc.).</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/events</code></div>
       <div><strong>Build target</strong><br><code>modules__events</code></div>
@@ -108,6 +108,24 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Collects and forwards PX4 event messages for logging, MAVLink, and ground-station visibility.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `battery_status`, `cpuload`, `failsafe_flags`, `vehicle_command`, `vehicle_status`.</li><li>Publish outputs or status topics such as `led_control`, `tune_control`, `vehicle_command_ack`.</li><li>Use module configuration from `events_params.yaml`.</li><li>Implement the main behavior in classes such as `RC_Loss_Alarm`, `SendEvent`, `manages`, `in`, `StatusDisplay`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `lp_default`.</li><li>Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p class="section-note">No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`battery_status`, `cpuload`, `failsafe_flags`, `vehicle_command`, `vehicle_status`</td></tr><tr><td>Primary outputs</td><td>`led_control`, `tune_control`, `vehicle_command_ack`</td></tr><tr><td>Referenced topics</td><td>`battery_status`, `cpuload`, `failsafe_flags`, `led_control`, `tune_control`, `vehicle_command`, `vehicle_command_ack`, `vehicle_status`</td></tr><tr><td>Parameters/config</td><td>events_params.yaml</td></tr><tr><td>Key classes</td><td>`RC_Loss_Alarm`, `SendEvent`, `manages`, `in`, `StatusDisplay`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>send_event.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>events_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>rc_loss_alarm.h</td><td>Defines `RC_Loss_Alarm` class</td></tr><tr><td>send_event.h</td><td>Defines `SendEvent` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#eef0f2&quot;,&quot;secondaryColor&quot;:&quot;#e1e5e8&quot;,&quot;tertiaryColor&quot;:&quot;#fafafa&quot;,&quot;primaryBorderColor&quot;:&quot;#59636e&quot;,&quot;primaryTextColor&quot;:&quot;#202428&quot;,&quot;lineColor&quot;:&quot;#59636e&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -143,7 +161,6 @@ classDef module fill:#eef0f2,stroke:#30363d,color:#202428;
 classDef io fill:#e1e5e8,stroke:#59636e,color:#202428;
 classDef data fill:#fafafa,stroke:#59636e,color:#202428;
 classDef exec fill:#d5dade,stroke:#30363d,color:#202428;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/events</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__events</td></tr><tr><td>Runtime main</td><td>send_event</td></tr><tr><td>Stack main</td><td>Not specified</td></tr><tr><td>Module config</td><td>events_params.yaml</td></tr><tr><td>Detected sources</td><td>4</td></tr><tr><td>Detected headers</td><td>3</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

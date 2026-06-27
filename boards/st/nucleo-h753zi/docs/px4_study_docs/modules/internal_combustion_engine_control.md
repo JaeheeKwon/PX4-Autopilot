@@ -8,6 +8,46 @@
 
 Architecture notes for the Internal Combustion Engine Control module.
 
+## Description of Module
+
+Controls internal-combustion-engine state and publishes engine status for vehicles that use an ICE.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `actuator_motors`, `manual_control_setpoint`, `parameter_update`, `rpm`, `vehicle_status`.
+- Publish outputs or status topics such as `internal_combustion_engine_control`, `internal_combustion_engine_status`.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `InternalCombustionEngineControl`, `State`, `SubState`, `UserOnOffRequest`, `ICESource`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_motors`, `manual_control_setpoint`, `parameter_update`, `rpm`, `vehicle_status` |
+| Primary outputs | `internal_combustion_engine_control`, `internal_combustion_engine_status` |
+| Referenced topics | `actuator_motors`, `internal_combustion_engine_control`, `internal_combustion_engine_status`, `manual_control_setpoint`, `parameter_update`, `rpm`, `vehicle_status` |
+| Parameters/config | module.yaml |
+| Key classes | `InternalCombustionEngineControl`, `State`, `SubState`, `UserOnOffRequest`, `ICESource` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| InternalCombustionEngineControl.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| InternalCombustionEngineControl.hpp | Defines `InternalCombustionEngineControl` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

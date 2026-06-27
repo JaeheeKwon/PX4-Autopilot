@@ -89,12 +89,12 @@ rosdep update
 
 PX4 in this tree uses the Micro XRCE-DDS v2 client path by default. Use a v2
 agent for compatibility. This reference builds the agent standalone and pins
-`v2.4.3`, matching PX4's standalone source-build guidance.
+`v2.4.2`, matching PX4's ROS 2 Humble compatibility table.
 
 ```sh
 mkdir -p ~/src
 cd ~/src
-git clone -b v2.4.3 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+git clone -b v2.4.2 https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
 cd Micro-XRCE-DDS-Agent
 mkdir -p build
 cd build

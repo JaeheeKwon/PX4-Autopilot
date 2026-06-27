@@ -8,6 +8,56 @@
 
 Architecture notes for the battery_status module.
 
+## Description of Module
+
+Monitors battery measurements, estimates battery health and remaining energy, and publishes battery status.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `adc_report`, `parameter_update`.
+- Do not publish directly detected uORB outputs from this module directory.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `AnalogBattery`, `BatteryStatus`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+Battery status combines filtered voltage/current, coulomb counting, and voltage-based checks to estimate state of charge and warnings.
+
+```text
+I_f[k] = I_f[k-1] + alpha * (I_raw[k] - I_f[k-1])
+Q_used_Ah[k] = Q_used_Ah[k-1] + I_f[k] * dt / 3600
+SOC_coulomb = 1 - Q_used_Ah / capacity_Ah
+R_est = (V_oc - V_load) / max(I_f, epsilon)
+SOC = blend(SOC_coulomb, SOC_voltage)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `adc_report`, `parameter_update` |
+| Primary outputs | none detected |
+| Referenced topics | `adc_report`, `parameter_update` |
+| Parameters/config | module.yaml |
+| Key classes | `AnalogBattery`, `BatteryStatus` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| battery_status.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| analog_battery_params_common.yaml | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| analog_battery.h | Defines `AnalogBattery` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

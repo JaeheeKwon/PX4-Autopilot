@@ -6,7 +6,47 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Background process running periodically on the LP work queue to perform housekeeping tasks. It is currently only responsible for tone alarm on RC Loss. The tasks can be started via CLI or uORB topics (vehicle_command from MAVLink, etc.).
+
+## Description of Module
+
+Collects and forwards PX4 event messages for logging, MAVLink, and ground-station visibility.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `battery_status`, `cpuload`, `failsafe_flags`, `vehicle_command`, `vehicle_status`.
+- Publish outputs or status topics such as `led_control`, `tune_control`, `vehicle_command_ack`.
+- Use module configuration from `events_params.yaml`.
+- Implement the main behavior in classes such as `RC_Loss_Alarm`, `SendEvent`, `manages`, `in`, `StatusDisplay`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `lp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `battery_status`, `cpuload`, `failsafe_flags`, `vehicle_command`, `vehicle_status` |
+| Primary outputs | `led_control`, `tune_control`, `vehicle_command_ack` |
+| Referenced topics | `battery_status`, `cpuload`, `failsafe_flags`, `led_control`, `tune_control`, `vehicle_command`, `vehicle_command_ack`, `vehicle_status` |
+| Parameters/config | events_params.yaml |
+| Key classes | `RC_Loss_Alarm`, `SendEvent`, `manages`, `in`, `StatusDisplay` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| send_event.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| events_params.yaml | Build, parameter, or module configuration |
+| rc_loss_alarm.h | Defines `RC_Loss_Alarm` class |
+| send_event.h | Defines `SendEvent` class |
 
 ## Architecture Overview
 

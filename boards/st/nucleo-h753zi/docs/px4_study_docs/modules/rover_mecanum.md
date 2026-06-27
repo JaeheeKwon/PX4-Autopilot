@@ -8,6 +8,62 @@
 
 Architecture notes for the Rover Mecanum module.
 
+## Description of Module
+
+Controls mecanum-drive rover motion from rover setpoints to wheel commands.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `rover_attitude_setpoint`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 9 more.
+- Publish outputs or status topics such as `actuator_motors`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_rate_status`, `rover_speed_setpoint`, ... 3 more.
+- Use module configuration from `module.yaml`.
+- Implement the main behavior in classes such as `MecanumActControl`, `MecanumAttControl`, `MecanumAutoMode`, `MecanumManualMode`, `MecanumOffboardMode`, `MecanumPosControl`, ... 3 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `rate_ctrl`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Mecanum rover control maps planar velocity and yaw rate into four wheel speeds using the mecanum inverse kinematic matrix.
+
+```text
+Let l = half wheelbase, w = half track width, r = wheel radius.
+
+[omega_fl]   1/r [ 1  -1  -(l+w)] [v_x]
+[omega_fr] = 1/r [ 1   1   (l+w)] [v_y]
+[omega_rl]   1/r [ 1   1  -(l+w)] [yaw_rate]
+[omega_rr]   1/r [ 1  -1   (l+w)]
+
+PID loops track yaw, yaw-rate, and x/y speed setpoints.
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `rover_attitude_setpoint`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_speed_setpoint`, `rover_steering_setpoint`, ... 7 more |
+| Primary outputs | `actuator_motors`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, `rover_rate_status`, `rover_speed_setpoint`, `rover_speed_status`, `rover_steering_setpoint`, ... 1 more |
+| Referenced topics | `actuator_motors`, `manual_control_setpoint`, `offboard_control_mode`, `parameter_update`, `position_setpoint_triplet`, `pure_pursuit_status`, `rover_attitude_setpoint`, `rover_attitude_status`, `rover_position_setpoint`, `rover_rate_setpoint`, ... 11 more |
+| Parameters/config | module.yaml |
+| Key classes | `MecanumActControl`, `MecanumAttControl`, `MecanumAutoMode`, `MecanumManualMode`, `MecanumOffboardMode`, `MecanumPosControl`, `MecanumRateControl`, `MecanumSpeedControl`, `RoverMecanum` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| RoverMecanum.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| MecanumActControl/CMakeLists.txt | Build, parameter, or module configuration |
+| MecanumAttControl/CMakeLists.txt | Build, parameter, or module configuration |
+| MecanumDriveModes/CMakeLists.txt | Build, parameter, or module configuration |
+| MecanumDriveModes/MecanumAutoMode/CMakeLists.txt | Build, parameter, or module configuration |
+| MecanumDriveModes/MecanumManualMode/CMakeLists.txt | Build, parameter, or module configuration |
+| MecanumActControl/MecanumActControl.hpp | Defines `MecanumActControl` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

@@ -340,9 +340,9 @@ blockquote {
 <td><code>/dev/ttyS1</code></td>
 <td>USART6</td>
 <td>PG14 (TX) / PG9 (RX)</td>
-<td><strong>CN10 — Arduino header</strong></td>
-<td>57 600</td>
-<td><code>TEL1</code> (MAVLink telemetry)</td>
+<td><strong>Morpho CN12-61 / CN11-63</strong></td>
+<td>921 600</td>
+<td><code>TEL1</code> (uXRCE-DDS)</td>
 </tr>
 <tr>
 <td><code>/dev/ttyACM0</code></td>
@@ -355,7 +355,7 @@ blockquote {
 </tbody>
 </table>
 <p><strong>For HILS:</strong> connect your simulator PC to <strong>CN13 (User USB)</strong>. The board appears as <code>/dev/ttyACM0</code> on Linux. <code>cdcacm_autostart</code> detects the USB connection and starts <code>mavlink</code> on that device automatically. CN1 (ST-LINK) stays free as the NSH debug console.</p>
-<p><strong>TEL1 (<code>/dev/ttyS1</code>)</strong> is available on the Arduino CN10 header (pins D0/D1) for a second MAVLink link or RC input if needed.</p>
+<p><strong>TEL1 (<code>/dev/ttyS1</code>)</strong> uses USART6 on the Morpho headers: PG14 TX at CN12-61 and PG9 RX at CN11-63. It is dedicated to uXRCE-DDS.</p>
 <h3 id="shell-prompts">Shell Prompts<a class="headerlink" href="#shell-prompts" title="Permanent link">&para;</a></h3>
 <p>Two shell prompts are visible depending on how you connect — both run the same NuttX Shell (NSH) binary:</p>
 <table>
@@ -672,7 +672,7 @@ CONFIG_SCHED_INSTRUMENTATION_NOTE=y
 CONFIG_NOTE_SYSVIEW=y
 </code></pre>
 <h3 id="2-ros2-connection-uxrce-dds">2 — ROS2 Connection (uXRCE-DDS)<a class="headerlink" href="#2-ros2-connection-uxrce-dds" title="Permanent link">&para;</a></h3>
-<p>uXRCE-DDS requires a <strong>dedicated serial UART at 921600 baud</strong> — it cannot share a port with MAVLink. In this board's HILS layout MAVLink HIL already occupies <code>ttyACM0</code> (USB). <strong>USART6 → <code>ttyS1</code></strong> (already enabled, Arduino CN10 pins D0/D1) is the natural second port.</p>
+<p>uXRCE-DDS requires a <strong>dedicated serial UART at 921600 baud</strong> — it cannot share a port with MAVLink. In this board's HILS layout MAVLink HIL already occupies <code>ttyACM0</code> (USB). <strong>USART6 → <code>ttyS1</code></strong> uses PG14 TX at CN12-61 and PG9 RX at CN11-63; no solder-bridge change is required.</p>
 <pre><code>┌─────────────────────┐          USB-UART adapter
 │  Nucleo-H753ZI      │  PG14(TX)──────────────────►  PC
 │  USART6 / ttyS1     │  PG9 (RX)◄──────────────────  running
@@ -802,7 +802,7 @@ flowchart LR
 </tr>
 <tr>
 <td>ROS2 / uXRCE-DDS</td>
-<td>USART6 → CN10 D0/D1</td>
+<td>USART6 → CN12-61/CN11-63</td>
 <td><code>ttyS1</code></td>
 <td>USB-UART adapter on PC</td>
 </tr>

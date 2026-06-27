@@ -8,6 +8,58 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Injects and evaluates fixed-wing attitude-control excitation to support automatic gain tuning.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `actuator_controls_status_0`, `actuator_controls_status_1`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_command`, `vehicle_status`, `vehicle_torque_setpoint`.
+- Publish outputs or status topics such as `autotune_attitude_control_status`.
+- Use module configuration from `fw_autotune_attitude_control_params.yaml`.
+- Implement the main behavior in classes such as `SignalType`, `FwAutotuneAttitudeControl`, `state`, `amplitudeDetectionState`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+Autotune injects controlled excitation, estimates the axis frequency response, then derives gains from target bandwidth and phase-margin constraints.
+
+```text
+For excitation u(t) and measured response y(t):
+G(jw) = FFT(y) / FFT(u)
+phase_margin = pi + angle(G(jw_c))
+|K(jw_c) * G(jw_c)| ~= 1
+
+PID form:
+u = Kp*e + Ki*integral(e) + Kd*de/dt
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_controls_status_0`, `actuator_controls_status_1`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_command`, `vehicle_status`, `vehicle_torque_setpoint` |
+| Primary outputs | `autotune_attitude_control_status` |
+| Referenced topics | `actuator_controls_status`, `actuator_controls_status_0`, `actuator_controls_status_1`, `autotune_attitude_control_status`, `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_command`, `vehicle_status`, `vehicle_torque_setpoint` |
+| Parameters/config | fw_autotune_attitude_control_params.yaml |
+| Key classes | `SignalType`, `FwAutotuneAttitudeControl`, `state`, `amplitudeDetectionState` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| fw_autotune_attitude_control.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| fw_autotune_attitude_control_params.yaml | Build, parameter, or module configuration |
+| fw_autotune_attitude_control.hpp | Defines `SignalType` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -108,6 +120,30 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Runs an experimental multicopter Raptor control path for advanced setpoint generation.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Consume runtime inputs from uORB topics such as `arming_check_request`, `register_ext_component_reply`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_local_position`, `vehicle_status`.</li><li>Publish outputs or status topics such as `actuator_motors`, `arming_check_reply`, `config_control_setpoints`, `raptor_input`, `raptor_status`, `register_ext_component_request`, `tune_control`, `unregister_ext_component`.</li><li>Use parameters or module configuration entries such as `MC_RAPTOR_ENABLE`, `MC_RAPTOR_INTREF`, `MC_RAPTOR_OFFB`, `MC_RAPTOR_VERBOS`.</li><li>Implement the main behavior in classes such as `Raptor`, `FlightModeState`, `InternalReference`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `rate_ctrl`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Raptor runs learned policy inference for multicopter control. The controller is a parameterized neural policy, optionally with recurrent state.</p>
+    <pre class="math-block">o_t = normalize(sensor_state_t, setpoint_t, previous_action_t)
+h_t = f_theta(h_{t-1}, o_t)
+a_t = pi_theta(o_t, h_t)
+a_t = constrain(a_t, action_min, action_max)
+actuator_output = action_scale * a_t + action_offset</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`arming_check_request`, `register_ext_component_reply`, `trajectory_setpoint`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_local_position`, `vehicle_status`</td></tr><tr><td>Primary outputs</td><td>`actuator_motors`, `arming_check_reply`, `config_control_setpoints`, `raptor_input`, `raptor_status`, `register_ext_component_request`, `tune_control`, `unregister_ext_component`</td></tr><tr><td>Referenced topics</td><td>`actuator_motors`, `arming_check_reply`, `arming_check_request`, `config_control_setpoints`, `raptor_input`, `raptor_status`, `register_ext_component_reply`, `register_ext_component_request`, `trajectory_setpoint`, `tune_control`, ... 7 more</td></tr><tr><td>Parameters/config</td><td>`MC_RAPTOR_ENABLE`, `MC_RAPTOR_INTREF`, `MC_RAPTOR_OFFB`, `MC_RAPTOR_VERBOS`</td></tr><tr><td>Key classes</td><td>`Raptor`, `FlightModeState`, `InternalReference`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>mc_raptor.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>module.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>mc_raptor.hpp</td><td>Defines `Raptor` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#f2f2f2&quot;,&quot;secondaryColor&quot;:&quot;#e6e6e6&quot;,&quot;tertiaryColor&quot;:&quot;#fbfbfb&quot;,&quot;primaryBorderColor&quot;:&quot;#707070&quot;,&quot;primaryTextColor&quot;:&quot;#222222&quot;,&quot;lineColor&quot;:&quot;#707070&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -151,7 +187,6 @@ classDef module fill:#f2f2f2,stroke:#3d3d3d,color:#222222;
 classDef io fill:#e6e6e6,stroke:#707070,color:#222222;
 classDef data fill:#fbfbfb,stroke:#707070,color:#222222;
 classDef exec fill:#d7d7d7,stroke:#3d3d3d,color:#222222;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/mc_raptor</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__mc_raptor</td></tr><tr><td>Runtime main</td><td>mc_raptor</td></tr><tr><td>Stack main</td><td>4000</td></tr><tr><td>Module config</td><td>module.yaml</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>5</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

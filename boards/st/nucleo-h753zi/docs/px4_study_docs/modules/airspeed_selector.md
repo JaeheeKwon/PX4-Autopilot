@@ -6,7 +6,55 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+This module provides a single airspeed_validated topic, containing indicated (IAS), calibrated (CAS), true airspeed (TAS) and the information if the estimation currently is invalid and if based sensor readings or on groundspeed minus windspeed. Supporting the input of multiple "raw" airspeed inputs, this module automatically switches to a valid sensor in case of failure detection. For failure detection as well as for the estimation of a scale factor from IAS to CAS, it runs several wind estimators and also publishe
+
+## Description of Module
+
+Selects, validates, and publishes the airspeed estimate that downstream fixed-wing control and navigation use.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `estimator_selector_status`, `estimator_status`, `flight_phase_estimation`, `launch_detection_status`, `parameter_update`, `position_setpoint`, `tecs_status`, `vehicle_acceleration`, ... 6 more.
+- Publish outputs or status topics such as `airspeed_validated`, `airspeed_wind`.
+- Use module configuration from `airspeed_selector_params.yaml`.
+- Implement the main behavior in classes such as `AirspeedValidator`, `AirspeedModule`, `AirspeedSource`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+The selector uses measurement validation and consistency checks. The mathematical idea is to score each airspeed source by health, timeout, and innovation before selecting the best valid source.
+
+```text
+innovation_i = v_i - v_reference
+test_ratio_i = innovation_i^2 / innovation_variance_i
+valid_i = finite(v_i) and fresh_i and test_ratio_i < gate^2
+selected = argmin_i(test_ratio_i) over valid_i
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `estimator_selector_status`, `estimator_status`, `flight_phase_estimation`, `launch_detection_status`, `parameter_update`, `position_setpoint`, `tecs_status`, `vehicle_acceleration`, `vehicle_air_data`, `vehicle_attitude`, ... 4 more |
+| Primary outputs | `airspeed_validated`, `airspeed_wind` |
+| Referenced topics | `airspeed`, `airspeed_validated`, `airspeed_wind`, `estimator_selector_status`, `estimator_status`, `flight_phase_estimation`, `launch_detection_status`, `mavlink_log`, `parameter_update`, `position_setpoint`, ... 8 more |
+| Parameters/config | airspeed_selector_params.yaml |
+| Key classes | `AirspeedValidator`, `AirspeedModule`, `AirspeedSource` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| airspeed_selector_main.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| airspeed_selector_params.yaml | Build, parameter, or module configuration |
+| AirspeedValidator.hpp | Defines `AirspeedValidator` class |
 
 ## Architecture Overview
 

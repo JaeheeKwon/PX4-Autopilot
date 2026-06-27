@@ -6,7 +6,59 @@
 - Build kind: `px4 module`
 - Mermaid palette: `graphite` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+This implements control allocation for spacecraft vehicles. It takes torque and thrust setpoints as inputs and outputs actuator setpoint messages.
+
+## Description of Module
+
+Runs spacecraft-specific attitude, rate, and actuator-control behavior.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `actuator_motors`, `battery_status`, `control_allocator_status`, `manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_angular_velocity`, `vehicle_attitude`, ... 6 more.
+- Publish outputs or status topics such as `actuator_controls_status_0`, `actuator_motors`, `rate_ctrl_status`, `vehicle_attitude_setpoint`, `vehicle_local_position_setpoint`, `vehicle_rates_setpoint`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`.
+- Use module configuration from `spacecraft_attitude_params.yaml`.
+- Implement the main behavior in classes such as `ScAttitudeControl`, `ScAttitudeControlConvergenceTest`, `SpacecraftAttitudeControl`, `SpacecraftHandler`, `contains`, `ScPositionControl`, ... 4 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `rate_ctrl`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Spacecraft control uses rigid-body attitude and rate feedback where torques are generated from quaternion attitude error and angular-rate error.
+
+```text
+q_err = inverse(q_body) * q_sp
+e_q = sign(q_err.w) * q_err.xyz
+e_w = omega_sp - omega_body
+torque_sp = Kq * e_q + Kw * e_w + omega_body x (I * omega_body)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_motors`, `battery_status`, `control_allocator_status`, `manual_control_setpoint`, `parameter_update`, `trajectory_setpoint6dof`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, ... 4 more |
+| Primary outputs | `actuator_controls_status_0`, `actuator_motors`, `rate_ctrl_status`, `vehicle_attitude_setpoint`, `vehicle_local_position_setpoint`, `vehicle_rates_setpoint`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint` |
+| Referenced topics | `actuator_controls_status`, `actuator_controls_status_0`, `actuator_motors`, `actuator_servos`, `actuator_servos_trim`, `autotune_attitude_control_status`, `battery_status`, `control_allocator_status`, `failure_detector_status`, `manual_control_setpoint`, ... 14 more |
+| Parameters/config | spacecraft_attitude_params.yaml |
+| Key classes | `ScAttitudeControl`, `ScAttitudeControlConvergenceTest`, `SpacecraftAttitudeControl`, `SpacecraftHandler`, `contains`, `ScPositionControl`, `PositionControlBasicTest`, `PositionControlBasicDirectionTest`, `SpacecraftPositionControl`, `SpacecraftRateControl` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| SpacecraftHandler.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| SpacecraftAttitudeControl/AttitudeControl/CMakeLists.txt | Build, parameter, or module configuration |
+| SpacecraftAttitudeControl/CMakeLists.txt | Build, parameter, or module configuration |
+| SpacecraftPositionControl/CMakeLists.txt | Build, parameter, or module configuration |
+| SpacecraftPositionControl/PositionControl/CMakeLists.txt | Build, parameter, or module configuration |
+| SpacecraftRateControl/CMakeLists.txt | Build, parameter, or module configuration |
+| SpacecraftAttitudeControl/AttitudeControl/AttitudeControl.hpp | Defines `ScAttitudeControl` class |
 
 ## Architecture Overview
 

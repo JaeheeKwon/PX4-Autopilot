@@ -8,6 +8,55 @@
 
 Source-derived architecture notes for this PX4 module directory.
 
+## Description of Module
+
+Simulates battery behavior for software-in-the-loop and hardware-in-the-loop runs.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Consume runtime inputs from uORB topics such as `parameter_update`, `vehicle_command`, `vehicle_status`.
+- Publish outputs or status topics such as `vehicle_command_ack`.
+- Use module configuration from `battery_simulator_params.yaml`.
+- Implement the main behavior in classes such as `BatterySimulator`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+The battery simulator integrates current draw against a nominal capacity and produces voltage/SOC-like outputs.
+
+```text
+Q_used[k] = Q_used[k-1] + I_load[k] * dt / 3600
+SOC = constrain(1 - Q_used / capacity_Ah, 0, 1)
+V_oc = V_empty + SOC * (V_full - V_empty)
+V_terminal = V_oc - I_load * R_internal
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `parameter_update`, `vehicle_command`, `vehicle_status` |
+| Primary outputs | `vehicle_command_ack` |
+| Referenced topics | `battery_status`, `parameter_update`, `vehicle_command`, `vehicle_command_ack`, `vehicle_status` |
+| Parameters/config | battery_simulator_params.yaml |
+| Key classes | `BatterySimulator` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| BatterySimulator.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| battery_simulator_params.yaml | Build, parameter, or module configuration |
+| BatterySimulator.hpp | Defines `BatterySimulator` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

@@ -6,7 +6,44 @@
 - Build kind: `px4 module`
 - Mermaid palette: `slate` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+Detects when a higher-priority task starves the system by running too long. When starvation is detected, dumps the offending task's registers and stack, and saves a cpuload snapshot.
+
+## Description of Module
+
+Watches registered tasks for missed heartbeats or runtime stalls.
+
+### Primary Responsibilities
+
+- Operate without directly detected uORB topic dependencies in this source inventory.
+- Do not publish directly detected uORB outputs from this module directory.
+- Implement the main behavior in classes such as `TaskWatchdog`.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | none detected |
+| Primary outputs | none detected |
+| Referenced topics | none detected |
+| Parameters/config | none detected |
+| Key classes | `TaskWatchdog` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| TaskWatchdog.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| TaskWatchdog.hpp | Defines `TaskWatchdog` class |
 
 ## Architecture Overview
 

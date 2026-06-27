@@ -86,6 +86,18 @@
       overflow-x: auto;
     }
     .mermaid { min-width: 320px; }
+    .math-block {
+      background: var(--panel);
+      border: 1px solid #d6dadd;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0 24px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      line-height: 1.45;
+      white-space: pre;
+    }
     .topnav { margin-bottom: 12px; color: var(--muted); }
     .topnav a { margin-right: 14px; }
     </style>
@@ -98,7 +110,7 @@
   <header>
     <div class="topnav"><a href="../index.html">Index</a><a href="uuv_att_control.md">Markdown</a></div>
     <h1>PX4 Module Architecture: <code>uuv_att_control</code></h1>
-    <p>Source-derived architecture notes for this PX4 module directory.</p>
+    <p>Controls the attitude of an unmanned underwater vehicle (UUV). Publishes `vehicle_thrust_setpont` and `vehicle_torque_setpoint` messages at a constant 250Hz. Currently, this implementation supports only a few modes: * Full manual: Roll, pitch, yaw, and throttle controls are passed directly through to the actuators * Auto mission: The uuv runs missions CLI usage example: $ uuv_att_control start $ uuv_att_control status $ uuv_att_control stop</p>
     <div class="meta">
       <div><strong>Source</strong><br><code>src/modules/uuv_att_control</code></div>
       <div><strong>Build target</strong><br><code>modules__uuv_att_control</code></div>
@@ -108,6 +120,30 @@
     </div>
   </header>
   <main>
+    <h2>Description of Module</h2>
+    <p>Runs underwater-vehicle attitude control.</p>
+
+    <h3>Primary Responsibilities</h3>
+    <ul><li>Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.</li><li>Consume runtime inputs from uORB topics such as `manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_rates_setpoint`.</li><li>Publish outputs or status topics such as `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`.</li><li>Use module configuration from `uuv_att_control_params.yaml`.</li><li>Implement the main behavior in classes such as `UUVAttitudeControl`.</li></ul>
+
+    <h3>Runtime Behavior</h3>
+    <ul><li>Runs work-queue callbacks on queue configurations such as `nav_and_controllers`.</li><li>Uses uORB callback registration so new topic data can schedule execution.</li></ul>
+
+    <h2>Background Theory</h2>
+    <p>Underwater attitude control is PID-style feedback on roll, pitch, yaw, and angular-rate errors, producing torque setpoints for allocation.</p>
+    <pre class="math-block">q_err = inverse(q_body) * q_sp
+e_att = sign(q_err.w) * q_err.xyz
+rate_sp = K_att * e_att
+e_rate = rate_sp - omega_body
+torque_sp = Kp*e_rate + Ki*integral(e_rate) - Kd*omega_dot</pre>
+    <p class="section-note">These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.</p>
+
+    <h3>Main Interfaces</h3>
+    <table><thead><tr><th>Area</th><th>Details</th></tr></thead><tbody><tr><td>Primary inputs</td><td>`manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_rates_setpoint`</td></tr><tr><td>Primary outputs</td><td>`vehicle_thrust_setpoint`, `vehicle_torque_setpoint`</td></tr><tr><td>Referenced topics</td><td>`manual_control_setpoint`, `parameter_update`, `vehicle_angular_velocity`, `vehicle_attitude`, `vehicle_attitude_setpoint`, `vehicle_control_mode`, `vehicle_rates_setpoint`, `vehicle_thrust_setpoint`, `vehicle_torque_setpoint`</td></tr><tr><td>Parameters/config</td><td>uuv_att_control_params.yaml</td></tr><tr><td>Key classes</td><td>`UUVAttitudeControl`</td></tr></tbody></table>
+
+    <h3>Files</h3>
+    <table><thead><tr><th>File</th><th>Why it matters</th></tr></thead><tbody><tr><td>uuv_att_control.cpp</td><td>Entry point, start command, or module lifecycle code</td></tr><tr><td>CMakeLists.txt</td><td>Build, parameter, or module configuration</td></tr><tr><td>uuv_att_control_params.yaml</td><td>Build, parameter, or module configuration</td></tr><tr><td>uuv_att_control.hpp</td><td>Defines `UUVAttitudeControl` class</td></tr></tbody></table>
+
     <h2>Architecture Overview</h2>
     <p class="section-note">This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.</p>
     <div class="diagram"><pre class="mermaid">%%{init: {&quot;theme&quot;:&quot;base&quot;,&quot;themeVariables&quot;:{&quot;primaryColor&quot;:&quot;#edf2f4&quot;,&quot;secondaryColor&quot;:&quot;#d9dee2&quot;,&quot;tertiaryColor&quot;:&quot;#f7f9fa&quot;,&quot;primaryBorderColor&quot;:&quot;#5c636a&quot;,&quot;primaryTextColor&quot;:&quot;#1f2326&quot;,&quot;lineColor&quot;:&quot;#5c636a&quot;,&quot;fontFamily&quot;:&quot;Inter, Arial, sans-serif&quot;}}}%%
@@ -143,7 +179,6 @@ classDef module fill:#edf2f4,stroke:#2f3437,color:#1f2326;
 classDef io fill:#d9dee2,stroke:#5c636a,color:#1f2326;
 classDef data fill:#f7f9fa,stroke:#5c636a,color:#1f2326;
 classDef exec fill:#cfd4d8,stroke:#2f3437,color:#1f2326;</pre></div>
-
     <h2>Build and Entry Points</h2>
     <table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Module path</td><td>src/modules/uuv_att_control</td></tr><tr><td>Build kind</td><td>px4 module</td></tr><tr><td>Build target</td><td>modules__uuv_att_control</td></tr><tr><td>Runtime main</td><td>uuv_att_control</td></tr><tr><td>Stack main</td><td>1200</td></tr><tr><td>Module config</td><td>uuv_att_control_params.yaml</td></tr><tr><td>Detected sources</td><td>1</td></tr><tr><td>Detected headers</td><td>1</td></tr><tr><td>Detected configs</td><td>2</td></tr></tbody></table>
 

@@ -6,7 +6,59 @@
 - Build kind: `px4 module`
 - Mermaid palette: `ash` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+This module provides a simulator for quadrotors and fixed-wings running fully inside the hardware autopilot. This simulator subscribes to "actuator_outputs" which are the actuator pwm signals given by the control allocation module. This simulator publishes the sensors signals corrupted with realistic noise in order to incorporate the state estimator in the loop. The simulator implements the equations of motion using matrix algebra. Quaternion representation is used for the attitude. Forward Euler is used for integr
+
+## Description of Module
+
+Runs the simple simulator-in-hardware vehicle dynamics model.
+
+### Primary Responsibilities
+
+- Generate simulator-facing or simulated sensor/actuator data for non-flight-hardware runs.
+- Consume runtime inputs from uORB topics such as `actuator_outputs_sim`, `parameter_update`.
+- Publish outputs or status topics such as `airspeed`, `esc_status`, `ranging_beacon`, `vehicle_angular_velocity_groundtruth`, `vehicle_attitude_groundtruth`, `vehicle_global_position_groundtruth`, `vehicle_local_position_groundtruth`.
+- Use module configuration from `sih_params.yaml`.
+- Implement the main behavior in classes such as `can`, `Thruster`, `Aerodynamic`, `AeroSeg`, `Sih`, `VehicleType`.
+
+### Runtime Behavior
+
+- Creates a dedicated PX4 task/thread with `px4_task_spawn_cmd()`.
+- Uses a `run()` loop style module body for repeated execution.
+
+## Background Theory
+
+Simulation-in-hardware integrates simplified vehicle rigid-body dynamics on the flight controller.
+
+```text
+Translational dynamics:
+p_dot = v
+v_dot = (R_body_to_ned * force_body) / m + g_ned
+
+Rotational dynamics:
+q_dot = 0.5 * q * [0, omega_body]
+I * omega_dot = torque_body - omega_body x (I * omega_body)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_outputs_sim`, `parameter_update` |
+| Primary outputs | `airspeed`, `esc_status`, `ranging_beacon`, `vehicle_angular_velocity_groundtruth`, `vehicle_attitude_groundtruth`, `vehicle_global_position_groundtruth`, `vehicle_local_position_groundtruth` |
+| Referenced topics | `actuator_outputs`, `actuator_outputs_sim`, `airspeed`, `distance_sensor`, `esc_status`, `parameter_update`, `ranging_beacon`, `vehicle_angular_velocity`, `vehicle_angular_velocity_groundtruth`, `vehicle_attitude`, ... 5 more |
+| Parameters/config | sih_params.yaml |
+| Key classes | `can`, `Thruster`, `Aerodynamic`, `AeroSeg`, `Sih`, `VehicleType` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| sih.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| sih_params.yaml | Build, parameter, or module configuration |
+| aero.hpp | Defines `can` class |
 
 ## Architecture Overview
 

@@ -8,6 +8,61 @@
 
 Architecture notes for the Control Allocation module.
 
+## Description of Module
+
+Maps normalized torque and thrust requests into actuator motor and servo setpoints using the configured vehicle geometry.
+
+### Primary Responsibilities
+
+- Convert selected state estimates and setpoints into downstream control or actuator-facing setpoints.
+- Consume runtime inputs from uORB topics such as `actuator_armed`, `failure_detector_status`, `flaps_setpoint`, `launch_detection_status`, `manual_control_switches`, `parameter_update`, `rpm`, `spoilers_setpoint`, ... 7 more.
+- Publish outputs or status topics such as `actuator_motors`, `actuator_servos`, `actuator_servos_trim`, `control_allocator_status`, `vehicle_command_ack`.
+- Use parameters or module configuration entries such as `CA_AIRFRAME`, `CA_CS_LAUN_LK`, `CA_FAILURE_MODE`, `CA_HELI_RPM_I`, `CA_HELI_RPM_P`, `CA_HELI_RPM_SP`, ... 17 more.
+- Implement the main behavior in classes such as `ActuatorGroupPreflightCheck`, `ControlAllocator`, `EffectivenessSource`, `FailureMode`, `providing`, `ActuatorEffectivenessControlSurfaces`, ... 19 more.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `rate_ctrl`.
+- Uses uORB callback registration so new topic data can schedule execution.
+- Uses explicit work-item scheduling through immediate, delayed, or interval scheduling calls.
+
+## Background Theory
+
+Control allocation solves an actuator mixing problem: find actuator commands that best realize requested body forces and moments under actuator limits.
+
+```text
+Given effectiveness matrix B and requested wrench tau:
+u* = argmin_u ||W * (B*u - tau)||^2 + lambda ||u - u_trim||^2
+subject to u_min <= u <= u_max
+
+Unconstrained form:
+u = B_plus * tau
+B_plus = W_u^-1 * B^T * inverse(B * W_u^-1 * B^T)
+```
+
+These equations are the study-level form of the algorithm. The implementation applies PX4-specific saturation, validity checks, parameter updates, and frame conventions around these core relationships.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `actuator_armed`, `failure_detector_status`, `flaps_setpoint`, `launch_detection_status`, `manual_control_switches`, `parameter_update`, `rpm`, `spoilers_setpoint`, `tiltrotor_extra_controls`, `vehicle_command`, ... 5 more |
+| Primary outputs | `actuator_motors`, `actuator_servos`, `actuator_servos_trim`, `control_allocator_status`, `vehicle_command_ack` |
+| Referenced topics | `actuator_armed`, `actuator_motors`, `actuator_servos`, `actuator_servos_trim`, `control_allocator_status`, `failure_detector_status`, `flaps_setpoint`, `launch_detection_status`, `manual_control_switches`, `normalized_unsigned_setpoint`, ... 11 more |
+| Parameters/config | `CA_AIRFRAME`, `CA_CS_LAUN_LK`, `CA_FAILURE_MODE`, `CA_HELI_RPM_I`, `CA_HELI_RPM_P`, `CA_HELI_RPM_SP`, `CA_HELI_YAW_CCW`, `CA_HELI_YAW_CP_O`, `CA_HELI_YAW_CP_S`, `CA_HELI_YAW_TH_S`, ... 13 more |
+| Key classes | `ActuatorGroupPreflightCheck`, `ControlAllocator`, `EffectivenessSource`, `FailureMode`, `providing`, `ActuatorEffectivenessControlSurfaces`, `Type`, `ActuatorEffectivenessCustom`, `ActuatorEffectivenessFixedWing`, `ActuatorEffectivenessHelicopter`, ... 15 more |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| ControlAllocator.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| VehicleActuatorEffectiveness/CMakeLists.txt | Build, parameter, or module configuration |
+| module.yaml | Build, parameter, or module configuration |
+| ActuatorGroupPreflightCheck.hpp | Defines `ActuatorGroupPreflightCheck` class |
+| ControlAllocator.hpp | Defines `ControlAllocator` class |
+
 ## Architecture Overview
 
 This page is generated from the module source tree and shows the stable architecture surfaces: build entry point, scheduling shape, uORB data interfaces, parameter/configuration surfaces, and C++ types found in the module.

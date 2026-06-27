@@ -6,7 +6,44 @@
 - Build kind: `px4 module`
 - Mermaid palette: `mist` grey tone
 
-Source-derived architecture notes for this PX4 module directory.
+The camera_feedback module publishes `CameraCapture` UORB topics when image capture has been triggered. If camera capture is enabled, then trigger information from the camera capture pin is published; otherwise trigger information at the point the camera was commanded to trigger is published (from the `camera_trigger` module). The `CAMERA_IMAGE_CAPTURED` message is then emitted (by streaming code) following `CameraCapture` updates. `CameraCapture` topics are also logged and can be used for geotagging. `CameraTrigge
+
+## Description of Module
+
+Processes camera trigger or capture feedback and reports camera capture timing to the rest of PX4.
+
+### Primary Responsibilities
+
+- Consume runtime inputs from uORB topics such as `camera_trigger`, `gimbal_device_attitude_status`, `vehicle_attitude`, `vehicle_global_position`.
+- Publish outputs or status topics such as `camera_capture`.
+- Implement the main behavior in classes such as `CameraFeedback`.
+
+### Runtime Behavior
+
+- Runs work-queue callbacks on queue configurations such as `hp_default`.
+- Uses uORB callback registration so new topic data can schedule execution.
+
+## Background Theory
+
+No dedicated mathematical model was identified in the generated source scan. This module is best understood through its PX4 state handling, uORB message flow, scheduling, and configuration surfaces described below.
+
+### Main Interfaces
+
+| Area | Details |
+| --- | --- |
+| Primary inputs | `camera_trigger`, `gimbal_device_attitude_status`, `vehicle_attitude`, `vehicle_global_position` |
+| Primary outputs | `camera_capture` |
+| Referenced topics | `camera_capture`, `camera_trigger`, `gimbal_device_attitude_status`, `vehicle_attitude`, `vehicle_global_position` |
+| Parameters/config | none detected |
+| Key classes | `CameraFeedback` |
+
+### Files
+
+| File | Why it matters |
+| --- | --- |
+| CameraFeedback.cpp | Entry point, start command, or module lifecycle code |
+| CMakeLists.txt | Build, parameter, or module configuration |
+| CameraFeedback.hpp | Defines `CameraFeedback` class |
 
 ## Architecture Overview
 

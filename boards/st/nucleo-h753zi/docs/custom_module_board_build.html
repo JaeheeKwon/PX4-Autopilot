@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adding a Custom Module to a Specific Board Build</title>
+  <style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --surface-alt: #eef3ef;
+  --ink: #1f2528;
+  --muted: #5e686c;
+  --line: #d7dfd8;
+  --line-strong: #b9c5bb;
+  --accent: #286f61;
+  --accent-dark: #184f45;
+  --code-bg: #edf2ef;
+  --code-ink: #10211d;
+  --pre-bg: #17211f;
+  --pre-ink: #edf7f2;
+  --shadow: 0 12px 30px rgba(32, 42, 39, 0.10);
+  --radius: 8px;
+  --content: 1180px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.58;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+code {
+  padding: 0.08rem 0.28rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.93em;
+}
+pre {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #263531;
+  border-radius: var(--radius);
+  background: var(--pre-bg);
+  color: var(--pre-ink);
+  line-height: 1.45;
+}
+pre code { padding: 0; border: 0; background: transparent; color: inherit; }
+.header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.header-inner {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 1.5rem;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+h1 {
+  max-width: 920px;
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.35rem);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+.lede {
+  max-width: 920px;
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: 1.04rem;
+}
+.navbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.navbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #314042;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.navbar a[aria-current="page"] {
+  border-color: var(--accent);
+  background: #dbece7;
+  color: var(--accent-dark);
+}
+.layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 1.4rem;
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 1.4rem 1.25rem 3rem;
+}
+.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.toc h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.toc ul { margin: 0; padding-left: 1rem; }
+.toc li { margin: 0.25rem 0; }
+.toc a {
+  color: #354345;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.toc a:hover {
+  color: var(--accent-dark);
+  text-decoration: underline;
+}
+main {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+main > :first-child { margin-top: 0; }
+main h1 {
+  font-size: 2rem;
+}
+h2 {
+  margin-top: 2rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--line);
+  font-size: 1.65rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+h2:first-child { border-top: 0; }
+h3 {
+  margin-top: 1.4rem;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+p { margin: 0.7rem 0; }
+ul, ol { padding-left: 1.35rem; }
+li + li { margin-top: 0.25rem; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+}
+th, td {
+  padding: 0.58rem 0.7rem;
+  border: 1px solid var(--line);
+  vertical-align: top;
+}
+th {
+  background: var(--surface-alt);
+  text-align: left;
+}
+.mermaid {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  overflow-x: auto;
+}
+.footer {
+  max-width: var(--content);
+  margin: 0 auto;
+  padding: 0 1.25rem 2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .toc {
+    position: relative;
+    top: 0;
+    max-height: none;
+    margin-bottom: 1rem;
+  }
+}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="eyebrow">PX4 ST Board Docs</div>
+      <h1>Adding a Custom Module to a Specific Board Build</h1>
+      <p class="lede">How to add a PX4 module, enable it only for the ST Nucleo-H753ZI firmware target, and decide whether it starts manually or at boot.</p>
+    </div>
+  </header>
+  <nav class="navbar" aria-label="ST board documentation">
+    <a href="../../index.html">Middleware</a>
+    <a href="../../flight_controller_software_architecture.html">PX4 Flight Controller Software Architecture</a>
+    <a href="../../uorb_architecture.html">uORB Middleware Architecture Deep Dive</a>
+    <a href="../README.html">ST Nucleo-H753ZI PX4 Board Support</a>
+    <a href="hitl_configuration.html">Nucleo-H753ZI HITL Configuration and Parameters</a>
+    <a href="auto_flight_waypoint_mission.html">Automatic Flight with Stored Waypoints</a>
+    <a href="custom_module_board_build.html" aria-current="page">Custom Module Board Build</a>
+    <a href="hils_ros2_setup.html">HILS, ROS2, and uORB Communication Setup</a>
+  </nav>
+  <div class="layout">
+    <aside class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#build-flow">Build Flow</a></li>
+        <li><a href="#module-location">Module Location</a></li>
+        <li><a href="#minimal-module-files">Minimal Module Files</a></li>
+        <li><a href="#enable-it-for-nucleo-h753zi-only">Enable It for Nucleo-H753ZI Only</a></li>
+        <li><a href="#use-a-board-variant-instead-of-default">Use a Board Variant Instead of Default</a></li>
+        <li><a href="#start-the-module">Start the Module</a></li>
+        <li><a href="#start-automatically-on-this-board">Start Automatically on This Board</a></li>
+        <li><a href="#board-specific-parameters">Board-Specific Parameters</a></li>
+        <li><a href="#common-mistakes">Common Mistakes</a></li>
+        <li><a href="#recommended-pattern-for-this-board">Recommended Pattern for This Board</a></li>
+      </ul>
+    </aside>
+    <main>
+      <h1 id="adding-a-custom-module-to-a-specific-board-build">Adding a Custom Module to a Specific Board Build</h1>
+      <p>This page explains how to add a PX4 module so it is compiled only into a selected board target, using the ST Nucleo-H753ZI target as the concrete example.</p>
+      <p>The key idea is simple:</p>
+      <ol>
+        <li>Put the module source under <code>src/modules/&lt;module_name&gt;</code>.</li>
+        <li>Give the module a <code>CMakeLists.txt</code> and <code>Kconfig</code>.</li>
+        <li>Enable the generated <code>CONFIG_MODULES_&lt;MODULE_NAME&gt;</code> symbol only in the board <code>.px4board</code> file that should include it.</li>
+        <li>Start the module manually or from a board startup script.</li>
+      </ol>
+      <p>The markdown source for this page is <a href="custom_module_board_build.md">custom_module_board_build.md</a>.</p>
+
+      <h2 id="build-flow">Build Flow</h2>
+      <div class="mermaid">
+flowchart LR
+    source["src/modules/my_auto_wp"]
+    cmake["CMakeLists.txt&lt;br/&gt;px4_add_module"]
+    kconfig["Kconfig&lt;br/&gt;MODULES_MY_AUTO_WP"]
+    board["boards/st/nucleo-h753zi/default.px4board&lt;br/&gt;CONFIG_MODULES_MY_AUTO_WP=y"]
+    build["make st_nucleo-h753zi_default"]
+    nsh["NSH / MAVLink console&lt;br/&gt;my_auto_wp start"]
+
+    source --&gt; cmake
+    source --&gt; kconfig
+    kconfig --&gt; board
+    board --&gt; build
+    build --&gt; nsh
+      </div>
+      <p>Compiling a module into the firmware does not automatically run it. Runtime startup is a separate decision.</p>
+
+      <h2 id="module-location">Module Location</h2>
+      <p>For production code, use:</p>
+      <pre><code>src/modules/my_auto_wp/</code></pre>
+      <p>For throwaway experiments, examples are possible:</p>
+      <pre><code>src/examples/my_auto_wp/</code></pre>
+      <p>The config prefix changes based on the top-level folder:</p>
+      <table>
+        <thead>
+          <tr><th>Source location</th><th>Board config symbol</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>src/modules/my_auto_wp</code></td><td><code>CONFIG_MODULES_MY_AUTO_WP=y</code></td></tr>
+          <tr><td><code>src/examples/my_auto_wp</code></td><td><code>CONFIG_EXAMPLES_MY_AUTO_WP=y</code></td></tr>
+          <tr><td><code>src/systemcmds/my_tool</code></td><td><code>CONFIG_SYSTEMCMDS_MY_TOOL=y</code></td></tr>
+        </tbody>
+      </table>
+      <p>For flight behavior, navigation logic, health monitoring, or board-specific runtime services, use <code>src/modules</code>. Use <code>src/examples</code> only for demonstrations.</p>
+
+      <h2 id="minimal-module-files">Minimal Module Files</h2>
+      <p>Create this directory:</p>
+      <pre><code>src/modules/my_auto_wp/</code></pre>
+      <p>Add <code>CMakeLists.txt</code>:</p>
+      <pre><code class="language-cmake">px4_add_module(
+	MODULE modules__my_auto_wp
+	MAIN my_auto_wp
+	SRCS
+		MyAutoWp.cpp
+		MyAutoWp.hpp
+	DEPENDS
+		px4_work_queue
+)</code></pre>
+      <p>Add <code>Kconfig</code>:</p>
+      <pre><code class="language-kconfig">menuconfig MODULES_MY_AUTO_WP
+	bool "my_auto_wp"
+	default n
+	---help---
+		Enable my_auto_wp</code></pre>
+      <p>The important naming relationship is:</p>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Directory</td><td><code>src/modules/my_auto_wp</code></td></tr>
+          <tr><td>CMake module name</td><td><code>modules__my_auto_wp</code></td></tr>
+          <tr><td>Runtime command</td><td><code>my_auto_wp</code></td></tr>
+          <tr><td>Kconfig symbol</td><td><code>MODULES_MY_AUTO_WP</code></td></tr>
+          <tr><td>Board option</td><td><code>CONFIG_MODULES_MY_AUTO_WP=y</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="enable-it-for-nucleo-h753zi-only">Enable It for Nucleo-H753ZI Only</h2>
+      <p>Edit:</p>
+      <pre><code>boards/st/nucleo-h753zi/default.px4board</code></pre>
+      <p>Add:</p>
+      <pre><code>CONFIG_MODULES_MY_AUTO_WP=y</code></pre>
+      <p>Then build:</p>
+      <pre><code class="language-sh">make st_nucleo-h753zi_default</code></pre>
+      <p>This includes the module in the Nucleo-H753ZI firmware without enabling it for other boards.</p>
+
+      <h2 id="use-a-board-variant-instead-of-default">Use a Board Variant Instead of Default</h2>
+      <p>If the module should not be in the normal default image, create a separate board variant file:</p>
+      <pre><code>boards/st/nucleo-h753zi/my_auto_wp.px4board</code></pre>
+      <p>For non-default PX4 board labels, the build merges <code>default.px4board</code> with the variant <code>.px4board</code>, so put only the differences in the variant:</p>
+      <pre><code>CONFIG_MODULES_MY_AUTO_WP=y</code></pre>
+      <p>Build the variant:</p>
+      <pre><code class="language-sh">make st_nucleo-h753zi_my_auto_wp</code></pre>
+      <p>Use this pattern when you want to keep the stock <code>default.px4board</code> unchanged and maintain a separate experimental image.</p>
+
+      <h2 id="start-the-module">Start the Module</h2>
+      <p>After flashing, use NSH or the QGroundControl MAVLink console:</p>
+      <pre><code class="language-sh">my_auto_wp start
+my_auto_wp status
+my_auto_wp stop</code></pre>
+      <p>If the command is not found, the module was not compiled into the image. Check the board <code>.px4board</code> option and rebuild.</p>
+
+      <h2 id="start-automatically-on-this-board">Start Automatically on This Board</h2>
+      <p>To start the module on every Nucleo-H753ZI boot, add a startup command to:</p>
+      <pre><code>boards/st/nucleo-h753zi/init/rc.board_defaults</code></pre>
+      <p>Example:</p>
+      <pre><code class="language-sh">my_auto_wp start</code></pre>
+      <p>For a module that should run only when a parameter is enabled, gate the startup:</p>
+      <pre><code class="language-sh">if param compare MYAUTO_EN 1
+then
+	my_auto_wp start
+fi</code></pre>
+      <p>Use board startup for board-specific services. Use airframe startup when the module should follow a vehicle configuration rather than the hardware target.</p>
+
+      <h2 id="board-specific-parameters">Board-Specific Parameters</h2>
+      <p>If the module needs parameters, add parameter metadata through the module configuration path used by normal PX4 modules.</p>
+      <p>Example <code>CMakeLists.txt</code> with parameter metadata:</p>
+      <pre><code class="language-cmake">px4_add_module(
+	MODULE modules__my_auto_wp
+	MAIN my_auto_wp
+	SRCS
+		MyAutoWp.cpp
+		MyAutoWp.hpp
+	MODULE_CONFIG
+		params.yaml
+	DEPENDS
+		px4_work_queue
+)</code></pre>
+      <p>Then define parameters in:</p>
+      <pre><code>src/modules/my_auto_wp/params.yaml</code></pre>
+      <p>Set Nucleo-H753ZI-specific defaults in:</p>
+      <pre><code>boards/st/nucleo-h753zi/init/rc.board_defaults</code></pre>
+      <p>Example:</p>
+      <pre><code class="language-sh">param set-default MYAUTO_EN 1
+param set-default MYAUTO_RATE 20</code></pre>
+
+      <h2 id="common-mistakes">Common Mistakes</h2>
+      <table>
+        <thead>
+          <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Couldn't find path for my_auto_wp</code> during configure</td><td><code>CONFIG_MODULES_MY_AUTO_WP=y</code> is set, but <code>src/modules/my_auto_wp</code> does not exist</td><td>Check directory spelling and underscores.</td></tr>
+          <tr><td>Build succeeds but <code>my_auto_wp</code> is not found in NSH</td><td>Module was not enabled in the active board <code>.px4board</code></td><td>Confirm the exact target being built and the config file it uses.</td></tr>
+          <tr><td>Module is compiled but does not run</td><td>Compile-time inclusion and startup are separate</td><td>Run <code>my_auto_wp start</code> or add it to <code>rc.board_defaults</code>.</td></tr>
+          <tr><td>The module appears on every board</td><td>Option was added to multiple board configs or a shared config path</td><td>Keep <code>CONFIG_MODULES_MY_AUTO_WP=y</code> only in the intended board file.</td></tr>
+          <tr><td>Runtime command name is different than expected</td><td><code>MAIN</code> in <code>px4_add_module</code> does not match the command you are typing</td><td>Use <code>MAIN my_auto_wp</code> for command <code>my_auto_wp</code>.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="recommended-pattern-for-this-board">Recommended Pattern for This Board</h2>
+      <p>For Nucleo-H753ZI HITL development:</p>
+      <ol>
+        <li>Add the module under <code>src/modules/my_auto_wp</code>.</li>
+        <li>Add <code>CONFIG_MODULES_MY_AUTO_WP=y</code> to <code>boards/st/nucleo-h753zi/default.px4board</code> or to a custom variant <code>.px4board</code>.</li>
+        <li>Build with <code>make st_nucleo-h753zi_default</code> or the variant target.</li>
+        <li>Start manually first from NSH.</li>
+        <li>Add startup to <code>rc.board_defaults</code> only after the manual command is stable.</li>
+      </ol>
+      <p>This keeps build selection, runtime startup, and board defaults separate, which makes the change easier to test and easier to remove.</p>
+    </main>
+  </div>
+  <footer class="footer">
+    <p>Standalone HTML version of <a href="custom_module_board_build.md">custom_module_board_build.md</a>.</p>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, securityLevel: "loose" });
+  </script>
+</body>
+</html>
